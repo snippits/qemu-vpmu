@@ -354,6 +354,10 @@ romsubdir-%:
 
 ALL_SUBDIRS=$(TARGET_DIRS) $(patsubst %,pc-bios/%, $(ROMS))
 
+ifeq ($(CONFIG_VPMU),y)
+	ALL_SUBDIRS+=$(TARGET_DIRS)/vpmu
+endif
+
 recurse-all: $(SUBDIR_RULES) $(ROMSUBDIR_RULES)
 
 $(BUILD_DIR)/version.o: $(SRC_PATH)/version.rc config-host.h
@@ -807,6 +811,15 @@ endif
 .SECONDARY: $(TRACE_HEADERS) $(TRACE_HEADERS:%=%-timestamp) \
 	$(TRACE_SOURCES) $(TRACE_SOURCES:%=%-timestamp) \
 	$(TRACE_DTRACE) $(TRACE_DTRACE:%=%-timestamp)
+
+ifdef CONFIG_VPMU
+execute	:	subdir-arm-softmmu
+	@../../qemu_arm_image/runQEMU.sh -g vexpress
+
+execute_x86_64	:	subdir-x86_64-softmmu
+		@../../qemu_arm_image/runQEMU.sh x86_64
+
+endif
 
 # Include automatically generated dependency files
 # Dependencies in Makefile.objs files come from our recursive subdir rules

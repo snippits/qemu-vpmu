@@ -259,6 +259,12 @@ cc_i386=i386-pc-linux-gnu-gcc
 libs_qga=""
 debug_info="yes"
 stack_protector=""
+#CONFIG_VPMU
+vpmu="no"
+vpmu_debug="no"
+vpmu_cpu_fence="no"
+vpmu_vfp="no"
+vpmu_set="no"
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -1243,6 +1249,28 @@ for opt do
   ;;
   --with-gtkabi=*) gtkabi="$optarg"
   ;;
+#CONFIG_VPMU
+  --enable-vpmu) vpmu="yes"
+  ;;
+  --disable-vpmu) vpmu="no"
+  ;;
+  --enable-vpmu-set) vpmu_set="yes"
+  ;;
+  --disable-vpmu-set) vpmu_set="no"
+  ;;
+  --enable-vpmu-debug) vpmu_debug="yes"
+  ;;
+  --disable-vpmu-debug) vpmu_debug="no"
+  ;;
+  --enable-vpmu-mem-fence) vpmu_cpu_fence="yes"
+  ;;
+  --disable-vpmu-mem-fence) vpmu_cpu_fence="no"
+  ;;
+  --enable-vpmu-vfp) vpmu_vfp="yes"
+  ;;
+  --disable-vpmu-vfp) vpmu_vfp="no"
+  ;;
+#endif CONFIG_VPMU
   --disable-vte) vte="no"
   ;;
   --enable-vte) vte="yes"
@@ -1536,6 +1564,14 @@ disabled with --disable-FEATURE, default is enabled if available:
   vxhs            Veritas HyperScale vDisk backend support
   crypto-afalg    Linux AF_ALG crypto backend driver
   vhost-user      vhost-user support
+
+Optional VPMU(CONFIG_VPMU) features, enabled with --enable-FEATURE and
+disabled with --disable-FEATURE, default is enabled if available:
+  vpmu            set to enable VPMU (default is disable)
+  vpmu-set        set to enable Smart Event Tracking (default is disable)
+  vpmu-debug      enable debug message
+  vpmu-mem-fence  force CPU memory order on ring buffer(non-x86 platform needed)
+  vpmu-vfp        enable counter for virtual floating point
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -5408,6 +5444,15 @@ echo "avx2 optimization $avx2_opt"
 echo "replication support $replication"
 echo "VxHS block device $vxhs"
 
+
+#CONFIG_VPMU
+echo "VPMU              $vpmu"
+echo "VPMU SET          $vpmu_set"
+echo "VPMU debug        $vpmu_debug"
+echo "VPMU mem fence    $vpmu_cpu_fence"
+echo "VPMU-VFP          $vpmu_vfp"
+#endif CONFIG_VPMU
+
 if test "$sdl_too_old" = "yes"; then
 echo "-> Your SDL version is too old - please upgrade to have SDL support"
 fi
@@ -6227,6 +6272,53 @@ gdb_xml_files=""
 TARGET_ARCH="$target_name"
 TARGET_BASE_ARCH=""
 TARGET_ABI_DIR=""
+
+# CONFIG_VPMU
+case "$target_name" in
+  arm|armeb|aarch64|i386|x86_64)
+    if test "$vpmu" = "yes" ; then
+      #Create environment setup file
+      vpmu_config="$source_path/vpmu/vpmu_config"
+      echo "export VPMU_CONFIG=$vpmu_config" > ./setenv.sh
+      echo "export VPMU_JSON=$vpmu_config/def_config" >> ./setenv.sh
+      chmod +x ./setenv.sh
+      #Add CONFIG
+      #  This is for building qemu
+      echo "CONFIG_VPMU=y" >> $config_target_mak
+      #  This is for build-system itself
+      echo "CONFIG_VPMU=y" >> $config_host_mak
+
+      if test "$qemu_version" = "0.15.1" ; then
+          echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_target_mak
+          echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_host_mak
+      fi
+      if test "$vpmu_cpu_fence" = "yes" ; then
+          # Set to 1 to prevent CPU reordering(not needed in x86)
+          echo "CONFIG_VPMU_USE_CPU_FENCE=y" >> $config_target_mak
+          echo "CONFIG_VPMU_USE_CPU_FENCE=y" >> $config_host_mak
+      fi
+      if test "$vpmu_debug" = "yes" ; then
+          echo "CONFIG_VPMU_DEBUG_MSG=y" >> $config_target_mak
+          echo "CONFIG_VPMU_DEBUG_MSG=y" >> $config_host_mak
+      fi
+      if test "$vpmu_vfp" = "yes" ; then
+          echo "CONFIG_VPMU_VFP=y" >> $config_target_mak
+          echo "CONFIG_VPMU_VFP=y" >> $config_host_mak
+      fi
+      #CONFIG_VPMU_SET
+      if test "$vpmu_set" = "yes" ; then
+          echo "CONFIG_VPMU_SET=y" >> $config_target_mak
+          echo "CONFIG_VPMU_SET=y" >> $config_host_mak
+      fi
+
+      #Add directory for build
+      mkdir -p $target_dir/vpmu
+      symlink $source_path/vpmu/Makefile $target_dir/vpmu/Makefile
+      symlink $source_path/vpmu/Makefile.objs $target_dir/vpmu/Makefile.objs
+    fi
+  ;;
+esac
+
 
 case "$target_name" in
   i386)

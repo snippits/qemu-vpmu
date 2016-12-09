@@ -76,6 +76,16 @@ static const char *regnames[] =
     { "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
 
+#ifdef CONFIG_VPMU
+#include "../vpmu/include/vpmu-qemu.h"
+#include "../vpmu/include/vpmu-packet.h"
+#include "../vpmu/simulators/vpmu-arm-inst.h"
+#include "../vpmu/include/vpmu-log.h"
+static uint32_t *pc = NULL;
+// Branch filter, not a branch instruction
+uint8_t vpmu_branch_from_store;
+#endif
+
 /* initialize TCG globals.  */
 void arm_translate_init(void)
 {
@@ -225,6 +235,12 @@ static void store_reg(DisasContext *s, int reg, TCGv_i32 var)
          */
         tcg_gen_andi_i32(var, var, s->thumb ? ~1 : ~3);
         s->is_jmp = DISAS_JUMP;
+#ifdef CONFIG_VPMU
+        if (!vpmu_branch_from_store) {
+            s->tb->extra_tb_info.has_branch = 1;
+            gen_helper_vpmu_branch(cpu_env, var, tcg_const_i32(s->pc));
+        }
+#endif
     }
     tcg_gen_mov_i32(cpu_R[reg], var);
     tcg_temp_free_i32(var);
@@ -938,6 +954,15 @@ static inline void gen_bx_im(DisasContext *s, uint32_t addr)
         tcg_temp_free_i32(tmp);
     }
     tcg_gen_movi_i32(cpu_R[15], addr & ~1);
+#ifdef CONFIG_VPMU
+    if (unlikely(s->singlestep_enabled)) {
+        ; // TODO what to do here?
+    }
+    if (!vpmu_branch_from_store) {
+        s->tb->extra_tb_info.has_branch = 1;
+        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tcg_const_i32(s->pc));
+    }
+#endif
 }
 
 /* Set PC and Thumb state from var.  var is marked as dead.  */
@@ -947,6 +972,12 @@ static inline void gen_bx(DisasContext *s, TCGv_i32 var)
     tcg_gen_andi_i32(cpu_R[15], var, ~1);
     tcg_gen_andi_i32(var, var, 1);
     store_cpu_field(var, thumb);
+#ifdef CONFIG_VPMU
+    if (!vpmu_branch_from_store) {
+        s->tb->extra_tb_info.has_branch = 1;
+        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tcg_const_i32(s->pc));
+    }
+#endif
 }
 
 /* Set PC and Thumb state from var. var is marked as dead.
@@ -1000,6 +1031,9 @@ static inline void gen_bx_excret_final_code(DisasContext *s)
 static inline void store_reg_bx(DisasContext *s, int reg, TCGv_i32 var)
 {
     if (reg == 15 && ENABLE_ARCH_7) {
+#ifdef CONFIG_VPMU
+        vpmu_branch_from_store = true;
+#endif
         gen_bx(s, var);
     } else {
         store_reg(s, reg, var);
@@ -1014,6 +1048,9 @@ static inline void store_reg_from_load(DisasContext *s, int reg, TCGv_i32 var)
 {
     if (reg == 15 && ENABLE_ARCH_5) {
         gen_bx_excret(s, var);
+#ifdef CONFIG_VPMU
+        vpmu_branch_from_store = true;
+#endif
     } else {
         store_reg(s, reg, var);
     }
@@ -1050,6 +1087,20 @@ static void gen_aa32_ld_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
 {
     TCGv addr = gen_aa32_addr(s, a32, opc);
     tcg_gen_qemu_ld_i32(val, addr, index, opc);
+
+#ifdef CONFIG_VPMU
+    int32_t size = 0;
+    if (opc == MO_8)
+        size = 1;
+    else if (opc == MO_16)
+        size = 2;
+    else
+        size = 4;
+    gen_helper_vpmu_memory_access(
+      cpu_env, addr, tcg_const_i32(CACHE_PACKET_READ), tcg_const_i32(size));
+    s->tb->extra_tb_info.counters.load++;
+#endif
+
     tcg_temp_free(addr);
 }
 
@@ -1058,6 +1109,20 @@ static void gen_aa32_st_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
 {
     TCGv addr = gen_aa32_addr(s, a32, opc);
     tcg_gen_qemu_st_i32(val, addr, index, opc);
+
+#ifdef CONFIG_VPMU
+    int32_t size = 0;
+    if (opc == MO_8)
+        size = 1;
+    else if (opc == MO_16)
+        size = 2;
+    else
+        size = 4;
+    gen_helper_vpmu_memory_access(
+      cpu_env, addr, tcg_const_i32(CACHE_PACKET_WRITE), tcg_const_i32(size));
+    s->tb->extra_tb_info.counters.store++;
+#endif
+
     tcg_temp_free(addr);
 }
 
@@ -1105,6 +1170,13 @@ static void gen_aa32_ld_i64(DisasContext *s, TCGv_i64 val, TCGv_i32 a32,
     TCGv addr = gen_aa32_addr(s, a32, opc);
     tcg_gen_qemu_ld_i64(val, addr, index, opc);
     gen_aa32_frob64(s, val);
+
+#ifdef CONFIG_VPMU
+    gen_helper_vpmu_memory_access(
+      cpu_env, addr, tcg_const_i32(CACHE_PACKET_READ), tcg_const_i32(8));
+    s->tb->extra_tb_info.counters.load++;
+#endif
+
     tcg_temp_free(addr);
 }
 
@@ -1128,6 +1200,13 @@ static void gen_aa32_st_i64(DisasContext *s, TCGv_i64 val, TCGv_i32 a32,
     } else {
         tcg_gen_qemu_st_i64(val, addr, index, opc);
     }
+
+#ifdef CONFIG_VPMU
+    gen_helper_vpmu_memory_access(
+      cpu_env, addr, tcg_const_i32(CACHE_PACKET_WRITE), tcg_const_i32(8));
+    s->tb->extra_tb_info.counters.store++;
+#endif
+
     tcg_temp_free(addr);
 }
 
@@ -3235,6 +3314,13 @@ static int disas_vfp_insn(DisasContext *s, uint32_t insn)
     if (!arm_dc_feature(s, ARM_FEATURE_VFP)) {
         return 1;
     }
+#ifdef CONFIG_VPMU
+    s->tb->extra_tb_info.counters.vfp++;
+    s->tb->extra_tb_info.counters.alu++;
+#ifdef CONFIG_VPMU_VFP
+    s->tb->extra_tb_info.ticks += vpmu_accumulate_vfp_ticks(insn, env->vfp.vec_len);
+#endif
+#endif
 
     /* FIXME: this access check should not take precedence over UNDEF
      * for invalid encodings; we will generate incorrect syndrome information
@@ -4185,6 +4271,12 @@ static inline void gen_jmp (DisasContext *s, uint32_t dest)
             dest |= 1;
         gen_bx_im(s, dest);
     } else {
+#ifdef CONFIG_VPMU
+        if (!vpmu_branch_from_store) {
+            s->tb->extra_tb_info.has_branch = 1;
+            gen_helper_vpmu_branch(cpu_env, tcg_const_i32(dest), tcg_const_i32(s->pc));
+        }
+#endif
         gen_goto_tb(s, 0, dest);
     }
 }
@@ -5562,6 +5654,10 @@ static int disas_neon_data_insn(DisasContext *s, uint32_t insn)
 
     if (!s->vfp_enabled)
       return 1;
+#ifdef CONFIG_VPMU
+    s->tb->extra_tb_info.counters.neon++;
+    s->tb->extra_tb_info.counters.alu++;
+#endif
     q = (insn & (1 << 6)) != 0;
     u = (insn >> 24) & 1;
     VFP_DREG_D(rd, insn);
@@ -7541,6 +7637,9 @@ static int disas_coproc_insn(DisasContext *s, uint32_t insn)
 
     cpnum = (insn >> 8) & 0xf;
 
+#ifdef CONFIG_VPMU
+    s->tb->extra_tb_info.ticks += vpmu_accumulate_cp14_ticks(insn);
+#endif
     /* First check for coprocessor space used for XScale/iwMMXt insns */
     if (arm_dc_feature(s, ARM_FEATURE_XSCALE) && (cpnum < 2)) {
         if (extract32(s->c15_cpar, cpnum, 1) == 0) {
@@ -8085,6 +8184,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                            default_exception_el(s));
         return;
     }
+
+#ifdef CONFIG_VPMU
+    s->tb->extra_tb_info.ticks += vpmu_accumulate_arm_ticks(insn);
+#endif
     cond = insn >> 28;
     if (cond == 0xf){
         /* In ARMv3 and v4 the NV condition is UNPREDICTABLE; we
@@ -8423,6 +8526,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                 goto illegal_op;
             }
 
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
             rn = extract32(insn, 16, 4);
             rd = extract32(insn, 12, 4);
 
@@ -8446,6 +8553,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
         }
         case 0x5: /* saturating add/subtract */
             ARCH(5TE);
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+#endif
             rd = (insn >> 12) & 0xf;
             rn = (insn >> 16) & 0xf;
             tmp = load_reg(s, rm);
@@ -8500,6 +8610,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
         case 0xc:
         case 0xe:
             ARCH(5TE);
+#ifdef CONFIG_VPMU
+            if(op1 <= 2) s->tb->extra_tb_info.counters.alu++;
+#endif
             rs = (insn >> 8) & 0xf;
             rn = (insn >> 12) & 0xf;
             rd = (insn >> 16) & 0xf;
@@ -8557,6 +8670,12 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
         set_cc = (insn >> 20) & 1;
         logic_cc = table_logic_cc[op1] & set_cc;
 
+#ifdef CONFIG_VPMU
+        s->tb->extra_tb_info.counters.alu++;
+        if (op1 == 0 || op1 == 1 || op1 == 8 || op1 == 9 || op1 == 12 || op1 == 14
+            || op1 == 15)
+            s->tb->extra_tb_info.counters.bit += 1;
+#endif
         /* data processing instruction */
         if (insn & (1 << 25)) {
             /* immediate operand */
@@ -8744,6 +8863,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                     rs = (insn >> 8) & 0xf;
                     rm = (insn) & 0xf;
                     op1 = (insn >> 20) & 0xf;
+#ifdef CONFIG_VPMU
+                    if (op1 != 5) s->tb->extra_tb_info.counters.alu++;
+#endif
                     switch (op1) {
                     case 0: case 1: case 2: case 3: case 6:
                         /* 32 bit mul */
@@ -9058,6 +9180,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                 rs = (insn >> 8) & 0xf;
                 switch ((insn >> 23) & 3) {
                 case 0: /* Parallel add/subtract.  */
+#ifdef CONFIG_VPMU
+                    s->tb->extra_tb_info.counters.alu++;
+#endif
                     op1 = (insn >> 20) & 7;
                     tmp = load_reg(s, rn);
                     tmp2 = load_reg(s, rm);
@@ -9070,6 +9195,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                     break;
                 case 1:
                     if ((insn & 0x00700020) == 0) {
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         /* Halfword pack.  */
                         tmp = load_reg(s, rn);
                         tmp2 = load_reg(s, rm);
@@ -9092,6 +9221,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                         tcg_temp_free_i32(tmp2);
                         store_reg(s, rd, tmp);
                     } else if ((insn & 0x00200020) == 0x00200000) {
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         /* [us]sat */
                         tmp = load_reg(s, rm);
                         shift = (insn >> 7) & 0x1f;
@@ -9111,6 +9244,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                         tcg_temp_free_i32(tmp2);
                         store_reg(s, rd, tmp);
                     } else if ((insn & 0x00300fe0) == 0x00200f20) {
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         /* [us]sat16 */
                         tmp = load_reg(s, rm);
                         sh = (insn >> 16) & 0x1f;
@@ -9122,6 +9259,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                         tcg_temp_free_i32(tmp2);
                         store_reg(s, rd, tmp);
                     } else if ((insn & 0x00700fe0) == 0x00000fa0) {
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         /* Select bytes.  */
                         tmp = load_reg(s, rn);
                         tmp2 = load_reg(s, rm);
@@ -9132,6 +9273,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                         tcg_temp_free_i32(tmp2);
                         store_reg(s, rd, tmp);
                     } else if ((insn & 0x000003e0) == 0x00000060) {
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         tmp = load_reg(s, rm);
                         shift = (insn >> 10) & 3;
                         /* ??? In many cases it's not necessary to do a
@@ -9159,6 +9304,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                         }
                         store_reg(s, rd, tmp);
                     } else if ((insn & 0x003f0f60) == 0x003f0f20) {
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         /* rev */
                         tmp = load_reg(s, rm);
                         if (insn & (1 << 22)) {
@@ -9186,6 +9335,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                             /* op2 not 00x or 11x : UNDEF */
                             goto illegal_op;
                         }
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+#endif
                         /* Signed multiply most significant [accumulate].
                            (SMMUL, SMMLA, SMMLS) */
                         tmp = load_reg(s, rm);
@@ -9215,6 +9367,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                         if (insn & (1 << 7)) {
                             goto illegal_op;
                         }
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+#endif
                         tmp = load_reg(s, rm);
                         tmp2 = load_reg(s, rs);
                         if (insn & (1 << 5))
@@ -9271,6 +9426,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                         if (((insn >> 5) & 7) || (rd != 15)) {
                             goto illegal_op;
                         }
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+#endif
                         tmp = load_reg(s, rm);
                         tmp2 = load_reg(s, rs);
                         if (insn & (1 << 21)) {
@@ -9290,6 +9448,9 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                     switch (op1) {
                     case 0: /* Unsigned sum of absolute differences.  */
                         ARCH(6);
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+#endif
                         tmp = load_reg(s, rm);
                         tmp2 = load_reg(s, rs);
                         gen_helper_usad8(tmp, tmp, tmp2);
@@ -9310,6 +9471,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                             /* UNPREDICTABLE; we choose to UNDEF */
                             goto illegal_op;
                         }
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         i = i + 1 - shift;
                         if (rm == 15) {
                             tmp = tcg_temp_new_i32();
@@ -9327,6 +9492,10 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                     case 0x12: case 0x16: case 0x1a: case 0x1e: /* sbfx */
                     case 0x32: case 0x36: case 0x3a: case 0x3e: /* ubfx */
                         ARCH(6T2);
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+                        s->tb->extra_tb_info.counters.bit++;
+#endif
                         tmp = load_reg(s, rm);
                         shift = (insn >> 7) & 0x1f;
                         i = ((insn >> 16) & 0x1f) + 1;
@@ -9725,6 +9894,13 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
         ARCH(6T2);
     }
 
+#ifdef CONFIG_VPMU
+    // paslab : data sheet model
+    s->tb->extra_tb_info.ticks += vpmu_accumulate_thumb_ticks(insn);
+// shocklink added to support branch count for portability
+// TODO: branch counter for thumb mode
+#endif
+
     rn = (insn >> 16) & 0xf;
     rs = (insn >> 12) & 0xf;
     rd = (insn >> 8) & 0xf;
@@ -9987,6 +10163,10 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 goto illegal_op;
             }
             /* Halfword pack.  */
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
             tmp = load_reg(s, rn);
             tmp2 = load_reg(s, rm);
             shift = ((insn >> 10) & 0x1c) | ((insn >> 6) & 0x3);
@@ -10024,6 +10204,10 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
             gen_arm_shift_im(tmp2, shiftop, shift, logic_cc);
             if (gen_thumb2_data_op(s, op, conds, 0, tmp, tmp2))
                 goto illegal_op;
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
             tcg_temp_free_i32(tmp2);
             if (rd != 15) {
                 store_reg(s, rd, tmp);
@@ -10042,6 +10226,10 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
             tmp2 = load_reg(s, rm);
             if ((insn & 0x70) != 0)
                 goto illegal_op;
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
             op = (insn >> 21) & 3;
             logic_cc = (insn & (1 << 20)) != 0;
             gen_arm_shift_reg(tmp, op, tmp2, logic_cc);
@@ -10088,6 +10276,10 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
             default:
                 g_assert_not_reached();
             }
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            if (shift != 0) s->tb->extra_tb_info.counters.bit++;
+#endif
             if (rn != 15) {
                 tmp2 = load_reg(s, rn);
                 if ((op >> 1) == 1) {
@@ -10107,6 +10299,10 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
             shift = (insn >> 4) & 7;
             if ((op & 3) == 3 || (shift & 3) == 3)
                 goto illegal_op;
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
             tmp = load_reg(s, rn);
             tmp2 = load_reg(s, rm);
             gen_thumb2_parallel_addsub(op, shift, tmp, tmp2);
@@ -10120,6 +10316,9 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 if (!arm_dc_feature(s, ARM_FEATURE_THUMB_DSP)) {
                     goto illegal_op;
                 }
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+#endif
                 tmp = load_reg(s, rn);
                 tmp2 = load_reg(s, rm);
                 if (op & 1)
@@ -10155,6 +10354,13 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 default:
                     goto illegal_op;
                 }
+#ifdef CONFIG_VPMU
+                s->tb->extra_tb_info.counters.alu++;
+                if (op == 10 || op == 8 || op == 9 || op == 11 || op == 16 || op == 24
+                    || op == 32 || op == 33 || op == 34 || op == 40 || op == 41
+                    || op == 42)
+                    s->tb->extra_tb_info.counters.bit++;
+#endif
                 tmp = load_reg(s, rn);
                 switch (op) {
                 case 0x0a: /* rbit */
@@ -10228,6 +10434,9 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 }
                 break;
             }
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+#endif
             op = (insn >> 4) & 0xf;
             tmp = load_reg(s, rn);
             tmp2 = load_reg(s, rm);
@@ -10257,6 +10466,9 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
             case 4: /* Dual multiply subtract.  */
                 if (op)
                     gen_swap_half(tmp2);
+#ifdef CONFIG_VPMU
+                if (op) s->tb->extra_tb_info.counters.bit++;
+#endif
                 gen_smul_dual(tmp, tmp2);
                 if (insn & (1 << 22)) {
                     /* This subtraction cannot overflow. */
@@ -10324,6 +10536,9 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
             store_reg(s, rd, tmp);
             break;
         case 6: case 7: /* 64-bit multiply, Divide.  */
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+#endif
             op = ((insn >> 4) & 0xf) | ((insn >> 16) & 0x70);
             tmp = load_reg(s, rn);
             tmp2 = load_reg(s, rm);
@@ -10347,6 +10562,9 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 }
                 if (op & 1)
                     gen_swap_half(tmp2);
+#ifdef CONFIG_VPMU
+                if (op & 1) s->tb->extra_tb_info.counters.bit++;
+#endif
                 gen_smul_dual(tmp, tmp2);
                 if (op & 0x10) {
                     tcg_gen_sub_i32(tmp, tmp, tmp2);
@@ -10418,7 +10636,11 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 goto illegal_op;
             }
         } else if (((insn >> 8) & 0xe) == 10) {
+#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_VFP)
+            if (disas_vfp_insn(env, s, insn)) {
+#else
             if (disas_vfp_insn(s, insn)) {
+#endif
                 goto illegal_op;
             }
         } else {
@@ -10696,6 +10918,12 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                         if (imm < 32) {
                             tcg_gen_sextract_i32(tmp, tmp, shift, imm);
                         }
+#ifdef CONFIG_VPMU
+                        if (imm < 32) {
+                            s->tb->extra_tb_info.counters.alu++;
+                            s->tb->extra_tb_info.counters.bit++;
+                        }
+#endif
                         break;
                     case 6: /* Unsigned bitfield extract.  */
                         imm++;
@@ -10704,6 +10932,12 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                         if (imm < 32) {
                             tcg_gen_extract_i32(tmp, tmp, shift, imm);
                         }
+#ifdef CONFIG_VPMU
+                        if (imm < 32) {
+                            s->tb->extra_tb_info.counters.alu++;
+                            s->tb->extra_tb_info.counters.bit++;
+                        }
+#endif
                         break;
                     case 3: /* Bitfield insert/clear.  */
                         if (imm < shift)
@@ -10713,6 +10947,10 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                             tmp2 = load_reg(s, rd);
                             tcg_gen_deposit_i32(tmp, tmp2, tmp, shift, imm);
                             tcg_temp_free_i32(tmp2);
+#ifdef CONFIG_VPMU
+                            s->tb->extra_tb_info.counters.alu++;
+                            s->tb->extra_tb_info.counters.bit++;
+#endif
                         }
                         break;
                     case 7:
@@ -10733,8 +10971,15 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                                     tcg_temp_free_i32(tmp2);
                                     goto illegal_op;
                                 }
+#ifdef CONFIG_VPMU
+                                s->tb->extra_tb_info.counters.alu++;
+#endif
                                 gen_helper_usat16(tmp, cpu_env, tmp, tmp2);
                             } else {
+#ifdef CONFIG_VPMU
+                                s->tb->extra_tb_info.counters.alu++;
+                                s->tb->extra_tb_info.counters.bit++;
+#endif
                                 gen_helper_usat(tmp, cpu_env, tmp, tmp2);
                             }
                         } else {
@@ -10745,8 +10990,15 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                                     tcg_temp_free_i32(tmp2);
                                     goto illegal_op;
                                 }
+#ifdef CONFIG_VPMU
+                                s->tb->extra_tb_info.counters.alu++;
+#endif
                                 gen_helper_ssat16(tmp, cpu_env, tmp, tmp2);
                             } else {
+#ifdef CONFIG_VPMU
+                                s->tb->extra_tb_info.counters.alu++;
+                                s->tb->extra_tb_info.counters.bit++;
+#endif
                                 gen_helper_ssat(tmp, cpu_env, tmp, tmp2);
                             }
                         }
@@ -10772,6 +11024,9 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                         }
                     } else {
                         /* Add/sub 12-bit immediate.  */
+#ifdef CONFIG_VPMU
+                        s->tb->extra_tb_info.counters.alu++;
+#endif
                         if (rn == 15) {
                             offset = s->pc & ~(uint32_t)3;
                             if (insn & (1 << 23))
@@ -10830,6 +11085,10 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
                 if (gen_thumb2_data_op(s, op, (insn & (1 << 20)) != 0,
                                        shifter_out, tmp, tmp2))
                     goto illegal_op;
+#ifdef CONFIG_VPMU
+                s->tb->extra_tb_info.counters.alu++;
+                s->tb->extra_tb_info.counters.bit++;
+#endif
                 tcg_temp_free_i32(tmp2);
                 rd = (insn >> 8) & 0xf;
                 if (rd != 15) {
@@ -11039,6 +11298,9 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
 
     insn = arm_lduw_code(env, s->pc, s->sctlr_b);
     s->pc += 2;
+#ifdef CONFIG_VPMU
+    s->tb->extra_tb_info.ticks += vpmu_accumulate_thumb_ticks(insn);
+#endif
 
     switch (insn >> 12) {
     case 0: case 1:
@@ -11047,6 +11309,9 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
         op = (insn >> 11) & 3;
         if (op == 3) {
             /* add/subtract */
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+#endif
             rn = (insn >> 3) & 7;
             tmp = load_reg(s, rn);
             if (insn & (1 << 10)) {
@@ -11073,6 +11338,11 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             store_reg(s, rd, tmp);
         } else {
             /* shift immediate */
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
+            rn = (insn >> 3) & 7;
             rm = (insn >> 3) & 7;
             shift = (insn >> 6) & 0x1f;
             tmp = load_reg(s, rm);
@@ -11091,8 +11361,14 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             tcg_gen_movi_i32(tmp, insn & 0xff);
             if (!s->condexec_mask)
                 gen_logic_CC(tmp);
+#ifdef CONFIG_VPMU
+            if (!s->condexec_mask) s->tb->extra_tb_info.counters.alu++;
+#endif
             store_reg(s, rd, tmp);
         } else {
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+#endif
             tmp = load_reg(s, rd);
             tmp2 = tcg_temp_new_i32();
             tcg_gen_movi_i32(tmp2, insn & 0xff);
@@ -11143,6 +11419,9 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             op = (insn >> 8) & 3;
             switch (op) {
             case 0: /* add */
+#ifdef CONFIG_VPMU
+                s->tb->extra_tb_info.counters.alu++;
+#endif
                 tmp = load_reg(s, rd);
                 tmp2 = load_reg(s, rm);
                 tcg_gen_add_i32(tmp, tmp, tmp2);
@@ -11150,6 +11429,9 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
                 store_reg(s, rd, tmp);
                 break;
             case 1: /* cmp */
+#ifdef CONFIG_VPMU
+                s->tb->extra_tb_info.counters.alu++;
+#endif
                 tmp = load_reg(s, rd);
                 tmp2 = load_reg(s, rm);
                 gen_sub_CC(tmp, tmp, tmp2);
@@ -11201,6 +11483,11 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             TCGV_UNUSED_I32(tmp);
         }
 
+#ifdef CONFIG_VPMU
+        s->tb->extra_tb_info.counters.alu++;
+        if (op != 5 && op != 6 && op != 10 && op != 11 && op != 13)
+            s->tb->extra_tb_info.counters.bit++;
+#endif
         tmp2 = load_reg(s, rm);
         switch (op) {
         case 0x0: /* and */
@@ -11457,6 +11744,9 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
 
     case 10:
         /* add to high reg */
+#ifdef CONFIG_VPMU
+        s->tb->extra_tb_info.counters.alu++;
+#endif
         rd = (insn >> 8) & 7;
         if (insn & (1 << 11)) {
             /* SP */
@@ -11477,6 +11767,9 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
         switch (op) {
         case 0:
             /* adjust stack pointer */
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+#endif
             tmp = load_reg(s, 13);
             val = (insn & 0x7f) * 4;
             if (insn & (1 << 7))
@@ -11487,6 +11780,10 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
 
         case 2: /* sign/zero extend.  */
             ARCH(6);
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
             rd = insn & 7;
             rm = (insn >> 3) & 7;
             tmp = load_reg(s, rm);
@@ -11616,6 +11913,10 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
             default:
                 g_assert_not_reached();
             }
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.counters.alu++;
+            s->tb->extra_tb_info.counters.bit++;
+#endif
             store_reg(s, rd, tmp);
             break;
         }
@@ -11892,6 +12193,14 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     gen_tb_start(tb);
 
     tcg_clear_temp_count();
+#ifdef CONFIG_VPMU
+    pc = &dc->pc;
+    // Reset all values in this structure
+    memset(&(tb->extra_tb_info), 0, sizeof(ExtraTBInfo));
+    gen_helper_vpmu_accumulate_tb_info(cpu_env,
+                                       tcg_const_ptr((uint64_t) & (tb->extra_tb_info)));
+    vpmu_branch_from_store = false;
+#endif
 
     /* A note on handling of the condexec (IT) bits:
      *
@@ -12157,6 +12466,17 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 
 done_generating:
     gen_tb_end(tb, num_insns);
+
+#ifdef CONFIG_VPMU
+    /* paslab : instruction cache support */
+    tb->extra_tb_info.counters.total      = num_insns;
+    tb->extra_tb_info.counters.size_bytes = dc->pc - pc_start;
+    tb->extra_tb_info.start_addr          = pc_start;
+    tb->extra_tb_info.modelsel.num_of_cacheblks =
+      (((dc->pc - 1) >> VPMU.cache_model.i_log2_blocksize[1])
+       - ((pc_start >> VPMU.cache_model.i_log2_blocksize[1]))
+       + 1);
+#endif
 
 #ifdef DEBUG_DISAS
     if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM) &&

@@ -21,6 +21,10 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
+#ifdef CONFIG_VPMU
+    #include "vpmu/include/vpmu-qemu.h"
+#endif
+
 #if DATA_SIZE == 8
 #define SUFFIX q
 #define LSUFFIX q
@@ -101,6 +105,12 @@ static inline DATA_TYPE glue(io_read, SUFFIX)(CPUArchState *env,
                                               uintptr_t retaddr)
 {
     CPUIOTLBEntry *iotlbentry = &env->iotlb[mmu_idx][index];
+#ifdef CONFIG_VPMU
+    if(likely(VPMU.enabled)){
+        VPMU.iomem_access_flag = 1;
+    }
+#endif
+
     return io_readx(env, iotlbentry, addr, retaddr, DATA_SIZE);
 }
 #endif
@@ -262,6 +272,12 @@ static inline void glue(io_write, SUFFIX)(CPUArchState *env,
                                           uintptr_t retaddr)
 {
     CPUIOTLBEntry *iotlbentry = &env->iotlb[mmu_idx][index];
+#ifdef CONFIG_VPMU
+    if(likely(VPMU.enabled)){
+        VPMU.iomem_access_flag = 1;
+    }
+#endif
+
     return io_writex(env, iotlbentry, val, addr, retaddr, DATA_SIZE);
 }
 

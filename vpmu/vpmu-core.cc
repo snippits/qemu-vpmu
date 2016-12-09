@@ -1,0 +1,215 @@
+// C headers
+extern "C" {
+#include "efd.h" // Extracting information from binary file
+}
+#include <iostream> // Basic I/O related C++ header
+#include <fstream>  // File I/O
+#include <sstream>  // String buffer
+#include <cerrno>   // Readable error messages
+#include <vector>   // std::vector
+#include <string>   // std::string
+#include "json.hpp" // nlohmann::json
+
+#include "vpmu.hpp"        // VPMU common header
+#include "vpmu-stream.hpp" // VPMUStream, VPMUStream_T
+#include "vpmu-inst.hpp"   // Inst_Stream
+#include "vpmu-cache.hpp"  // Cache_Stream
+#include "vpmu-branch.hpp" // Branch_Stream
+
+#include "json.hpp" // nlohmann::json
+using json = nlohmann::json;
+
+// The global variable that controls all the vpmu streams.
+std::vector<VPMUStream *> vpmu_streams = {};
+// File for VPMU to dump results
+FILE *vpmu_log_file = NULL;
+// The definition of the only one global variable passing data around.
+struct VPMU_Struct VPMU;
+
+static std::string get_file_contents(const char *filename)
+{
+    std::ifstream in(filename, std::ios::in);
+    if (in) {
+        std::string contents;
+        in.seekg(0, std::ios::end);
+        contents.resize(in.tellg());
+        in.seekg(0, std::ios::beg);
+        in.read(&contents[0], contents.size());
+        in.close();
+        return (contents);
+    }
+    ERR_MSG("File not found: %s\n", filename);
+    exit(EXIT_FAILURE);
+}
+
+static json VPMU_load_json(const char *vpmu_config_file)
+{
+    // Read file in
+    std::string vpmu_config_str = get_file_contents(vpmu_config_file);
+
+    // Parse json
+    auto j = json::parse(vpmu_config_str);
+    // DBG("%s\n", j.dump(4).c_str());
+
+    return j;
+}
+
+static inline void
+attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
+{
+    // Check its existence and print helpful message to user
+    vpmu::utils::json_check_or_exit(config, name);
+    // Initialize all trace stream channels with its configuration
+    s.build(config[name]);
+    // Push pointers of all trace streams.
+    // The pointer must point to bss section, i.e. global variable.
+    // Thus, this is a safe pointer which would never be dangling.
+
+    vpmu_streams.push_back(&s);
+    return;
+}
+
+extern "C" {
+#include "simulators/vpmu-arm-inst.h"
+// TODO remove this
+extern uint32_t         arm_instr_time[ARM_INSTRUCTION_TOTAL_COUNTS];
+extern ARM_Instructions get_index_of_arm_inst(const char *s);
+}
+static void vpmu_core_init(const char *vpmu_config_file)
+{
+    try {
+        json vpmu_config = VPMU_load_json(vpmu_config_file);
+
+        attach_vpmu_stream(vpmu_inst_stream, vpmu_config, "cpu_models");
+        attach_vpmu_stream(vpmu_branch_stream, vpmu_config, "branch_models");
+        attach_vpmu_stream(vpmu_cache_stream, vpmu_config, "cache_models");
+
+        json root = vpmu_config["cpu_models"]["instruction"];
+        // TODO move this to CPU model
+        for (json::iterator it = root.begin(); it != root.end(); ++it) {
+            // Skip the attribute next
+            std::string key   = it.key();
+            uint32_t    value = it.value();
+
+            arm_instr_time[get_index_of_arm_inst(key.c_str())] = value;
+        }
+
+        // TODO remove this test code
+        // sleep(2);
+        // for (auto vs: vpmu_streams) {
+        //     vs->destroy();
+        // }
+        // vpmu_inst_stream.build(vpmu_config["cpu_models"]);
+        // vpmu_branch_stream.build(vpmu_config["branch_models"]);
+        // vpmu_cache_stream.build(vpmu_config["cache_models"]);
+        // sleep(2);
+    } catch (std::invalid_argument e) {
+        ERR_MSG("%s\n", e.what());
+        exit(EXIT_FAILURE);
+    } catch (std::domain_error e) {
+        ERR_MSG("%s\n", e.what());
+        exit(EXIT_FAILURE);
+    }
+
+#ifdef CONFIG_VPMU_SET
+// vpmu_process_tracking_init();
+#endif
+
+    // TODO try to move JIT modular and not requiring this!!!
+    VPMU.cache_model = vpmu_cache_stream.get_model(0);
+    VPMU.cpu_model   = vpmu_inst_stream.get_model(0);
+    std::function<void(std::string)> func(
+      [](auto i) { std::cout << i << VPMU.cpu_model.name << std::endl; });
+    vpmu_inst_stream.async(func, "hello async callback\n");
+    // After this line, the configs from simulators are synced!!!
+    CONSOLE_LOG(STR_VPMU "VPMU configurations:\n");
+    CONSOLE_LOG(STR_VPMU "    CPU Model    : %s\n", VPMU.cpu_model.name);
+    CONSOLE_LOG(STR_VPMU "    # cores      : %d\n", VPMU.platform.cpu.cores);
+    CONSOLE_LOG(STR_VPMU "    frequency    : %" PRIu32 " MHz\n",
+                VPMU.cpu_model.frequency);
+    CONSOLE_LOG(STR_VPMU "    dual issue   : %s\n",
+                VPMU.cpu_model.dual_issue ? "y" : "n");
+    CONSOLE_LOG(STR_VPMU "    Cache model  : %s\n", VPMU.cache_model.name);
+    CONSOLE_LOG(STR_VPMU "    # levels     : %d\n", VPMU.cache_model.levels);
+    CONSOLE_LOG(STR_VPMU "    latency      : \n");
+    for (int i = VPMU.cache_model.levels; i > 0; i--) {
+        CONSOLE_LOG(STR_VPMU "\t    L%d  : %d\n", i, VPMU.cache_model.latency[i]);
+    }
+    // sleep(2);
+    // exit(0);
+}
+
+extern "C" {
+
+void VPMU_sync_non_blocking(void)
+{
+    for (auto s : vpmu_streams) {
+        s->sync_none_blocking();
+    }
+}
+
+void VPMU_sync(void)
+{
+    for (auto s : vpmu_streams) {
+        s->sync();
+    }
+}
+
+void VPMU_reset(void)
+{
+    VPMU.cpu_idle_time_ns       = 0;
+    VPMU.ticks                  = 0;
+    VPMU.iomem_count            = 0;
+    VPMU.total_tb_visit_count   = 0;
+    VPMU.cold_tb_visit_count    = 0;
+    VPMU.hot_tb_visit_count     = 0;
+    VPMU.hot_dcache_read_count  = 0;
+    VPMU.hot_dcache_write_count = 0;
+    VPMU.hot_icache_count       = 0;
+
+    for (auto s : vpmu_streams) {
+        s->reset();
+    }
+}
+
+void VPMU_dump_result(void)
+{
+    VPMU_sync();
+
+    CONSOLE_LOG("==== Program Profile ====\n\n");
+    CONSOLE_LOG("   === QEMU/ARM ===\n");
+    vpmu_dump_readable_message();
+}
+
+void VPMU_init(int argc, char **argv)
+{
+    char vpmu_config_file[1024] = {0};
+
+    for (int i = 0; i < (argc - 1); i++) {
+        if (std::string(argv[i]) == "-vpmu-config") strcpy(vpmu_config_file, argv[i + 1]);
+        if (std::string(argv[i]) == "-smp") VPMU.platform.cpu.cores = atoi(argv[i + 1]);
+    }
+
+    // Set to 1 if (1) no -smp presents. (2) the argument after smp is not a number.
+    if (VPMU.platform.cpu.cores == 0) VPMU.platform.cpu.cores = 1;
+    if (strlen(vpmu_config_file) == 0) {
+        ERR_MSG("VPMU Config File Path is not set!!\n"
+                "\tPlease specify '-vpmu-config <PATH>' when executing QEMU\n\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (vpmu_log_file == NULL) vpmu_log_file = fopen("/tmp/vpmu.log", "w");
+
+    // this would let print system support comma.
+    setlocale(LC_NUMERIC, "");
+    // enable_QEMU_log();
+    // VPMU.thpool = thpool_init(1);
+    DBG(STR_VPMU "Thread Pool Initialized\n");
+    vpmu_core_init(vpmu_config_file);
+    CONSOLE_LOG(STR_VPMU "Initialized\n");
+}
+}
+
+static void __attribute__((constructor)) vpmu_construct(void)
+{
+}

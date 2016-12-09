@@ -4438,3 +4438,10 @@ HXCOMM This is the last statement. Insert new options before this line!
 STEXI
 @end table
 ETEXI
+
+#ifdef CONFIG_VPMU
+DEFHEADING(\nVPMU Related Options)
+DEF("vpmu-config", HAS_ARG, QEMU_OPTION_vpmu_config, \
+    "-vpmu-config <PATH>      set the path to VPMU configuration file\n",QEMU_ARCH_ARM)
+#endif
+

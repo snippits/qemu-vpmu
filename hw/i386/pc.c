@@ -73,6 +73,10 @@
 /* debug PC/ISA interrupts */
 //#define DEBUG_IRQ
 
+#ifdef CONFIG_VPMU
+#include "vpmu/include/vpmu-device.h"
+#endif
+
 #ifdef DEBUG_IRQ
 #define DPRINTF(fmt, ...)                                       \
     do { printf("CPUIRQ: " fmt , ## __VA_ARGS__); } while (0)
@@ -1576,6 +1580,10 @@ void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
         }
     }
     *rtc_state = rtc_init(isa_bus, 2000, rtc_irq);
+
+#ifdef CONFIG_VPMU
+    vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
+#endif
 
     qemu_register_boot_set(pc_boot_set, *rtc_state);
 

@@ -339,6 +339,9 @@ static inline void tb_invalidate_phys_addr(AddressSpace *as, hwaddr addr)
 #define USE_DIRECT_JUMP
 #endif
 
+#ifdef CONFIG_VPMU
+    #include "vpmu/include/vpmu-qemu.h"
+#endif
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */
     target_ulong cs_base; /* CS base for this block */
@@ -395,6 +398,10 @@ struct TranslationBlock {
      */
     uintptr_t jmp_list_next[2];
     uintptr_t jmp_list_first;
+
+#ifdef CONFIG_VPMU
+    ExtraTBInfo extra_tb_info;
+#endif
 };
 
 void tb_free(TranslationBlock *tb);

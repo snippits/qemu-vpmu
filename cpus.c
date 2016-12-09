@@ -68,6 +68,10 @@
 #define PR_MCE_KILL_EARLY 1
 #endif
 
+#ifdef CONFIG_VPMU
+#include "vpmu/include/vpmu-qemu.h"
+#endif
+
 #endif /* CONFIG_LINUX */
 
 int64_t max_delay;
@@ -350,6 +354,53 @@ int64_t cpu_get_clock(void)
         start = seqlock_read_begin(&timers_state.vm_clock_seqlock);
         ti = cpu_get_clock_locked();
     } while (seqlock_read_retry(&timers_state.vm_clock_seqlock, start));
+
+    //TODO fix this
+#if 0 && defined(CONFIG_VPMU) && defined(TARGET_ARM)
+    //TODO make this support x86
+    static uint64_t snapshot_ti = 0, last_ti = 0;
+    static uint64_t last_guest_time = 0, last_host_time = 0;
+    static double emulation_difference;
+    if (VPMU.enabled) {
+        if (unlikely(snapshot_ti == 0)) snapshot_ti = ti;
+        // VPMU has lazy sync with timing models which sould be enough
+        // If one wants to ensure the absolute correctness, uncomment the following line
+        // VPMU_sync();
+        // TODO This is currently consider one CPU core timming. We need to consider multiple cores.
+        if (unlikely(VPMU.all_cpu_idle_flag)) {
+            if (last_ti == 0) last_ti = ti;
+            VPMU.cpu_idle_time_ns += (ti - last_ti) / emulation_difference;
+            last_ti = ti;
+            // Each idle time (when this is benn called) of QEMU is about 1ms.
+            snapshot_ti += 1000000;
+            last_guest_time = 0;
+        }
+        else {
+            // At least one CPU is busy.
+            // Let's sample the emulation speed.
+            // TODO This should be migrate to callback funcation after checking all the counters are retrieved back from simulators
+            // The correctness would be check after that!
+            if (unlikely(last_guest_time == 0)) {
+                last_guest_time = vpmu_estimated_execution_time_ns();
+                last_host_time = ti;
+            }
+            else {
+                uint64_t host_difference = ti - last_host_time;
+                if (last_host_time > 100000000) {
+                    uint64_t guest_difference = vpmu_estimated_execution_time_ns() - last_guest_time;
+                    emulation_difference = guest_difference / host_difference;
+                }
+            }
+        }
+
+        return vpmu_estimated_pipeline_time_ns() + vpmu_estimated_io_mem_time_ns()
+               + vpmu_estimated_sys_mem_time_ns() + snapshot_ti;
+    }
+    else {
+        last_ti = 0;
+        snapshot_ti = 0;
+    }
+#endif
 
     return ti;
 }
@@ -1079,6 +1130,15 @@ static bool qemu_tcg_should_sleep(CPUState *cpu)
 
 static void qemu_tcg_wait_io_event(CPUState *cpu)
 {
+#ifdef CONFIG_VPMU
+    //Caution: iothread_requesting_mutex does not mean CPU idle!
+    // TODO This should be re-check again in QEMU-2.9
+    if (VPMU.enabled && all_cpu_threads_idle())
+        VPMU.all_cpu_idle_flag = 1;
+    else
+        VPMU.all_cpu_idle_flag = 0;
+#endif
+
     while (qemu_tcg_should_sleep(cpu)) {
         stop_tcg_kick_timer();
         qemu_cond_wait(cpu->halt_cond, &qemu_global_mutex);
@@ -1779,6 +1839,9 @@ void qemu_init_vcpu(CPUState *cpu)
     } else {
         qemu_dummy_start_vcpu(cpu);
     }
+#ifdef CONFIG_VPMU
+    //Add multi-core support here
+#endif
 }
 
 void cpu_stop_current(void)

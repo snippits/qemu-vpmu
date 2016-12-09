@@ -40,6 +40,11 @@ static void raise_exception(CPUARMState *env, uint32_t excp,
     cpu_loop_exit(cs);
 }
 
+#ifdef CONFIG_VPMU
+#include "../vpmu/op-vpmu.c"
+#include "qemu/timer.h"
+#endif
+
 static int exception_target_el(CPUARMState *env)
 {
     int target_el = MAX(1, arm_current_el(env));
@@ -430,6 +435,10 @@ void HELPER(wfi)(CPUARMState *env)
 
     cs->exception_index = EXCP_HLT;
     cs->halted = 1;
+#ifdef CONFIG_VPMU
+    // TODO implement it another way
+    //VPMU.cpu_halted_vm_clock = qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL);
+#endif
     cpu_loop_exit(cs);
 }
 

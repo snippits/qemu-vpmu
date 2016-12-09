@@ -15,6 +15,9 @@
 #include <zlib.h> /* For crc32 */
 #include "exec/semihost.h"
 #include "sysemu/kvm.h"
+#ifdef CONFIG_VPMU
+#include "../vpmu/include/vpmu.h"
+#endif
 
 #define ARM_CPU_FREQ 1000000000 /* FIXME: 1 GHz, should be configurable */
 
@@ -6410,6 +6413,11 @@ void arm_v7m_cpu_do_interrupt(CPUState *cs)
     v7m_push_stack(cpu);
     v7m_exception_taken(cpu, lr);
     qemu_log_mask(CPU_LOG_INT, "... as %d\n", env->v7m.exception);
+
+#ifdef CONFIG_VPMU
+    // TODO check correctness
+    VPMU.timer_interrupt_return_pc = env->regs[14];
+#endif
 }
 
 /* Function used to synchronize QEMU's AArch64 register set with AArch32
@@ -7016,6 +7024,11 @@ void arm_cpu_do_interrupt(CPUState *cs)
     if (!kvm_enabled()) {
         cs->interrupt_request |= CPU_INTERRUPT_EXITTB;
     }
+
+#ifdef CONFIG_VPMU
+    // TODO check correctness
+    VPMU.timer_interrupt_return_pc = env->regs[14];
+#endif
 }
 
 /* Return the exception level which controls this address translation regime */

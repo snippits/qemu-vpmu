@@ -131,6 +131,9 @@ int main(int argc, char **argv)
 #include "sysemu/replay.h"
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
+#ifdef CONFIG_VPMU
+#include "vpmu/include/vpmu-qemu.h"
+#endif
 
 #define MAX_VIRTIO_CONSOLES 1
 #define MAX_SCLP_CONSOLES 1
@@ -4188,6 +4191,10 @@ int main(int argc, char **argv, char **envp)
         list_cpus(stdout, &fprintf, cpu_model);
         exit(0);
     }
+
+#ifdef CONFIG_VPMU
+    VPMU_init(argc, argv);
+#endif
 
     if (!trace_init_backends()) {
         exit(1);
