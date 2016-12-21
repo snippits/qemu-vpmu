@@ -75,6 +75,7 @@ extern "C" {
 extern uint32_t         arm_instr_time[ARM_INSTRUCTION_TOTAL_COUNTS];
 extern ARM_Instructions get_index_of_arm_inst(const char *s);
 }
+
 static void vpmu_core_init(const char *vpmu_config_file)
 {
     try {
@@ -208,8 +209,61 @@ void VPMU_init(int argc, char **argv)
     vpmu_core_init(vpmu_config_file);
     CONSOLE_LOG(STR_VPMU "Initialized\n");
 }
+
+void vpmu_dump_readable_message(void)
+{
+    using namespace vpmu::host;
+    using namespace vpmu::target;
+
+// These two are for making info formatable and maintainable
+#define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
+#define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
+    CONSOLE_LOG("Instructions:\n");
+    vpmu_inst_stream.dump();
+    CONSOLE_LOG("Branch:\n");
+    vpmu_branch_stream.dump();
+    CONSOLE_LOG("CACHE:\n");
+    vpmu_cache_stream.dump();
+
+    CONSOLE_LOG("\n");
+    CONSOLE_LOG("Timing Info:\n");
+    CONSOLE_TME("  ->CPU                        :", cpu_time_ns());
+    CONSOLE_TME("  ->Cache                      :",
+                vpmu_cache_stream.get_cache_cycles(0)
+                  / (VPMU.cpu_model.frequency / 1000.0));
+    CONSOLE_TME("  ->System memory              :", memory_time_ns());
+    CONSOLE_TME("  ->I/O memory                 :", io_time_ns());
+    CONSOLE_TME("  ->Idle                       :", VPMU.cpu_idle_time_ns);
+    CONSOLE_TME("Estimated execution time       :", time_ns());
+
+    CONSOLE_LOG("\n");
+    CONSOLE_TME("Emulation Time :", wall_clock_period());
+    CONSOLE_LOG("MIPS           : %'0.2lf\n\n",
+                (double)vpmu_total_inst_count() / (wall_clock_period() / 1000.0));
+
+#if 0
+    CONSOLE_LOG("Memory:\n");
+    CONSOLE_U64("  ->System memory access       :", (vpmu_L1_dcache_miss_count()
+                                                 + vpmu_L1_icache_miss_count()));
+    CONSOLE_U64("  ->System memory cycles       :", vpmu_sys_mem_access_cycle_count());
+    CONSOLE_U64("  ->I/O memory access          :", vpmu->iomem_count);
+    CONSOLE_U64("  ->I/O memory cycles          :", vpmu_io_mem_access_cycle_count());
+    CONSOLE_U64("Total Cycle count              :", vpmu_cycle_count());
+    //Remember add these infos into L1I READ
+    CONSOLE_LOG("Model Selection:\n");
+    CONSOLE_U64("  ->JIT icache access          :", (vpmu->hot_icache_count));
+    CONSOLE_U64("  ->JIT dcache access          :", (vpmu->hot_dcache_read_count + vpmu->hot_dcache_write_count));
+    CONSOLE_U64("  ->VPMU icache access         :", vpmu_L1_icache_access_count());
+    CONSOLE_U64("  ->VPMU icache misses         :", vpmu_L1_icache_miss_count());
+    CONSOLE_U64("  ->VPMU dcache access         :", vpmu_L1_dcache_access_count());
+    CONSOLE_U64("  ->VPMU dcache read misses    :", vpmu_L1_dcache_read_miss_count());
+    CONSOLE_U64("  ->VPMU dcache write misses   :", vpmu_L1_dcache_write_miss_count());
+    CONSOLE_U64("  ->hotTB                      :", VPMU.hot_tb_visit_count);
+    CONSOLE_U64("  ->coldTB                     :", VPMU.cold_tb_visit_count);
+    */
+#endif
+#undef CONSOLE_TME
+#undef CONSOLE_U64
 }
 
-static void __attribute__((constructor)) vpmu_construct(void)
-{
-}
+} // End of extern "C"

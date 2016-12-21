@@ -1,3 +1,7 @@
+extern "C" {
+#include "vpmu-qemu.h" // ExtraTBInfo
+}
+
 #include "vpmu-inst.hpp"
 #include "vpmu-packet.hpp"
 
@@ -26,10 +30,5 @@ void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo* ptr)
 uint64_t vpmu_total_inst_count(void)
 {
     return vpmu_inst_stream.get_total_inst_count();
-}
-
-uint64_t vpmu_cpu_cycle_count(void)
-{
-    return vpmu_inst_stream.get_total_cycle_count();
 }
 }

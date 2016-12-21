@@ -67,11 +67,6 @@ typedef struct ExtraTBInfo {
 extern struct VPMU_Struct VPMU;
 
 void VPMU_init(int argc, char **argv);
-uint64_t vpmu_cycle_count(void);
-uint64_t vpmu_estimated_pipeline_time_ns(void);
-uint64_t vpmu_estimated_sys_mem_time_ns(void);
-uint64_t vpmu_estimated_io_mem_time_ns(void);
-uint64_t vpmu_estimated_execution_time_ns(void);
 void     vpmu_dump_readable_message(void);
 
 inline uint64_t h_time_difference(struct timespec *t1, struct timespec *t2)
@@ -95,12 +90,15 @@ inline uint64_t toc(struct timespec *t1, struct timespec *t2)
     return h_time_difference(t1, t2);
 }
 
-void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo *ptr);
 void VPMU_sync(void);
 void VPMU_sync_non_blocking(void);
 void VPMU_reset(void);
 void VPMU_dump_result(void);
 void vpmu_simulator_status(VPMU_Struct *vpmu);
+
+
+
+void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo *ptr);
 void model_sel_ref(uint8_t      proc,
                    uint8_t      core_id,
                    uint32_t     addr,

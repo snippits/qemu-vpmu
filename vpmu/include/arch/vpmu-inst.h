@@ -32,6 +32,5 @@ typedef struct VPMU_Inst_Model {
 } VPMU_Inst_Model;
 
 uint64_t vpmu_total_inst_count(void);
-uint64_t vpmu_cpu_cycle_count(void);
 
 #endif

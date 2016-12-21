@@ -40,7 +40,26 @@ namespace utils
         // Should only reach here when there is something wrong.
         exit(EXIT_FAILURE);
     }
-}
 } // End of namespace vpmu::utils
+
+namespace host
+{
+    uint64_t wall_clock_period(void);
+} // End of namespace vpmu::host
+
+namespace target
+{
+    double scale_factor(void);
+    uint64_t memory_cycles(void);
+    uint64_t io_cycles(void);
+    uint64_t cpu_cycles(void);
+    uint64_t cycles(void);
+    uint64_t memory_time_ns(void);
+    uint64_t cpu_time_ns(void);
+    uint64_t io_time_ns(void);
+    uint64_t time_ns(void);
+} // End of namespace vpmu::target
+
+} // End of namespace vpmu
 
 #endif
