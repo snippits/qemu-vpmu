@@ -53,16 +53,7 @@ public:
         log_debug("Initialized");
     }
 
-    inline void send(uint8_t core, uint64_t pc, uint32_t taken)
-    {
-        VPMU_Branch::Reference r;
-        r.type  = VPMU_PACKET_DATA; // The type of reference
-        r.core  = core;             // The number of CPU core
-        r.pc    = pc;               // The address of pc
-        r.taken = taken;            // If this is a taken branch
-
-        send_ref(r);
-    }
+    void send(uint8_t core, uint64_t pc, uint32_t taken);
 
 private:
     // This is a register function declared in the vpmu-branch.cc file.

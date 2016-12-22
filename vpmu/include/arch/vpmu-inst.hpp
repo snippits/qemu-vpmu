@@ -53,16 +53,7 @@ public:
         log_debug("Initialized");
     }
 
-    inline void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr)
-    {
-        VPMU_Inst::Reference r;
-        r.type            = VPMU_PACKET_DATA; // The type of reference
-        r.core            = core;             // The number of CPU core
-        r.mode            = mode;             // CPU mode
-        r.tb_counters_ptr = ptr;              // TB Info Pointer
-
-        send_ref(r);
-    }
+    void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
 
     uint64_t get_total_inst_count(void)
     {

@@ -19,6 +19,17 @@ BranchStream::Sim_ptr BranchStream::create_sim(std::string sim_name)
         return nullptr;
 }
 
+void BranchStream::send(uint8_t core, uint64_t pc, uint32_t taken)
+{
+    VPMU_Branch::Reference r;
+    r.type  = VPMU_PACKET_DATA; // The type of reference
+    r.core  = core;             // The number of CPU core
+    r.pc    = pc;               // The address of pc
+    r.taken = taken;            // If this is a taken branch
+
+    send_ref(r);
+}
+
 extern "C" {
 
 void branch_ref(uint8_t core, uint32_t pc, uint32_t taken)

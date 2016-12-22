@@ -1,7 +1,3 @@
-extern "C" {
-#include "vpmu-qemu.h" // ExtraTBInfo
-}
-
 #include "vpmu-inst.hpp"
 #include "vpmu-packet.hpp"
 
@@ -18,6 +14,17 @@ InstructionStream::Sim_ptr InstructionStream::create_sim(std::string sim_name)
         return std::make_unique<CPU_CortexA9>();
     else
         return nullptr;
+}
+
+void InstructionStream::send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr)
+{
+    VPMU_Inst::Reference r;
+    r.type            = VPMU_PACKET_DATA; // The type of reference
+    r.core            = core;             // The number of CPU core
+    r.mode            = mode;             // CPU mode
+    r.tb_counters_ptr = ptr;              // TB Info Pointer
+
+    send_ref(r);
 }
 
 extern "C" {
