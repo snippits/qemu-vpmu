@@ -222,6 +222,7 @@ public:
     uint32_t _paddings[4];
 };
 
+#if defined(CONFIG_VPMU_TARGET_ARM)
 class VPMU_Inst
 {
 public:
@@ -245,15 +246,12 @@ public:
 
     // The architectural configuration information
     // which VPMU needs to know for some functionalities.
-    typedef VPMU_Inst_Model Model;
-/* TODO move global VPMU to here
-typedef struct {
-    char     name[128];
-    uint64_t frequency;
-    uint8_t  dual_issue;
-    // TODO to be done!!
-} Model;
-*/
+    typedef struct {
+        char     name[128];
+        uint64_t frequency;
+        uint8_t  dual_issue;
+        // TODO to be done!!
+    } Model;
 #pragma pack(pop) // restore original alignment from stack
 
     // Define the buffer type here because we need to use it in normal C program
@@ -278,5 +276,10 @@ public:
     // Remain the last 128 bits empty to avoid false sharing due to cache line size
     uint32_t _paddings[4];
 };
+
+// End of CONFIG_VPMU_TARGET_ARM
+#elif defined(CONFIG_VPMU_TARGET_X86_64)
+
+#endif // End of CONFIG_VPMU_TARGET_X86_64
 
 #endif

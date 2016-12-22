@@ -49,7 +49,7 @@ namespace host
 
 namespace target
 {
-    double scale_factor(void);
+    double   scale_factor(void);
     uint64_t memory_cycles(void);
     uint64_t io_cycles(void);
     uint64_t cpu_cycles(void);

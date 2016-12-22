@@ -53,8 +53,6 @@ public:
         log_debug("Initialized");
     }
 
-    void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
-
     uint64_t get_total_inst_count(void)
     {
         VPMU_Inst::Data data = get_data(0);
@@ -74,6 +72,13 @@ public:
         log_debug("lambda");
         f(std::forward<Args>(args)...);
     }
+
+#if defined(CONFIG_VPMU_TARGET_ARM)
+    void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
+// End of CONFIG_VPMU_TARGET_ARM
+#elif defined(CONFIG_VPMU_TARGET_X86_64)
+
+#endif // End of CONFIG_VPMU_TARGET_X86_64
 
 private:
     // This is a register function declared in the vpmu-inst.cc file.

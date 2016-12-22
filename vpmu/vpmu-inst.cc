@@ -3,6 +3,7 @@
 
 InstructionStream vpmu_inst_stream;
 
+#if defined(CONFIG_VPMU_TARGET_ARM)
 // Put your own timing simulator below
 #include "simulators/Cortex-A9.hpp"
 // Put you own timing simulator above
@@ -26,6 +27,11 @@ void InstructionStream::send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr)
 
     send_ref(r);
 }
+
+// End of CONFIG_VPMU_TARGET_ARM
+#elif defined(CONFIG_VPMU_TARGET_X86_64)
+
+#endif // End of CONFIG_VPMU_TARGET_X86_64
 
 extern "C" {
 

@@ -117,24 +117,25 @@ static void vpmu_core_init(const char *vpmu_config_file)
 #endif
 
     // TODO try to move JIT modular and not requiring this!!!
-    VPMU.cache_model = vpmu_cache_stream.get_model(0);
-    VPMU.cpu_model   = vpmu_inst_stream.get_model(0);
+    CacheStream::Model       cache_model = vpmu_cache_stream.get_model(0);
+    InstructionStream::Model cpu_model   = vpmu_inst_stream.get_model(0);
+    VPMU.platform.cpu.frequency = cpu_model.frequency;
     std::function<void(std::string)> func(
-      [](auto i) { std::cout << i << VPMU.cpu_model.name << std::endl; });
+      [=](auto i) { std::cout << i << cpu_model.name << std::endl; });
     vpmu_inst_stream.async(func, "hello async callback\n");
     // After this line, the configs from simulators are synced!!!
     CONSOLE_LOG(STR_VPMU "VPMU configurations:\n");
-    CONSOLE_LOG(STR_VPMU "    CPU Model    : %s\n", VPMU.cpu_model.name);
+    CONSOLE_LOG(STR_VPMU "    CPU Model    : %s\n", cpu_model.name);
     CONSOLE_LOG(STR_VPMU "    # cores      : %d\n", VPMU.platform.cpu.cores);
-    CONSOLE_LOG(STR_VPMU "    frequency    : %" PRIu32 " MHz\n",
-                VPMU.cpu_model.frequency);
+    CONSOLE_LOG(STR_VPMU "    frequency    : %" PRIu64 " MHz\n",
+                cpu_model.frequency);
     CONSOLE_LOG(STR_VPMU "    dual issue   : %s\n",
-                VPMU.cpu_model.dual_issue ? "y" : "n");
-    CONSOLE_LOG(STR_VPMU "    Cache model  : %s\n", VPMU.cache_model.name);
-    CONSOLE_LOG(STR_VPMU "    # levels     : %d\n", VPMU.cache_model.levels);
+                cpu_model.dual_issue ? "y" : "n");
+    CONSOLE_LOG(STR_VPMU "    Cache model  : %s\n", cache_model.name);
+    CONSOLE_LOG(STR_VPMU "    # levels     : %d\n", cache_model.levels);
     CONSOLE_LOG(STR_VPMU "    latency      : \n");
-    for (int i = VPMU.cache_model.levels; i > 0; i--) {
-        CONSOLE_LOG(STR_VPMU "\t    L%d  : %d\n", i, VPMU.cache_model.latency[i]);
+    for (int i = cache_model.levels; i > 0; i--) {
+        CONSOLE_LOG(STR_VPMU "\t    L%d  : %d\n", i, cache_model.latency[i]);
     }
     // sleep(2);
     // exit(0);
@@ -230,7 +231,7 @@ void vpmu_dump_readable_message(void)
     CONSOLE_TME("  ->CPU                        :", cpu_time_ns());
     CONSOLE_TME("  ->Cache                      :",
                 vpmu_cache_stream.get_cache_cycles(0)
-                  / (VPMU.cpu_model.frequency / 1000.0));
+                  * vpmu::target::scale_factor());
     CONSOLE_TME("  ->System memory              :", memory_time_ns());
     CONSOLE_TME("  ->I/O memory                 :", io_time_ns());
     CONSOLE_TME("  ->Idle                       :", VPMU.cpu_idle_time_ns);

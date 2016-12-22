@@ -247,6 +247,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
         }
 
         if (vpmu_model_has(VPMU_PIPELINE_SIM, VPMU)) {
+/* FIXME move to ARM CPU model
             if (likely(VPMU.cpu_model.dual_issue)) {
 #ifdef CONFIG_VPMU_VFP
                 VPMU.VFP_BASE += extra_tb_info->vfp_base;
@@ -256,9 +257,8 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 #endif
                 VPMU.ticks += extra_tb_info->ticks;
             }
-            else {
-                VPMU.ticks += extra_tb_info->ticks;
-            }
+*/
+            VPMU.ticks += extra_tb_info->ticks;
         }
 
 

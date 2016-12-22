@@ -25,12 +25,6 @@ typedef struct Inst_Data_Cell {
     uint64_t branch;
 } Inst_Data_Cell;
 
-typedef struct VPMU_Inst_Model {
-    char     name[1024];
-    uint32_t frequency;
-    uint8_t  dual_issue;
-} VPMU_Inst_Model;
-
 uint64_t vpmu_total_inst_count(void);
 
 #endif

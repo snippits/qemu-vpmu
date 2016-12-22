@@ -75,7 +75,7 @@ namespace host
 
 namespace target
 {
-    double scale_factor(void) { return 1 / (VPMU.cpu_model.frequency / 1000.0); }
+    double scale_factor(void) { return 1 / (VPMU.platform.cpu.frequency / 1000.0); }
 
     uint64_t memory_cycles(void) { return vpmu_cache_stream.get_memory_cycles(0); }
 

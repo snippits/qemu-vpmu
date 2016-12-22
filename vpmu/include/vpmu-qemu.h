@@ -9,7 +9,7 @@
 typedef struct VPMUPlatformInfo {
     struct {
         uint32_t cores;
-        // uint64_t frequency;
+        uint64_t frequency;
     } cpu, gpu;
 } VPMUPlatformInfo;
 
@@ -41,9 +41,7 @@ typedef struct VPMU_Struct {
     VPMUPlatformInfo platform;
     /* Configurations VPMU needs to know */
     // TODO remove all these
-    VPMU_Inst_Model   cpu_model;
     VPMU_Cache_Model  cache_model;
-    VPMU_Branch_Model branch_model;
 } VPMU_Struct;
 
 // A structure to extend TB info for accumulating counters when executing each TB.
