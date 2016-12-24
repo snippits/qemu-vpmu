@@ -113,7 +113,7 @@ public:
     inline void wait_semaphore(int n) { sem_wait(&stream_comm[n].job_semaphore); }
 
     // Get the results from a timing simulator
-    Data get_data(int n)
+    inline Data get_data(int n)
     {
         if (pointer_safety_check(n) == false) return {0};
         return stream_comm[n].data;

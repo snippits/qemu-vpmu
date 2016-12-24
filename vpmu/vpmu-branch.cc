@@ -37,13 +37,4 @@ void branch_ref(uint8_t core, uint32_t pc, uint32_t taken)
     vpmu_branch_stream.send(core, pc, taken);
 }
 
-uint64_t vpmu_branch_predict_correct(void)
-{
-    return vpmu_branch_stream.get_data().correct[0];
-}
-
-uint64_t vpmu_branch_predict_wrong(void)
-{
-    return vpmu_branch_stream.get_data().wrong[0];
-}
 }

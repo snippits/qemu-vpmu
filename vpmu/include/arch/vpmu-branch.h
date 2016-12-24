@@ -9,7 +9,5 @@ typedef struct VPMU_Branch_Model {
 } VPMU_Branch_Model;
 
 void branch_ref(uint8_t core, uint32_t pc, uint32_t taken);
-uint64_t vpmu_branch_predict_correct(void);
-uint64_t vpmu_branch_predict_wrong(void);
 
 #endif

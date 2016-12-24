@@ -49,13 +49,17 @@ namespace host
 
 namespace target
 {
-    double   scale_factor(void);
-    uint64_t memory_cycles(void);
-    uint64_t io_cycles(void);
+    double scale_factor(void);
+    // Cycles
     uint64_t cpu_cycles(void);
-    uint64_t cycles(void);
-    uint64_t memory_time_ns(void);
+    uint64_t branch_cycles(void);
+    uint64_t cache_cycles(void);
+    uint64_t in_cpu_cycles(void);
+    // Time
     uint64_t cpu_time_ns(void);
+    uint64_t branch_time_ns(void);
+    uint64_t cache_time_ns(void);
+    uint64_t memory_time_ns(void);
     uint64_t io_time_ns(void);
     uint64_t time_ns(void);
 } // End of namespace vpmu::target

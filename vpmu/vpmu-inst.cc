@@ -42,6 +42,6 @@ void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo* ptr)
 
 uint64_t vpmu_total_inst_count(void)
 {
-    return vpmu_inst_stream.get_total_inst_count();
+    return vpmu_inst_stream.get_inst_count();
 }
 }

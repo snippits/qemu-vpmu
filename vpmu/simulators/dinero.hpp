@@ -326,12 +326,16 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         for (int i = L1_CACHE; i <= model.levels; i++) {
             char field_str[128];
 
-            sprintf(field_str, "l%d_cache_miss_lat", i);
+            sprintf(field_str, "l%d miss latency", i);
             model.latency[i] = get_json<int>(config, field_str);
             DBG("%s: %d\n", field_str, model.latency[i]);
         }
+        // The latency in the spec is defined as inclusion. We need exclusion.
+        for (int i = model.levels; i > L1_CACHE; i--) {
+            model.latency[i] -= model.latency[i - 1];
+        }
         model.latency[VPMU_Cache::Data_Level::MEMORY] =
-          get_json<int>(config, "memory_lat");
+          get_json<int>(config, "memory_ns");
 
         // Pass some cache configurations to VPMU. Ex: blocksize, walloc, wback
         if (config["topology"].is_null()) return;

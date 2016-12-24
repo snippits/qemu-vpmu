@@ -31,6 +31,15 @@ public:
 
     void send(uint8_t core, uint64_t pc, uint32_t taken);
 
+    inline uint64_t get_cycles(int n)
+    {
+        VPMU_Branch::Model model = get_model(n);
+        VPMU_Branch::Data  data  = get_data(n);
+        return data.wrong[0] * model.latency;
+    }
+
+    inline uint64_t get_cycles(void) { return get_cycles(0); }
+
 private:
     // This is a register function declared in the vpmu-branch.cc file.
     Sim_ptr create_sim(std::string sim_name) override;

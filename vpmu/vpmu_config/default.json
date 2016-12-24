@@ -4,7 +4,7 @@
   },
   "cpu_models": {
     "name": "Cortex-A9",
-    "frequency": 1000,
+    "frequency": 1200,
     "dual_issue": true,
   "vfp_instruction_file": "default-vfp-model.json",
   "instruction": {
@@ -192,9 +192,9 @@
       "name": "dinero",
       "program_path": "",
       "levels": 2,
-      "memory_lat": 700,
-      "l1_cache_miss_lat": 30,
-      "l2_cache_miss_lat": 110,
+      "memory_ns": 110,
+      "l1 miss latency": 20,
+      "l2 miss latency": 37,
       "topology": [
         {
           "name": "CPU L2",
@@ -214,7 +214,7 @@
               "processor": "CPU",
               "blocksize": 32,
               "subblocksize": 32,
-              "size": 16384,
+              "size": 32768,
               "assoc": 4,
               "split_3c_cnt": 0,
               "replacement": "RANDOM",
@@ -228,7 +228,7 @@
               "processor": "CPU",
               "blocksize": 32,
               "subblocksize": 32,
-              "size": 16384,
+              "size": 32768,
               "assoc": 4,
               "split_3c_cnt": 0,
               "replacement": "RANDOM",
@@ -245,9 +245,9 @@
     {
       "name": "dinero",
       "levels": 2,
-      "memory_lat": 700,
-      "l1_cache_miss_lat": 20,
-      "l2_cache_miss_lat": 100,
+      "memory_ns": 700,
+      "l1 miss latency": 20,
+      "l2 miss latency": 100,
       "topology": [
         {
           "name": "CPU L2",
@@ -341,8 +341,8 @@
     }
   ],
   "branch_models": [
-    {"name": "two bits"},
-    {"name": "one bit"},
-    {"name": "one bit"}
+    {"name": "two bits", "miss latency": 11},
+    {"name": "one bit", "miss latency": 11},
+    {"name": "one bit", "miss latency": 11}
   ]
 }

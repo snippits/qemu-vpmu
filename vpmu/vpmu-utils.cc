@@ -77,50 +77,43 @@ namespace target
 {
     double scale_factor(void) { return 1 / (VPMU.platform.cpu.frequency / 1000.0); }
 
-    uint64_t memory_cycles(void) { return vpmu_cache_stream.get_memory_cycles(0); }
+    uint64_t cpu_cycles(void) { return vpmu_inst_stream.get_cycles(0); }
 
-    uint64_t io_cycles(void) { return VPMU.iomem_count; }
+    uint64_t branch_cycles(void) { return vpmu_branch_stream.get_cycles(0); }
 
-    uint64_t cpu_cycles(void) { return vpmu_inst_stream.get_total_cycle_count(); }
+    uint64_t cache_cycles(void) { return vpmu_cache_stream.get_cache_cycles(0); }
 
-    uint64_t cycles(void)
+    uint64_t in_cpu_cycles(void)
     {
-        return VPMU.ticks + vpmu_cache_stream.get_total_cycles()
-               + io_cycles();
+        return cpu_cycles()      // CPU core execution time
+               + branch_cycles() // Panelties from branch misprediction
+               + cache_cycles(); // Panelties from cache misses
     }
 
-    uint64_t memory_time_ns(void)
+    uint64_t cpu_time_ns(void) { return cpu_cycles() * vpmu::target::scale_factor(); }
+
+    uint64_t branch_time_ns(void)
     {
-        /* FIXME...
-         * Use last_pipeline_cycle_count to save tmp data
-         * as did above by using VPMU.last_ticks.
-         */
-        return memory_cycles() * vpmu::target::scale_factor();
+        return branch_cycles() * vpmu::target::scale_factor();
     }
 
-    uint64_t cpu_time_ns(void)
-    {
-        /* FIXME...
-         * Use last_pipeline_cycle_count to save tmp data
-         * as did above by using VPMU.last_ticks.
-         */
-        return cpu_cycles() * vpmu::target::scale_factor();
-    }
+    uint64_t cache_time_ns(void) { return cache_cycles() * vpmu::target::scale_factor(); }
+
+    uint64_t memory_time_ns(void) { return vpmu_cache_stream.get_memory_time_ns(0); }
 
     uint64_t io_time_ns(void)
     {
-        /* FIXME...
-         * Use last_pipeline_cycle_count to save tmp data
-         * as did above by using VPMU.last_ticks.
-         */
-        return io_cycles() * vpmu::target::scale_factor();
+        // TODO IO Simulation is not supported yet
+        return VPMU.iomem_count * 200 * vpmu::target::scale_factor();
     }
 
     uint64_t time_ns(void)
     {
         // TODO check if we really need to add idle time? Is it really correct?? Though
         // it's correct when running sleep in guest
-        return cycles() * vpmu::target::scale_factor() + VPMU.cpu_idle_time_ns;
+        return in_cpu_cycles() * vpmu::target::scale_factor() // In-CPU time
+               + memory_time_ns() + io_time_ns()              // Out-of-CPU time
+               + VPMU.cpu_idle_time_ns;                       // Extra time
     }
 } // End of namespace vpmu::target
 

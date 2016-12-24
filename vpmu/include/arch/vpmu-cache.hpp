@@ -31,7 +31,7 @@ public:
 
     void send(uint8_t proc, uint8_t core, uint32_t addr, uint16_t type, uint16_t size);
 
-    uint64_t get_cache_cycles(int n)
+    inline uint64_t get_cache_cycles(int n)
     {
         VPMU_Cache::Model model  = get_model(n);
         VPMU_Cache::Data  data   = get_data(n);
@@ -42,7 +42,8 @@ public:
             for (int core = 0; core < VPMU_MAX_CPU_CORES; core++) {
                 auto& cache = data.inst_cache[level][core];
                 miss_cnt += cache[VPMU_Cache::CACHE_READ_MISS];
-                hit_cnt += cache[VPMU_Cache::CACHE_READ] - miss_cnt;
+                hit_cnt +=
+                  cache[VPMU_Cache::CACHE_READ] - cache[VPMU_Cache::CACHE_READ_MISS];
             }
             cycles += model.latency[level] * miss_cnt + 1 * hit_cnt;
 
@@ -52,7 +53,8 @@ public:
                 miss_cnt += cache[VPMU_Cache::CACHE_READ_MISS]
                             + cache[VPMU_Cache::CACHE_WRITE_MISS];
                 hit_cnt += cache[VPMU_Cache::CACHE_READ] + cache[VPMU_Cache::CACHE_WRITE]
-                           - miss_cnt;
+                           - cache[VPMU_Cache::CACHE_READ_MISS]
+                           - cache[VPMU_Cache::CACHE_WRITE_MISS];
             }
             cycles += model.latency[level] * miss_cnt + 1 * hit_cnt;
         }
@@ -60,22 +62,23 @@ public:
         return cycles;
     }
 
-    uint64_t get_memory_cycles(int n)
+    inline uint64_t get_memory_time_ns(int n)
     {
-        VPMU_Cache::Model model  = get_model(n);
-        VPMU_Cache::Data  data   = get_data(n);
-        uint64_t          cycles = 0;
+        VPMU_Cache::Model model   = get_model(n);
+        VPMU_Cache::Data  data    = get_data(n);
+        uint64_t          time_ns = 0;
 
-        cycles += data.memory_accesses * model.latency[VPMU_Cache::Data_Level::MEMORY];
-        return cycles;
+        time_ns += data.memory_accesses * model.latency[VPMU_Cache::Data_Level::MEMORY]
+                   * vpmu::target::scale_factor();
+        return time_ns;
     }
 
-    uint64_t get_total_cycles(int n)
+    inline uint64_t get_cycles(int n)
     {
-        return get_memory_cycles(n) + get_cache_cycles(n);
+        return get_memory_time_ns(n) / vpmu::target::scale_factor() + get_cache_cycles(n);
     }
 
-    uint64_t get_total_cycles() { return get_total_cycles(0); }
+    inline uint64_t get_cycles(void) { return get_cycles(0); }
 
 private:
     // This is a register function declared in the vpmu-cache.cc file.

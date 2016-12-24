@@ -127,9 +127,10 @@ static void vpmu_core_init(const char *vpmu_config_file)
 #endif
 
     // TODO try to move JIT modular and not requiring this!!!
-    CacheStream::Model       cache_model = vpmu_cache_stream.get_model(0);
-    InstructionStream::Model cpu_model   = vpmu_inst_stream.get_model(0);
-    VPMU.platform.cpu.frequency          = cpu_model.frequency;
+    CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
+    InstructionStream::Model cpu_model    = vpmu_inst_stream.get_model(0);
+    BranchStream::Model      branch_model = vpmu_branch_stream.get_model(0);
+    VPMU.platform.cpu.frequency           = cpu_model.frequency;
     std::function<void(std::string)> func(
       [=](auto i) { std::cout << i << cpu_model.name << std::endl; });
     vpmu_inst_stream.async(func, "hello async callback\n");
@@ -139,9 +140,10 @@ static void vpmu_core_init(const char *vpmu_config_file)
     CONSOLE_LOG(STR_VPMU "    # cores      : %d\n", VPMU.platform.cpu.cores);
     CONSOLE_LOG(STR_VPMU "    frequency    : %" PRIu64 " MHz\n", cpu_model.frequency);
     CONSOLE_LOG(STR_VPMU "    dual issue   : %s\n", cpu_model.dual_issue ? "y" : "n");
+    CONSOLE_LOG(STR_VPMU "    branch lat   : %u\n", branch_model.latency);
     CONSOLE_LOG(STR_VPMU "    Cache model  : %s\n", cache_model.name);
     CONSOLE_LOG(STR_VPMU "    # levels     : %d\n", cache_model.levels);
-    CONSOLE_LOG(STR_VPMU "    latency      : \n");
+    CONSOLE_LOG(STR_VPMU "    latency (exclusive) :\n");
     for (int i = cache_model.levels; i > 0; i--) {
         CONSOLE_LOG(STR_VPMU "\t    L%d  : %d\n", i, cache_model.latency[i]);
     }
@@ -263,8 +265,8 @@ void vpmu_dump_readable_message(void)
     CONSOLE_LOG("\n");
     CONSOLE_LOG("Timing Info:\n");
     CONSOLE_TME("  ->CPU                        :", cpu_time_ns());
-    CONSOLE_TME("  ->Cache                      :",
-                vpmu_cache_stream.get_cache_cycles(0) * vpmu::target::scale_factor());
+    CONSOLE_TME("  ->Branch                     :", branch_time_ns());
+    CONSOLE_TME("  ->Cache                      :", cache_time_ns());
     CONSOLE_TME("  ->System memory              :", memory_time_ns());
     CONSOLE_TME("  ->I/O memory                 :", io_time_ns());
     CONSOLE_TME("  ->Idle                       :", VPMU.cpu_idle_time_ns);

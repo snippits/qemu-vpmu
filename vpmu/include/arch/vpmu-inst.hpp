@@ -29,16 +29,21 @@ public:
         impl->build(1024 * 64);
     }
 
-    uint64_t get_total_inst_count(void)
+    inline uint64_t get_inst_count(void)
     {
         VPMU_Inst::Data data = get_data(0);
         return data.inst_cnt[0];
     }
 
-    uint64_t get_total_cycle_count(void)
+    inline uint64_t get_cycles(int n)
     {
-        VPMU_Inst::Data data = get_data(0);
-        return data.cycles[0];
+        VPMU_Inst::Data data = get_data(n);
+        return data.cycles[0]; // TODO Core number 0
+    }
+
+    inline uint64_t get_cycles(void)
+    {
+        return get_cycles(0);
     }
 
     // TODO This is a new funcion

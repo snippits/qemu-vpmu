@@ -17,6 +17,7 @@ public:
         log_debug(json_config.dump().c_str());
         auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
         strncpy(branch.model.name, model_name.c_str(), sizeof(branch.model.name));
+        branch.model.latency = vpmu::utils::get_json<int>(json_config, "miss latency");
 
         log_debug("Initialized");
     }

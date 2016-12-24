@@ -108,7 +108,8 @@ public:
     // The architectural configuration information
     // which VPMU needs to know for some functionalities.
     typedef struct {
-        char name[128];
+        char     name[128];
+        uint32_t latency;
     } Model;
 #pragma pack(pop) // restore original alignment from stack
 
