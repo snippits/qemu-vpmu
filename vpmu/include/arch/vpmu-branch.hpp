@@ -19,38 +19,14 @@ public:
     BranchStream(const char* module_name) : VPMUStream_T<VPMU_Branch>(module_name) {}
     BranchStream(std::string module_name) : VPMUStream_T<VPMU_Branch>(module_name) {}
 
-    void build(nlohmann::json configs) override
+    void set_stream_impl(void) override
     {
-        reset();
-        // std::cout << configs.dump();
-        log_debug("Initializing");
-
-        if (configs.size() < 1) {
-            ERR_MSG("There is no content!");
-        }
-
         // Get the default implementation of stream interface.
         // impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Branch>>("B_Strm");
         impl = std::make_unique<VPMUStreamMultiThread<VPMU_Branch>>("B_Strm");
         // impl = std::make_unique<VPMUStreamSingleThread<VPMU_Branch>>("B_Strm");
         // Construct the channel (buffer) and allocate resources
         impl->build(1024 * 8);
-
-        // Locate and create instances of simulator according to the name.
-        if (configs.is_array()) {
-            for (auto sim_config : configs) {
-                attach_simulator(sim_config);
-            }
-        } else {
-            attach_simulator(configs);
-        }
-
-        log_debug("attaching %d simulators", jobs.size());
-        // Start worker threads/processes with its ring buffer implementation
-        // Attention: the ownership might be taken away from implementations.
-        impl->run(jobs);
-
-        log_debug("Initialized");
     }
 
     void send(uint8_t core, uint64_t pc, uint32_t taken);

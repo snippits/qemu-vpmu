@@ -14,6 +14,7 @@ public:
     VPMUStream(const VPMUStream&) = delete;
     VPMUStream& operator=(const VPMUStream&) = delete;
 
+    virtual void set_stream_impl(void) { log_fatal("set_stream_impl is not implemented"); }
     virtual void build(nlohmann::json) { log_fatal("build is not implemented"); }
     virtual void destroy(void) { log_fatal("destroy is not implemented"); }
     virtual void reset(void) { log_fatal("reset is not implemented"); }
@@ -48,6 +49,41 @@ public:
     // VPMUStream_T is neither copyable nor movable.
     VPMUStream_T(const VPMUStream_T&) = delete;
     VPMUStream_T& operator=(const VPMUStream_T&) = delete;
+
+    void build(nlohmann::json configs) override
+    {
+        // Destroy all if job queue is not empty
+        if (jobs.size() != 0) {
+            destroy();
+        }
+        // std::cout << configs.dump();
+        log_debug("Initializing");
+
+        if (configs.size() < 1) {
+            ERR_MSG("There is no content!");
+        }
+
+        // Get the default implementation of stream interface.
+        if (impl == nullptr) {
+            // Call child default implementation builder
+            this->set_stream_impl();
+        }
+
+        // Locate and create instances of simulator according to the name.
+        if (configs.is_array()) {
+            for (auto sim_config : configs) {
+                attach_simulator(sim_config);
+            }
+        } else {
+            attach_simulator(configs);
+        }
+
+        log_debug("attaching %d simulators", jobs.size());
+        // Start worker threads/processes with its ring buffer implementation
+        impl->run(jobs);
+
+        log_debug("Initialized");
+    }
 
     void destroy(void) override
     {
@@ -115,7 +151,8 @@ public:
         jobs.push_back(std::move(ptr));
     }
 
-    void set_stream_impl(Impl_ptr&& s) { impl = std::move(s); }
+    void set_stream_impl(Impl_ptr& s) { impl = std::move(s); }
+    void set_stream_impl(void) override { log_fatal("set_stream_impl is not implemented"); }
 
     // Getter functions for C side to use.
     // Must use the inline hint to ensure the performance.

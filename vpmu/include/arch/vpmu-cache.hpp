@@ -19,38 +19,14 @@ public:
     CacheStream(const char* module_name) : VPMUStream_T<VPMU_Cache>(module_name) {}
     CacheStream(std::string module_name) : VPMUStream_T<VPMU_Cache>(module_name) {}
 
-    void build(nlohmann::json configs) override
+    void set_stream_impl(void) override
     {
-        reset();
-        // std::cout << configs.dump();
-        log_debug("Initializing");
-
-        if (configs.size() < 1) {
-            ERR_MSG("There is no content!");
-        }
-
         // Get the default implementation of stream interface.
         impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>("C_Strm");
         // impl = std::make_unique<VPMUStreamMultiThread<VPMU_Cache>>("C_Strm");
         // impl = std::make_unique<VPMUStreamSingleThread<VPMU_Cache>>("C_Strm");
         // Construct the channel (buffer) and allocate resources
         impl->build(1024 * 64);
-
-        // Locate and create instances of simulator according to the name.
-        if (configs.is_array()) {
-            for (auto sim_config : configs) {
-                attach_simulator(sim_config);
-            }
-        } else {
-            attach_simulator(configs);
-        }
-
-        log_debug("attaching %d simulators", jobs.size());
-        // Start worker threads/processes with its ring buffer implementation
-        // Attention: the ownership might be taken away from implementations.
-        impl->run(jobs);
-
-        log_debug("Initialized");
     }
 
     void send(uint8_t proc, uint8_t core, uint32_t addr, uint16_t type, uint16_t size);

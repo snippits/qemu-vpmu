@@ -67,6 +67,8 @@ attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
 {
     // Check its existence and print helpful message to user
     vpmu::utils::json_check_or_exit(config, name);
+    // Set the default implementation for each stream
+    s.set_stream_impl();
     // Initialize all trace stream channels with its configuration
     s.build(config[name]);
     // Push pointers of all trace streams.
