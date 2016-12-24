@@ -6,6 +6,11 @@
 #include "arch/vpmu-cache.h"
 #include "arch/vpmu-branch.h"
 
+enum VPMU_CPU_MODE {
+    VPMU_CPU_MODE_ARM,
+    VPMU_CPU_MODE_THUMB
+};
+
 typedef struct VPMUPlatformInfo {
     struct {
         uint32_t cores;
@@ -48,6 +53,7 @@ typedef struct VPMU_Struct {
 typedef struct ExtraTBInfo {
     Inst_Counters counters;
     uint8_t       has_branch;
+    uint8_t       cpu_mode;
     uint16_t      ticks;
     uint64_t      start_addr;
 
@@ -93,8 +99,6 @@ void VPMU_sync_non_blocking(void);
 void VPMU_reset(void);
 void VPMU_dump_result(void);
 void vpmu_simulator_status(VPMU_Struct *vpmu);
-
-
 
 void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo *ptr);
 void model_sel_ref(uint8_t      proc,

@@ -25,6 +25,14 @@ std::vector<VPMUStream *> vpmu_streams = {};
 FILE *vpmu_log_file = NULL;
 // The definition of the only one global variable passing data around.
 struct VPMU_Struct VPMU;
+// QEMU log system use these two variables
+#ifdef CONFIG_QEMU_VERSION_0_15
+extern FILE *logfile;
+extern int   loglevel;
+#else
+extern FILE *qemu_logfile;
+extern int   qemu_loglevel;
+#endif
 
 static std::string get_file_contents(const char *filename)
 {
@@ -119,7 +127,7 @@ static void vpmu_core_init(const char *vpmu_config_file)
     // TODO try to move JIT modular and not requiring this!!!
     CacheStream::Model       cache_model = vpmu_cache_stream.get_model(0);
     InstructionStream::Model cpu_model   = vpmu_inst_stream.get_model(0);
-    VPMU.platform.cpu.frequency = cpu_model.frequency;
+    VPMU.platform.cpu.frequency          = cpu_model.frequency;
     std::function<void(std::string)> func(
       [=](auto i) { std::cout << i << cpu_model.name << std::endl; });
     vpmu_inst_stream.async(func, "hello async callback\n");
@@ -127,10 +135,8 @@ static void vpmu_core_init(const char *vpmu_config_file)
     CONSOLE_LOG(STR_VPMU "VPMU configurations:\n");
     CONSOLE_LOG(STR_VPMU "    CPU Model    : %s\n", cpu_model.name);
     CONSOLE_LOG(STR_VPMU "    # cores      : %d\n", VPMU.platform.cpu.cores);
-    CONSOLE_LOG(STR_VPMU "    frequency    : %" PRIu64 " MHz\n",
-                cpu_model.frequency);
-    CONSOLE_LOG(STR_VPMU "    dual issue   : %s\n",
-                cpu_model.dual_issue ? "y" : "n");
+    CONSOLE_LOG(STR_VPMU "    frequency    : %" PRIu64 " MHz\n", cpu_model.frequency);
+    CONSOLE_LOG(STR_VPMU "    dual issue   : %s\n", cpu_model.dual_issue ? "y" : "n");
     CONSOLE_LOG(STR_VPMU "    Cache model  : %s\n", cache_model.name);
     CONSOLE_LOG(STR_VPMU "    # levels     : %d\n", cache_model.levels);
     CONSOLE_LOG(STR_VPMU "    latency      : \n");
@@ -183,6 +189,32 @@ void VPMU_dump_result(void)
     vpmu_dump_readable_message();
 }
 
+void enable_QEMU_log()
+{
+    int mask = (1 << 1); // This means CPU_LOG_TB_IN_ASM from cpu-all.h
+
+#ifdef CONFIG_QEMU_VERSION_0_15
+    loglevel |= mask;
+    logfile = vpmu_log_file;
+#else
+    qemu_loglevel |= mask;
+    qemu_logfile = vpmu_log_file;
+#endif
+}
+
+void disable_QEMU_log()
+{
+    int mask = (1 << 1); // This means CPU_LOG_TB_IN_ASM from cpu-all.h
+
+#ifdef CONFIG_QEMU_VERSION_0_15
+    loglevel &= ~mask;
+    logfile = NULL;
+#else
+    qemu_loglevel &= ~mask;
+    qemu_logfile = NULL;
+#endif
+}
+
 void VPMU_init(int argc, char **argv)
 {
     char vpmu_config_file[1024] = {0};
@@ -230,8 +262,7 @@ void vpmu_dump_readable_message(void)
     CONSOLE_LOG("Timing Info:\n");
     CONSOLE_TME("  ->CPU                        :", cpu_time_ns());
     CONSOLE_TME("  ->Cache                      :",
-                vpmu_cache_stream.get_cache_cycles(0)
-                  * vpmu::target::scale_factor());
+                vpmu_cache_stream.get_cache_cycles(0) * vpmu::target::scale_factor());
     CONSOLE_TME("  ->System memory              :", memory_time_ns());
     CONSOLE_TME("  ->I/O memory                 :", io_time_ns());
     CONSOLE_TME("  ->Idle                       :", VPMU.cpu_idle_time_ns);

@@ -92,10 +92,11 @@ public:
 #pragma pack(8)    // set alignment to 8 bytes boundary
     // Packet type of a single trace
     typedef struct {
-        uint32_t type;
-        uint32_t pc;
-        uint32_t taken;
-        uint8_t  core;
+        uint16_t type;         // Packet Type
+        uint8_t  num_ex_slots; // Number of reserved ring buffer slots.
+        uint8_t  core;         // Number of CPU core
+        uint64_t pc;           // PC Address of branch instruction
+        uint8_t  taken;        // Is this a taken branch
     } Reference;
 
     // The data/states of each simulators for VPMU
@@ -159,11 +160,12 @@ public:
 #pragma pack(8)    // set alignment to 8 bytes boundary
     // Packet type of a single trace
     typedef struct {
-        uint32_t addr;
-        uint16_t size;
-        uint16_t type;
-        uint8_t  processor;
-        uint8_t  core;
+        uint16_t type;         // Packet Type
+        uint8_t  num_ex_slots; // Number of reserved ring buffer slots.
+        uint8_t  core;         // Number of CPU core
+        uint8_t  processor;    // CPU=0 / GPU=1
+        uint64_t addr;         // R/W Address
+        uint16_t size;         // Size of this transaction
     } Reference;
 
     // The data/states of each simulators for VPMU
@@ -230,7 +232,8 @@ public:
 #pragma pack(8)    // set alignment to 8 bytes boundary
     // Packet type of a single trace
     typedef struct {
-        uint32_t     type;            // Packet Type
+        uint16_t     type;            // Packet Type
+        uint8_t      num_ex_slots;    // Number of reserved ring buffer slots.
         uint8_t      core;            // Number of CPU core
         uint8_t      mode;            // CPU mode
         ExtraTBInfo *tb_counters_ptr; // A pointer pointing to TB info
