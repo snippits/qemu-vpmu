@@ -183,12 +183,12 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
               VPMU.modelsel.total_tb_visit_count - extra_tb_info->modelsel.last_visit;
 
             if (distance < 100) {
-#ifdef CONFIG_VPMU_DEBUG
+#ifdef CONFIG_VPMU_DEBUG_MSG
                 VPMU.modelsel.hot_tb_visit_count++;
 #endif
                 extra_tb_info->modelsel.hot_tb_flag = 1;
             } else {
-#ifdef CONFIG_VPMU_DEBUG
+#ifdef CONFIG_VPMU_DEBUG_MSG
                 VPMU.modelsel.cold_tb_visit_count++;
 #endif
                 extra_tb_info->modelsel.hot_tb_flag = 0;
@@ -196,6 +196,8 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
             // Advance timestamp
             extra_tb_info->modelsel.last_visit = VPMU.modelsel.total_tb_visit_count;
             VPMU.modelsel.total_tb_visit_count++;
+        } else {
+            extra_tb_info->modelsel.hot_tb_flag = 0;
         } // End of VPMU_JIT_MODEL_SELECT
 
         if (vpmu_model_has(VPMU_INSN_COUNT_SIM, VPMU)) {
