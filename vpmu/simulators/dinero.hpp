@@ -491,6 +491,85 @@ public:
         }
     }
 
+    inline void
+    hot_packet_processor(int id, VPMU_Cache::Reference &ref, VPMU_Cache &cache) override
+    {
+        int      index = 0;
+        uint16_t type  = ref.type & 0xF0FF; // Remove states
+
+        // Calculate the index of target cache reference index
+        if (type == CACHE_PACKET_INSTRN)
+            index = core_num_table[ref.processor] + // the offset of processor
+                    num_cores[ref.processor] +      // the offset of i-cache
+                    ref.core;                       // the offset of core
+        else
+            index = core_num_table[ref.processor] + // the offset of processor
+                    0 +                             // the offset of d-cache
+                    ref.core;                       // the offset of core
+
+        if (unlikely(num_cores[ref.processor] == 0)) return;
+
+        int e_block =
+          ((ref.addr + ref.size) - 1) >> cache.model.i_log2_blocksize[L1_CACHE];
+        int s_block          = ref.addr >> cache.model.i_log2_blocksize[L1_CACHE];
+        int num_of_cacheblks = e_block - s_block + 1;
+        switch (type) {
+        case CACHE_PACKET_INSTRN:
+            d4_cache_leaf[index]->fetch[D4XINSTRN] += num_of_cacheblks;
+#ifdef CONFIG_VPMU_DEBUG_MSG
+            debug_packet_num_cnt++;
+#endif
+            break;
+        case CACHE_PACKET_READ:
+        case CACHE_PACKET_WRITE:
+            if (data_possibly_hit(ref.addr, type, cache.model)) {
+                if (type == CACHE_PACKET_READ)
+                    d4_cache_leaf[index]->fetch[D4XREAD]++;
+                else
+                    d4_cache_leaf[index]->fetch[D4XWRITE]++;
+#ifdef CONFIG_VPMU_DEBUG_MSG
+                debug_packet_num_cnt++;
+#endif
+            } else {
+                goto fallback;
+            }
+            break;
+        default:
+            goto fallback;
+        }
+        return ;
+
+fallback:
+        // Remove states
+        VPMU_Cache::Reference p_ref = ref;
+        p_ref.type                  = p_ref.type & 0xF0FF;
+
+        packet_processor(id, p_ref, cache);
+    }
+
+    bool data_possibly_hit(uint64_t addr, uint32_t rw, VPMU_Cache::Model &model)
+    {
+        // pc for dcache sim
+        static uint64_t block_addr_start[4] = {
+          0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+        static uint8_t counter = 0;
+
+        addr &= model.i_log2_blocksize_mask[L1_CACHE];
+        if ((block_addr_start[0] == addr) || (block_addr_start[1] == addr)
+            || (block_addr_start[2] == addr)
+            || (block_addr_start[3] == addr)) { // hot data access
+            return true;
+        } else { // cold data access
+            // classify cases for write-allocation
+            if (rw == CACHE_PACKET_READ || model.d_write_alloc[L1_CACHE]) {
+                block_addr_start[counter++] =
+                  (addr & model.i_log2_blocksize_mask[L1_CACHE]);
+                counter &= 3;
+            }
+            return false;
+        }
+    }
+
 private:
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;

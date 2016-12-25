@@ -59,7 +59,7 @@ static inline void icache_model_sel(uint8_t proc, uint8_t core_id, ExtraTBInfo* 
         VPMU.hot_icache_count += tb_info->modelsel.num_of_cacheblks;
         tb_info->modelsel.last_visit++;
 
-#ifdef CONFIG_VPMU_DEBUG
+#ifdef CONFIG_VPMU_DEBUG_MSG
         VPMU.hot_tb_visit_count++;
 #endif
     } else {
@@ -70,7 +70,7 @@ static inline void icache_model_sel(uint8_t proc, uint8_t core_id, ExtraTBInfo* 
                   CACHE_PACKET_INSTRN,
                   tb_info->counters.size_bytes);
 
-#ifdef CONFIG_VPMU_DEBUG
+#ifdef CONFIG_VPMU_DEBUG_MSG
         VPMU.cold_tb_visit_count++;
 #endif
     }

@@ -13,6 +13,7 @@ enum PACKET_PROCESSOR_TYPE { PROCESSOR_CPU, PROCESSOR_GPU, ALL_PROC };
 // Each model defines its own packet type here
 #define VPMU_PACKET_DATA      0x0000
 #define VPMU_PACKET_CONTROL   0x8000
+#define VPMU_PACKET_HOT       0x0800
 // These are cache related
 #define CACHE_PACKET_READ     0x0000
 #define CACHE_PACKET_WRITE    0x0001

@@ -35,10 +35,9 @@ void
             } else {
                 // Memory segment
                 if (vpmu_current_extra_tb_info->modelsel.hot_tb_flag) {
-                    hot_cache_ref(PROCESSOR_CPU, 0, addr, rw, size);
-                } else {
-                    cache_ref(PROCESSOR_CPU, 0, addr, rw, size);
+                    rw |= VPMU_PACKET_HOT;
                 }
+                cache_ref(PROCESSOR_CPU, 0, addr, rw, size);
             }
         }
     }
@@ -205,19 +204,15 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
         } // End of VPMU_INSN_COUNT_SIM
 
         if (vpmu_model_has(VPMU_ICACHE_SIM, VPMU)) {
+            uint16_t type = CACHE_PACKET_INSTRN;
             if (extra_tb_info->modelsel.hot_tb_flag) {
-                hot_cache_ref(PROCESSOR_CPU,
-                              0,
-                              extra_tb_info->start_addr,
-                              CACHE_PACKET_INSTRN,
-                              extra_tb_info->counters.size_bytes);
-            } else {
-                cache_ref(PROCESSOR_CPU,
-                          0,
-                          extra_tb_info->start_addr,
-                          CACHE_PACKET_INSTRN,
-                          extra_tb_info->counters.size_bytes);
+                type |= VPMU_PACKET_HOT;
             }
+            cache_ref(PROCESSOR_CPU,
+                      0,
+                      extra_tb_info->start_addr,
+                      type,
+                      extra_tb_info->counters.size_bytes);
         } // End of VPMU_ICACHE_SIM
 
         if (vpmu_model_has(VPMU_PIPELINE_SIM, VPMU)) {

@@ -33,6 +33,14 @@ public:
         log_fatal("packet_processor function is not implemented!!");
     }
 
+    virtual inline void hot_packet_processor(int id, typename T::Reference &ref, T &t)
+    {
+        typename T::Reference p_ref = ref;
+        // Remove states
+        p_ref.type = p_ref.type & 0xF0FF;
+        this->packet_processor(id, p_ref, t);
+    }
+
 protected:
     nlohmann::json   json_config;
     VPMUPlatformInfo platform_info = {0};

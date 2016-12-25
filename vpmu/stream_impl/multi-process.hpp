@@ -138,8 +138,13 @@ public:
                                   id, local_buffer[i], stream_comm[id]);
                                 this->pass_token(id);
                             } else {
-                                sim->packet_processor(
-                                  id, local_buffer[i], stream_comm[id]);
+                                if (local_buffer[i].type & VPMU_PACKET_HOT) {
+                                    sim->hot_packet_processor(
+                                      id, local_buffer[i], stream_comm[id]);
+                                } else {
+                                    sim->packet_processor(
+                                      id, local_buffer[i], stream_comm[id]);
+                                }
                             }
                         }
                     }
