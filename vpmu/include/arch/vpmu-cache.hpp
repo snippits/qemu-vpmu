@@ -29,7 +29,9 @@ public:
         impl->build(1024 * 64);
     }
 
-    void send(uint8_t proc, uint8_t core, uint32_t addr, uint16_t type, uint16_t size);
+    void send(uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size);
+    void
+    send_hot_tb(uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size);
 
     inline uint64_t get_cache_cycles(int n)
     {
@@ -83,6 +85,8 @@ public:
 private:
     // This is a register function declared in the vpmu-cache.cc file.
     Sim_ptr create_sim(std::string sim_name) override;
+    // This is for JIT-model selection
+    bool data_possibly_hit(uint64_t addr, uint32_t rw);
 };
 
 extern CacheStream vpmu_cache_stream;

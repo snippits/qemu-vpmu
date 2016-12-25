@@ -5,7 +5,7 @@ all-obj-$(CONFIG_VPMU) += vpmu-device.o
 
 #Please add your VPMU source code here
 VPMU_OBJS=vpmu-core.o vpmu-inst.o vpmu-branch.o vpmu-cache.o vpmu-utils.o
-VPMU_OBJS+=vpmu-modelsel.o
+#VPMU_OBJS+=vpmu-modelsel.o
 VPMU_OBJS+=ref.o misc.o
 #VPMU_SRCS=vpmu-oprofile.c vpmu-print.c vpmu-vtd.c vpmu-core.c vpmu-profile.c
 #VPMU_SRCS+=vpmu-vpd.c vpmu-branch.c vpmu-modelsel.c thpool.c

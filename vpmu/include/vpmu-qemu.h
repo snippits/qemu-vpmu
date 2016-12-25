@@ -37,12 +37,14 @@ typedef struct VPMU_Struct {
     uint64_t timing_model;
 
     /* TODO move to anotehr place Modelsel*/
-    uint64_t         total_tb_visit_count;
-    uint64_t         cold_tb_visit_count;
-    uint64_t         hot_tb_visit_count;
-    uint64_t         hot_dcache_read_count;
-    uint64_t         hot_dcache_write_count;
-    uint64_t         hot_icache_count;
+    struct {
+        uint64_t total_tb_visit_count;
+        uint64_t cold_tb_visit_count;
+        uint64_t hot_tb_visit_count;
+        uint64_t hot_dcache_read_count;
+        uint64_t hot_dcache_write_count;
+        uint64_t hot_icache_count;
+    } modelsel;
     VPMUPlatformInfo platform;
     /* Configurations VPMU needs to know */
     // TODO remove all these
@@ -59,16 +61,16 @@ typedef struct ExtraTBInfo {
 
     // Modelsel
     struct {
-        uint8_t  hot_ref_counter;
-        uint32_t last_visit;
-        uint32_t cold_hot_boundary;
-        double   hot_icache_miss_rate;
+        uint8_t  hot_tb_flag;
         uint16_t num_of_cacheblks;
+        uint64_t last_visit;
     } modelsel;
 } ExtraTBInfo;
 
 // A structure storing VPMU configuration
 extern struct VPMU_Struct VPMU;
+// A pointer to current Extra TB Info
+extern ExtraTBInfo *vpmu_current_extra_tb_info;
 
 void VPMU_init(int argc, char **argv);
 void     vpmu_dump_readable_message(void);

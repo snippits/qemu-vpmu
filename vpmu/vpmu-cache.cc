@@ -16,7 +16,33 @@ CacheStream::Sim_ptr CacheStream::create_sim(std::string sim_name)
         return nullptr;
 }
 
-void CacheStream::send(uint8_t proc, uint8_t core, uint32_t addr, uint16_t type, uint16_t size)
+// TODO:implement L2 Lazy $.
+// TODO:implement non-write-allocation, write back, write through cases.
+bool CacheStream::data_possibly_hit(uint64_t addr, uint32_t rw)
+{
+    // pc for dcache sim
+    static uint32_t block_addr_start[4] = {
+      0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+    static uint8_t counter = 0;
+    VPMU_Cache::Model cache_model = get_model(0);
+
+    addr &= cache_model.i_log2_blocksize_mask[1];
+    if ((block_addr_start[0] == addr) || (block_addr_start[1] == addr)
+        || (block_addr_start[2] == addr)
+        || (block_addr_start[3] == addr)) { // hot data access
+        return true;
+    } else { // cold data access
+        // classify cases for write-allocation
+        if (rw == CACHE_PACKET_READ || cache_model.d_write_alloc[L1_CACHE]) {
+            block_addr_start[counter++] =
+              (addr & cache_model.i_log2_blocksize_mask[1]);
+            counter &= 3;
+        }
+        return false;
+    }
+}
+
+void CacheStream::send(uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size)
 {
     VPMU_Cache::Reference r;
     r.type      = type;      // The type of reference
@@ -28,8 +54,37 @@ void CacheStream::send(uint8_t proc, uint8_t core, uint32_t addr, uint16_t type,
     send_ref(r);
 }
 
+void CacheStream::send_hot_tb(
+  uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size)
+{
+    if (type == CACHE_PACKET_INSTRN) {
+        VPMU_Cache::Model cache_model = get_model(0);
+        int num_of_cacheblks    = ((((addr + size) - 1) >> cache_model.i_log2_blocksize[1])
+                                - ((addr >> cache_model.i_log2_blocksize[1]))
+                                + 1);
+        VPMU.modelsel.hot_icache_count += num_of_cacheblks;
+    } else {
+        if (data_possibly_hit(addr, type)) {
+            if (type == CACHE_PACKET_WRITE) {
+                VPMU.modelsel.hot_dcache_write_count++;
+            } else {
+                VPMU.modelsel.hot_dcache_read_count++;
+            }
+        } else {
+            // Fallback to normal simulation
+            cache_ref(proc, core, addr, type, size);
+        }
+    }
+}
+
 void cache_ref(
-  uint8_t proc, uint8_t core, uint32_t addr, uint16_t type, uint16_t data_size)
+  uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t data_size)
 {
     vpmu_cache_stream.send(proc, core, addr, type, data_size);
+}
+
+void hot_cache_ref(
+  uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t data_size)
+{
+    vpmu_cache_stream.send_hot_tb(proc, core, addr, type, data_size);
 }

@@ -2921,14 +2921,15 @@ uint16_t vpmu_accumulate_arm_ticks(uint32_t insn)
     // This would cause incorrect results on translated TBs....
     if (vpmu_model_has(VPMU_PIPELINE_SIM, VPMU)) {
         ticks = get_arm_ticks(insn);
-        if (VPMU.cpu_model.dual_issue) {
+        // TODO FIXME
+//        if (VPMU.cpu_model.dual_issue) {
             insn_buf[insn_buf_index] = insn;
             insn_buf_index++;
             if (insn_buf_index == 2) {
                 ticks -= dual_issue_check();
                 insn_buf_index = 0;
             }
-        }
+//        }
         // DBG("%u\n", ticks);
     }
     else {

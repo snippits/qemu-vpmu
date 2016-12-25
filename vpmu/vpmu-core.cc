@@ -25,6 +25,8 @@ std::vector<VPMUStream *> vpmu_streams = {};
 FILE *vpmu_log_file = NULL;
 // The definition of the only one global variable passing data around.
 struct VPMU_Struct VPMU;
+// A pointer to current Extra TB Info
+ExtraTBInfo *vpmu_current_extra_tb_info;
 // QEMU log system use these two variables
 #ifdef CONFIG_QEMU_VERSION_0_15
 extern FILE *logfile;
@@ -172,12 +174,12 @@ void VPMU_reset(void)
     VPMU.cpu_idle_time_ns       = 0;
     VPMU.ticks                  = 0;
     VPMU.iomem_count            = 0;
-    VPMU.total_tb_visit_count   = 0;
-    VPMU.cold_tb_visit_count    = 0;
-    VPMU.hot_tb_visit_count     = 0;
-    VPMU.hot_dcache_read_count  = 0;
-    VPMU.hot_dcache_write_count = 0;
-    VPMU.hot_icache_count       = 0;
+    VPMU.modelsel.total_tb_visit_count   = 0;
+    VPMU.modelsel.cold_tb_visit_count    = 0;
+    VPMU.modelsel.hot_tb_visit_count     = 0;
+    VPMU.modelsel.hot_dcache_read_count  = 0;
+    VPMU.modelsel.hot_dcache_write_count = 0;
+    VPMU.modelsel.hot_icache_count       = 0;
 
     for (auto s : vpmu_streams) {
         s->reset();
@@ -262,6 +264,8 @@ void vpmu_dump_readable_message(void)
     CONSOLE_LOG("CACHE:\n");
     vpmu_cache_stream.dump();
 
+    CONSOLE_U64("HOT TB      :", VPMU.modelsel.hot_tb_visit_count);
+    CONSOLE_U64("COLD TB     :", VPMU.modelsel.cold_tb_visit_count);
     CONSOLE_LOG("\n");
     CONSOLE_LOG("Timing Info:\n");
     CONSOLE_TME("  ->CPU                        :", cpu_time_ns());

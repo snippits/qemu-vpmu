@@ -47,7 +47,9 @@ typedef struct VPMU_Cache_Model {
 } VPMU_Cache_Model;
 
 void cache_ref(
-  uint8_t proc, uint8_t core, uint32_t addr, uint16_t type, uint16_t data_size);
+  uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t data_size);
+void hot_cache_ref(
+  uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t data_size);
 
 uint64_t vpmu_sys_mem_access_cycle_count(void);
 uint64_t vpmu_io_mem_access_cycle_count(void);
