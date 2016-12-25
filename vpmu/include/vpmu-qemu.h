@@ -101,6 +101,7 @@ void VPMU_sync_non_blocking(void);
 void VPMU_reset(void);
 void VPMU_dump_result(void);
 void vpmu_simulator_status(VPMU_Struct *vpmu);
+uint64_t vpmu_target_time_ns(void);
 
 void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo *ptr);
 void model_sel_ref(uint8_t      proc,

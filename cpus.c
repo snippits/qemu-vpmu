@@ -355,8 +355,7 @@ int64_t cpu_get_clock(void)
         ti = cpu_get_clock_locked();
     } while (seqlock_read_retry(&timers_state.vm_clock_seqlock, start));
 
-    //TODO fix this
-#if 0 && defined(CONFIG_VPMU) && defined(TARGET_ARM)
+#if defined(CONFIG_VPMU) && defined(TARGET_ARM)
     //TODO make this support x86
     static uint64_t snapshot_ti = 0, last_ti = 0;
     static uint64_t last_guest_time = 0, last_host_time = 0;
@@ -381,20 +380,19 @@ int64_t cpu_get_clock(void)
             // TODO This should be migrate to callback funcation after checking all the counters are retrieved back from simulators
             // The correctness would be check after that!
             if (unlikely(last_guest_time == 0)) {
-                last_guest_time = vpmu_estimated_execution_time_ns();
+                last_guest_time = vpmu_target_time_ns();
                 last_host_time = ti;
             }
             else {
                 uint64_t host_difference = ti - last_host_time;
                 if (last_host_time > 100000000) {
-                    uint64_t guest_difference = vpmu_estimated_execution_time_ns() - last_guest_time;
+                    uint64_t guest_difference = vpmu_target_time_ns() - last_guest_time;
                     emulation_difference = guest_difference / host_difference;
                 }
             }
         }
 
-        return vpmu_estimated_pipeline_time_ns() + vpmu_estimated_io_mem_time_ns()
-               + vpmu_estimated_sys_mem_time_ns() + snapshot_ti;
+        return vpmu_target_time_ns() - VPMU.cpu_idle_time_ns + snapshot_ti;
     }
     else {
         last_ti = 0;

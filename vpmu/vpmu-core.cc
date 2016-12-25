@@ -249,6 +249,11 @@ void VPMU_init(int argc, char **argv)
     CONSOLE_LOG(STR_VPMU "Initialized\n");
 }
 
+uint64_t vpmu_target_time_ns(void)
+{
+    return vpmu::target::time_ns();
+}
+
 void vpmu_dump_readable_message(void)
 {
     using namespace vpmu::host;
