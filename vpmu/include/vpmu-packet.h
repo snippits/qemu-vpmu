@@ -10,18 +10,19 @@ enum PACKET_PROCESSOR_TYPE { PROCESSOR_CPU, PROCESSOR_GPU, ALL_PROC };
 #define PREDICT_CORRECT 0
 #define PREDICT_WRONG 1
 
-// These are cache related
-#define CACHE_PACKET_READ      0x00
-#define CACHE_PACKET_WRITE     0x01
-#define CACHE_PACKET_INSTRN    0x02
-
 // Each model defines its own packet type here
-#define VPMU_PACKET_DATA      0x0
+#define VPMU_PACKET_DATA      0x0000
+#define VPMU_PACKET_CONTROL   0x8000
+// These are cache related
+#define CACHE_PACKET_READ     0x0000
+#define CACHE_PACKET_WRITE    0x0001
+#define CACHE_PACKET_INSTRN   0x0002
+
 // Values above 0xFF00 belongs to control packets
-#define VPMU_PACKET_BARRIER   0xFFFF
-#define VPMU_PACKET_SYNC_DATA 0xFFEF
-#define VPMU_PACKET_DUMP_INFO 0xFFDF
-#define VPMU_PACKET_RESET     0xFFCF
+#define VPMU_PACKET_BARRIER   (0x00FF | VPMU_PACKET_CONTROL)
+#define VPMU_PACKET_SYNC_DATA (0x00EF | VPMU_PACKET_CONTROL)
+#define VPMU_PACKET_DUMP_INFO (0x00DF | VPMU_PACKET_CONTROL)
+#define VPMU_PACKET_RESET     (0x00CF | VPMU_PACKET_CONTROL)
 
 #define VPMU_MAX_NUM_WORKERS 16
 
@@ -45,7 +46,7 @@ enum PACKET_PROCESSOR_TYPE { PROCESSOR_CPU, PROCESSOR_GPU, ALL_PROC };
     #define VPMU_MEM_FENCE() asm volatile("" ::: "memory")
 #endif
 
-#define IS_VPMU_CONTROL_PACKET(_type) (_type >= 0xFF00)
+#define IS_VPMU_CONTROL_PACKET(_type) (_type & VPMU_PACKET_CONTROL)
 
 #define VPMU_POST_JOB(sem_mutex_t, call_before_function) do {\
     call_before_function;\
