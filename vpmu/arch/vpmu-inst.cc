@@ -5,7 +5,7 @@ InstructionStream vpmu_inst_stream;
 
 #if defined(CONFIG_VPMU_TARGET_ARM)
 // Put your own timing simulator below
-#include "simulators/Cortex-A9.hpp"
+#include "simulator/Cortex-A9.hpp"
 // Put you own timing simulator above
 InstructionStream::Sim_ptr InstructionStream::create_sim(std::string sim_name)
 {

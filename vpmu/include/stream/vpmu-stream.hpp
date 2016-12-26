@@ -2,7 +2,7 @@
 #define __VPMU_STREAM_HPP_
 #include "vpmu-sim.hpp"         // VPMUSimulator
 #include "vpmu-stream-impl.hpp" // VPMUStream_Impl
-#include "json.hpp"
+#include "json.hpp"             // nlohmann::json
 
 class VPMUStream : public VPMULog
 {

@@ -4,8 +4,10 @@
 VPMU_FLAGS=-Wall -Wno-missing-braces -Wno-sign-compare -g \
 			-I../../ -I../ \
 			-I$(SRC_PATH) -I$(SRC_PATH)/include \
-			-I$(SRC_PATH)/vpmu -I$(SRC_PATH)/vpmu/include -I$(SRC_PATH)/vpmu/include/arch \
-			-I$(SRC_PATH)/vpmu/libs\
+			-I$(SRC_PATH)/vpmu -I$(SRC_PATH)/vpmu/include -I$(SRC_PATH)/vpmu/libs \
+			-I$(SRC_PATH)/vpmu/include/packet -I$(SRC_PATH)/vpmu/include/simulator \
+			-I$(SRC_PATH)/vpmu/include/arch -I$(SRC_PATH)/vpmu/include/stream \
+			-I$(SRC_PATH)/vpmu/include/arm -I$(SRC_PATH)/vpmu/i386 \
 			-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
 
 # Target specific flags
@@ -34,7 +36,7 @@ VPMU_CXXFLAGS=$(VPMU_FLAGS) -O3 -std=c++14
 
 all	:	libvpmu_arm.a libvpmu_x86_64.a
 
-libvpmu_arm.a	:	$(VPMU_OBJS) vpmu-arm-translate.o vpmu-arm-instset.o Cortex-A9.o
+libvpmu_arm.a	:	$(VPMU_OBJS)
 	@echo "  BUILD VPMU for $(TARGET_NAME) with compiler: $(CC)"
 	@echo "  LINK    $@"
 	@ar -rcs $@ $^

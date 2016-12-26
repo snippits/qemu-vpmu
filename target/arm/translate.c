@@ -77,10 +77,10 @@ static const char *regnames[] =
       "r8", "r9", "r10", "r11", "r12", "r13", "r14", "pc" };
 
 #ifdef CONFIG_VPMU
-#include "../vpmu/include/vpmu-qemu.h"
-#include "../vpmu/include/vpmu-packet.h"
-#include "../vpmu/include/vpmu-arm-translate.h"
-#include "../vpmu/include/vpmu-log.h"
+#include "../vpmu/include/vpmu-qemu.h"              // ExtraTBInfo
+#include "../vpmu/include/packet/vpmu-packet.h"     // CACHE_PACKET_{READ,WRITE,etc.}
+#include "../vpmu/include/vpmu-log.h"               // ERR_MSG
+#include "../vpmu/include/arm/vpmu-arm-translate.h" // timing functions
 static uint32_t *pc = NULL;
 // Branch filter, not a branch instruction
 uint8_t vpmu_branch_from_store;

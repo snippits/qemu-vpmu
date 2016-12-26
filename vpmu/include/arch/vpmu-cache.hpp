@@ -8,9 +8,9 @@ extern "C" {
 #include "vpmu-packet.hpp" // VPMU_Inst, VPMU_Branch, VPMU_Cache
 #include "json.hpp"        // nlohmann::json
 // The implementaion of stream buffer and multi- threading/processing
-#include "stream_impl/single-thread.hpp" // VPMU_Stream_Single_Thread
-#include "stream_impl/multi-thread.hpp"  // VPMUStreamMultiThread
-#include "stream_impl/multi-process.hpp" // VPMU_Stream_Multi_Process
+#include "stream/single-thread.hpp" // VPMU_Stream_Single_Thread
+#include "stream/multi-thread.hpp"  // VPMUStreamMultiThread
+#include "stream/multi-process.hpp" // VPMU_Stream_Multi_Process
 
 class CacheStream : public VPMUStream_T<VPMU_Cache>
 {

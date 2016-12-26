@@ -1,7 +1,7 @@
 #ifndef __VPMU_QEMU_H_
 #define __VPMU_QEMU_H_
-#include <time.h>
 
+#include "vpmu-common.h" // Common headers and macros
 #include "arch/vpmu-inst.h"
 #include "arch/vpmu-cache.h"
 #include "arch/vpmu-branch.h"
@@ -104,11 +104,5 @@ void vpmu_simulator_status(VPMU_Struct *vpmu);
 uint64_t vpmu_target_time_ns(void);
 
 void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo *ptr);
-void model_sel_ref(uint8_t      proc,
-                   uint8_t      core_id,
-                   uint32_t     addr,
-                   uint16_t     accesstype,
-                   uint16_t     size,
-                   ExtraTBInfo *tb_info);
 
 #endif

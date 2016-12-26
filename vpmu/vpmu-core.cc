@@ -1,6 +1,6 @@
 // C headers
 extern "C" {
-#include "efd.h" // Extracting information from binary file
+#include "libs/efd.h" // Extracting information from binary file
 }
 #include <iostream> // Basic I/O related C++ header
 #include <fstream>  // File I/O

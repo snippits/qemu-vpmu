@@ -1,7 +1,7 @@
 #include <sys/prctl.h> // prctl
 
 #include "vpmu-utils.hpp" // miscellaneous functions
-#include "json.hpp"       // JSON support
+#include "json.hpp"       // nlohmann::json
 #include "vpmu.h"         // VPMU printing/logging system
 
 #include "vpmu-inst.hpp"   // vpmu_inst_stream

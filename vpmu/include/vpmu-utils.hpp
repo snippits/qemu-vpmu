@@ -1,11 +1,11 @@
 #ifndef __VPMU_UTILS_HPP
 #define __VPMU_UTILS_HPP
-#include <vector>      // std::vector
-#include <string>      // std::string
-#include <thread>      // std::thread
-#include "vpmu-conf.h" // Import the common configurations and QEMU config-host.h
-#include "json.hpp"
-#include "vpmu-log.hpp"
+#include <vector>       // std::vector
+#include <string>       // std::string
+#include <thread>       // std::thread
+#include "vpmu-conf.h"  // Import the common configurations and QEMU config-host.h
+#include "json.hpp"     // nlohmann::json
+#include "vpmu-log.hpp" // VPMULog
 
 namespace vpmu
 {

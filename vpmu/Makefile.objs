@@ -1,6 +1,8 @@
 VPATH+=:$(SRC_PATH)/vpmu
+VPATH+=:$(SRC_PATH)/vpmu/arch
 VPATH+=:$(SRC_PATH)/vpmu/libs/d4-7
-VPATH+=:$(SRC_PATH)/vpmu/simulators
+VPATH+=:$(SRC_PATH)/vpmu/simulator
+VPATH+=:$(SRC_PATH)/vpmu/qemu
 all-obj-$(CONFIG_VPMU) += vpmu-device.o
 
 #Please add your VPMU source code here
@@ -10,6 +12,16 @@ VPMU_OBJS+=ref.o misc.o
 #VPMU_SRCS=vpmu-oprofile.c vpmu-print.c vpmu-vtd.c vpmu-core.c vpmu-profile.c
 #VPMU_SRCS+=vpmu-vpd.c vpmu-branch.c vpmu-modelsel.c thpool.c
 #VPMU_SRCS+=vpmu-cache.c ref.c misc.c
+
+ifeq ($(TARGET_NAME),arm)
+VPATH+=:$(SRC_PATH)/vpmu/arm
+VPMU_OBJS+=vpmu-arm-translate.o vpmu-arm-instset.o Cortex-A9.o
+endif
+ifeq ($(TARGET_NAME),x86_64)
+VPATH+=:$(SRC_PATH)/vpmu/i386
+VPMU_OBJS+=
+endif
+
 ifeq ($(CONFIG_VPMU_SET),y)
 VPMU_OBJS+=efd.o
 endif

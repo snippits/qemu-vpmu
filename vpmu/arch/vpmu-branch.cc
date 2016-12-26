@@ -4,8 +4,8 @@
 BranchStream vpmu_branch_stream;
 
 // Put your own timing simulator below
-#include "../simulators/branch-one-bit.hpp"
-#include "../simulators/branch-two-bits.hpp"
+#include "simulator/branch-one-bit.hpp"
+#include "simulator/branch-two-bits.hpp"
 // Put you own timing simulator above
 BranchStream::Sim_ptr BranchStream::create_sim(std::string sim_name)
 {

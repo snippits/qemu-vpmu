@@ -41,7 +41,7 @@ static void raise_exception(CPUARMState *env, uint32_t excp,
 }
 
 #ifdef CONFIG_VPMU
-#include "../vpmu/op-vpmu.c"
+#include "../vpmu/qemu/op-vpmu.c"
 #include "qemu/timer.h"
 #endif
 

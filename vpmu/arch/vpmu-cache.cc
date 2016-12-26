@@ -4,7 +4,7 @@
 CacheStream vpmu_cache_stream;
 
 // Put your own timing simulator below
-#include "simulators/dinero.hpp"
+#include "simulator/dinero.hpp"
 // Put you own timing simulator above
 CacheStream::Sim_ptr CacheStream::create_sim(std::string sim_name)
 {

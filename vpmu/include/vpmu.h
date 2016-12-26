@@ -1,11 +1,10 @@
 #ifndef _VPMU_H_
 #define _VPMU_H_
-#include <stdio.h>
-#include <stdlib.h>
 
-#include "vpmu-conf.h" // Import the common configurations and QEMU config-host.h
-#include "vpmu-qemu.h" // The interface between QEMU and VPMU
-#include "vpmu-log.h"  // The logging macros of VPMU
+#include "vpmu-common.h" // Common headers and macros
+#include "vpmu-conf.h"   // Import the common configurations and QEMU config-host.h
+#include "vpmu-qemu.h"   // The interface between QEMU and VPMU
+#include "vpmu-log.h"    // The logging macros of VPMU
 //========================  VPMU Common Definitions  ========================
 //==========================  VPMU Common Macros  ===========================
 
