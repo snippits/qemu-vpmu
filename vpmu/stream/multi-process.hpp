@@ -176,10 +176,10 @@ public:
         debug_packet_num_cnt += num_refs;
 #endif
 
-        // JIT Model Selection needs periodically sync back counters
+        // Periodically sync back counters for timing
         static uint32_t cnt = 0;
         cnt++;
-        if (cnt == 2) {
+        if (cnt == 4) {
             Reference barrier;
 
             barrier.type = VPMU_PACKET_BARRIER;

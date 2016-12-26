@@ -12478,10 +12478,6 @@ done_generating:
     else {
         tb->extra_tb_info.cpu_mode = VPMU_CPU_MODE_ARM;
     }
-    tb->extra_tb_info.modelsel.num_of_cacheblks =
-      (((dc->pc - 1) >> VPMU.cache_model.i_log2_blocksize[1])
-       - ((pc_start >> VPMU.cache_model.i_log2_blocksize[1]))
-       + 1);
 #endif
 
 #ifdef DEBUG_DISAS

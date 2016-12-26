@@ -27,15 +27,17 @@ bool CacheStream::data_possibly_hit(uint64_t addr, uint32_t rw)
     static uint8_t    counter     = 0;
     VPMU_Cache::Model cache_model = get_model(0);
 
-    addr &= cache_model.i_log2_blocksize_mask[1];
+    int mask             = cache_model.i_log2_blocksize_mask[VPMU_Cache::L1_CACHE];
+    int write_alloc_flag = cache_model.d_write_alloc[VPMU_Cache::L1_CACHE];
+    addr &= mask;
     if ((block_addr_start[0] == addr) || (block_addr_start[1] == addr)
         || (block_addr_start[2] == addr)
         || (block_addr_start[3] == addr)) { // hot data access
         return true;
     } else { // cold data access
         // classify cases for write-allocation
-        if (rw == CACHE_PACKET_READ || cache_model.d_write_alloc[L1_CACHE]) {
-            block_addr_start[counter++] = (addr & cache_model.i_log2_blocksize_mask[1]);
+        if (rw == CACHE_PACKET_READ || write_alloc_flag) {
+            block_addr_start[counter++] = (addr & mask);
             counter &= 3;
         }
         return false;
@@ -60,10 +62,12 @@ void CacheStream::send_hot_tb(
 {
     if (type == CACHE_PACKET_INSTRN) {
         VPMU_Cache::Model cache_model = get_model(0);
-        int num_of_cacheblks = ((((addr + size) - 1) >> cache_model.i_log2_blocksize[1])
-                                - ((addr >> cache_model.i_log2_blocksize[1]))
-                                + 1);
-        VPMU.modelsel.hot_icache_count += num_of_cacheblks;
+
+        uint64_t bs       = cache_model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
+        uint64_t block_s  = addr >> bs;
+        uint64_t block_e  = ((addr + size) - 1) >> bs;
+        int      num_blks = block_e - block_s + 1;
+        VPMU.modelsel.hot_icache_count += num_blks;
     } else {
         if (data_possibly_hit(addr, type)) {
             if (type == CACHE_PACKET_WRITE) {

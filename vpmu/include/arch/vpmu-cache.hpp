@@ -39,24 +39,21 @@ public:
         VPMU_Cache::Data  data   = get_data(n);
         uint64_t          cycles = 0;
 
-        for (int level = L1_CACHE; level < MAX_LEVEL_OF_CACHE; level++) {
+        for (int level = VPMU_Cache::L1_CACHE; level < VPMU_Cache::MAX_LEVEL; level++) {
             uint64_t miss_cnt = 0, hit_cnt = 0;
             for (int core = 0; core < VPMU_MAX_CPU_CORES; core++) {
                 auto& cache = data.inst_cache[level][core];
-                miss_cnt += cache[VPMU_Cache::CACHE_READ_MISS];
-                hit_cnt +=
-                  cache[VPMU_Cache::CACHE_READ] - cache[VPMU_Cache::CACHE_READ_MISS];
+                miss_cnt += cache[VPMU_Cache::READ_MISS];
+                hit_cnt += cache[VPMU_Cache::READ] - cache[VPMU_Cache::READ_MISS];
             }
             cycles += model.latency[level] * miss_cnt + 1 * hit_cnt;
 
             miss_cnt = hit_cnt = 0;
             for (int core = 0; core < VPMU_MAX_CPU_CORES; core++) {
                 auto& cache = data.data_cache[level][core];
-                miss_cnt += cache[VPMU_Cache::CACHE_READ_MISS]
-                            + cache[VPMU_Cache::CACHE_WRITE_MISS];
-                hit_cnt += cache[VPMU_Cache::CACHE_READ] + cache[VPMU_Cache::CACHE_WRITE]
-                           - cache[VPMU_Cache::CACHE_READ_MISS]
-                           - cache[VPMU_Cache::CACHE_WRITE_MISS];
+                miss_cnt += cache[VPMU_Cache::READ_MISS] + cache[VPMU_Cache::WRITE_MISS];
+                hit_cnt += cache[VPMU_Cache::READ] + cache[VPMU_Cache::WRITE]
+                           - cache[VPMU_Cache::READ_MISS] - cache[VPMU_Cache::WRITE_MISS];
             }
             cycles += model.latency[level] * miss_cnt + 1 * hit_cnt;
         }

@@ -242,7 +242,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
     {
         int i, index, local_index = 0;
 
-        if (level == NOT_USED) return; // There's no level 0 cache
+        if (level == VPMU_Cache::NOT_USED) return; // There's no level 0 cache
         if (root.is_array()) {
             local_index = d4_num_caches;
             for (int i = 0; i < root.size(); i++) {
@@ -282,7 +282,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 
         for (processor = 0; processor < ALL_PROC; processor++) {
             // Loop through from L1 to max level of current cache configuration
-            for (level = L1_CACHE; level <= d4_levels; level++) {
+            for (level = VPMU_Cache::L1_CACHE; level <= d4_levels; level++) {
                 // Loop through all the processor cores
                 for (i = 0; i < num_cores[processor]; i++) {
                     int index;
@@ -290,22 +290,24 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
                     index = core_num_table[processor] + // the offset of processor
                             num_cores[processor] +      // the offset of i-cache
                             i;                          // the offset of core
-                    d = calculate_data(d4_cache_leaf[index]);
-                    data.inst_cache[level][i][CACHE_READ]       = d.fetch_alltype;
-                    data.inst_cache[level][i][CACHE_WRITE]      = 0;
-                    data.inst_cache[level][i][CACHE_READ_MISS]  = d.data_alltype;
-                    data.inst_cache[level][i][CACHE_WRITE_MISS] = 0;
+                    d        = calculate_data(d4_cache_leaf[index]);
+                    auto &ti = data.inst_cache[level][i];
+                    // Sync back values
+                    ti[VPMU_Cache::READ]       = d.fetch_alltype;
+                    ti[VPMU_Cache::WRITE]      = 0;
+                    ti[VPMU_Cache::READ_MISS]  = d.data_alltype;
+                    ti[VPMU_Cache::WRITE_MISS] = 0;
 
                     index = core_num_table[processor] + // the offset of processor
                             0 +                         // the offset of d-cache
                             i;                          // the offset of core
-                    d = calculate_data(d4_cache_leaf[index]);
-                    data.data_cache[level][i][CACHE_READ] = d.fetch_read;
-                    data.data_cache[level][i][CACHE_WRITE] =
-                      d4_cache_leaf[index]->fetch[D4XWRITE];
-                    data.data_cache[level][i][CACHE_READ_MISS] = d.data_read;
-                    data.data_cache[level][i][CACHE_WRITE_MISS] =
-                      d4_cache_leaf[index]->miss[D4XWRITE];
+                    d        = calculate_data(d4_cache_leaf[index]);
+                    auto &td = data.data_cache[level][i];
+                    // Sync back values
+                    td[VPMU_Cache::READ]       = d.fetch_read;
+                    td[VPMU_Cache::WRITE]      = d4_cache_leaf[index]->fetch[D4XWRITE];
+                    td[VPMU_Cache::READ_MISS]  = d.data_read;
+                    td[VPMU_Cache::WRITE_MISS] = d4_cache_leaf[index]->miss[D4XWRITE];
                 }
             }
         }
@@ -321,7 +323,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         auto model_name = vpmu::utils::get_json<std::string>(config, "name");
         strncpy(model.name, model_name.c_str(), sizeof(model.name));
         model.levels = get_json<int>(config, "levels");
-        for (int i = L1_CACHE; i <= model.levels; i++) {
+        for (int i = VPMU_Cache::L1_CACHE; i <= model.levels; i++) {
             char field_str[128];
 
             sprintf(field_str, "l%d miss latency", i);
@@ -329,7 +331,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
             DBG("%s: %d\n", field_str, model.latency[i]);
         }
         // The latency in the spec is defined as inclusion. We need exclusion.
-        for (int i = model.levels; i > L1_CACHE; i--) {
+        for (int i = model.levels; i > VPMU_Cache::L1_CACHE; i--) {
             model.latency[i] -= model.latency[i - 1];
         }
         model.latency[VPMU_Cache::Data_Level::MEMORY] =
@@ -401,7 +403,7 @@ public:
         d4_levels = vpmu::utils::get_json<int>(json_config, "levels");
         vpmu::utils::json_check_or_exit(json_config, "topology");
         d4_cache[d4_num_caches].cache = d4_mem_create();
-        d4_cache[d4_num_caches].level = NOT_USED;
+        d4_cache[d4_num_caches].level = VPMU_Cache::MEMORY;
         d4_num_caches++;
         recursively_parse_json(json_config["topology"], &d4_cache[0], d4_levels);
         sync_back_config_to_vpmu(cache.model, json_config);
@@ -507,9 +509,9 @@ public:
 
         if (unlikely(num_cores[ref.processor] == 0)) return;
 
-        int e_block =
-          ((ref.addr + ref.size) - 1) >> cache.model.i_log2_blocksize[L1_CACHE];
-        int s_block          = ref.addr >> cache.model.i_log2_blocksize[L1_CACHE];
+        int e_block = ((ref.addr + ref.size) - 1)
+                      >> cache.model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
+        int s_block = ref.addr >> cache.model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
         int num_of_cacheblks = e_block - s_block + 1;
         switch (type) {
         case CACHE_PACKET_INSTRN:
@@ -552,16 +554,16 @@ public:
           0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
         static uint8_t counter = 0;
 
-        addr &= model.i_log2_blocksize_mask[L1_CACHE];
+        addr &= model.i_log2_blocksize_mask[VPMU_Cache::L1_CACHE];
         if ((block_addr_start[0] == addr) || (block_addr_start[1] == addr)
             || (block_addr_start[2] == addr)
             || (block_addr_start[3] == addr)) { // hot data access
             return true;
         } else { // cold data access
             // classify cases for write-allocation
-            if (rw == CACHE_PACKET_READ || model.d_write_alloc[L1_CACHE]) {
+            if (rw == CACHE_PACKET_READ || model.d_write_alloc[VPMU_Cache::L1_CACHE]) {
                 block_addr_start[counter++] =
-                  (addr & model.i_log2_blocksize_mask[L1_CACHE]);
+                  (addr & model.i_log2_blocksize_mask[VPMU_Cache::L1_CACHE]);
                 counter &= 3;
             }
             return false;

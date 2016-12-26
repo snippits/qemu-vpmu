@@ -4,6 +4,9 @@
 extern "C" {
 #include "vpmu-packet.h"
 #include "shm-ringbuffer.h"
+#include "arch/vpmu-inst.h"
+#include "arch/vpmu-cache.h"
+#include "arch/vpmu-branch.h"
 }
 
 // This static class defines the layout of VPMU ring buffer with its common data, etc.
@@ -139,23 +142,8 @@ public:
 class VPMU_Cache
 {
 public:
-    // Defining the types (struct) for communication
-    enum Data_Index {
-        CACHE_READ,
-        CACHE_WRITE,
-        CACHE_READ_MISS,
-        CACHE_WRITE_MISS,
-        SIZE_OF_CACHE_INDEX
-    };
-
-    enum Data_Level {
-        NOT_USED,
-        L1_CACHE,
-        L2_CACHE,
-        L3_CACHE,
-        MEMORY,
-        MAX_LEVEL_OF_CACHE
-    };
+    enum Data_Index { READ, WRITE, READ_MISS, WRITE_MISS, SIZE_OF_INDEX };
+    enum Data_Level { NOT_USED, L1_CACHE, L2_CACHE, L3_CACHE, MEMORY, MAX_LEVEL };
 
 #pragma pack(push) // push current alignment to stack
 #pragma pack(8)    // set alignment to 8 bytes boundary
@@ -172,34 +160,31 @@ public:
     // The data/states of each simulators for VPMU
     typedef struct {
         //[level][core][r/w miss/hit]
-        uint64_t inst_cache[MAX_LEVEL_OF_CACHE][VPMU_MAX_CPU_CORES][SIZE_OF_CACHE_INDEX];
-        uint64_t data_cache[MAX_LEVEL_OF_CACHE][VPMU_MAX_CPU_CORES][SIZE_OF_CACHE_INDEX];
+        uint64_t inst_cache[MAX_LEVEL][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
+        uint64_t data_cache[MAX_LEVEL][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         uint64_t memory_accesses;
     } Data;
 
     // The architectural configuration information
     // which VPMU needs to know for some functionalities.
-    // TODO move this from global VPMU
-    typedef VPMU_Cache_Model Model;
-/*
-    typedef struct {
-        char name[128];
+    typedef struct VPMU_Cache_Model {
+        char name[64];
         // number of layers this cache configuration has
         int levels;
         // cache latency information
-        int latency[MAX_LEVEL_OF_CACHE];
+        int latency[MAX_LEVEL];
         // cache block size information
-        int d_log2_blocksize[MAX_LEVEL_OF_CACHE];
-        int d_log2_blocksize_mask[MAX_LEVEL_OF_CACHE];
+        int d_log2_blocksize[MAX_LEVEL];
+        int d_log2_blocksize_mask[MAX_LEVEL];
         // cache block size information
-        int i_log2_blocksize[MAX_LEVEL_OF_CACHE];
-        int i_log2_blocksize_mask[MAX_LEVEL_OF_CACHE];
+        int i_log2_blocksize[MAX_LEVEL];
+        int i_log2_blocksize_mask[MAX_LEVEL];
         // data cache: true -> write allocate; false -> non write allocate
-        int d_write_alloc[MAX_LEVEL_OF_CACHE];
+        int d_write_alloc[MAX_LEVEL];
         // data cache: true -> write back; false -> write through
-        int d_write_back[MAX_LEVEL_OF_CACHE];
+        int d_write_back[MAX_LEVEL];
     } Model;
-    */
+
 #pragma pack(pop) // restore original alignment from stack
 
     // Define the buffer type here because we need to use it in normal C program
@@ -239,6 +224,13 @@ public:
         uint8_t      mode;            // CPU mode
         ExtraTBInfo *tb_counters_ptr; // A pointer pointing to TB info
     } Reference;
+
+    typedef struct Inst_Data_Cell {
+        uint64_t total_inst;
+        uint64_t load;
+        uint64_t store;
+        uint64_t branch;
+    } Inst_Data_Cell;
 
     // The data/states of each simulators for VPMU
     typedef struct {

@@ -141,7 +141,7 @@ public:
         // JIT Model Selection needs periodically sync back counters
         static uint32_t cnt = 0;
         cnt++;
-        if (cnt == 2) {
+        if (cnt == 4) {
             Reference barrier;
 
             barrier.type = VPMU_PACKET_BARRIER;

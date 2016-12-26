@@ -1,10 +1,8 @@
 #ifndef __VPMU_QEMU_H_
 #define __VPMU_QEMU_H_
 
-#include "vpmu-common.h"      // Common headers and macros
-#include "arch/vpmu-inst.h"   // vpmu_inst_ref
-#include "arch/vpmu-cache.h"  // vpmu_cache_ref
-#include "arch/vpmu-branch.h" // vpmu_branch_ref
+#include "vpmu-common.h"  // Common headers and macros
+#include "vpmu-extratb.h" // Extra TB Information
 
 enum VPMU_CPU_MODE { VPMU_CPU_MODE_ARM, VPMU_CPU_MODE_THUMB };
 
@@ -43,26 +41,7 @@ typedef struct VPMU_Struct {
         uint64_t hot_icache_count;
     } modelsel;
     VPMUPlatformInfo platform;
-    /* Configurations VPMU needs to know */
-    // TODO remove all these
-    VPMU_Cache_Model cache_model;
 } VPMU_Struct;
-
-// A structure to extend TB info for accumulating counters when executing each TB.
-typedef struct ExtraTBInfo {
-    Inst_Counters counters;
-    uint8_t       has_branch;
-    uint8_t       cpu_mode;
-    uint16_t      ticks;
-    uint64_t      start_addr;
-
-    // Modelsel
-    struct {
-        uint8_t  hot_tb_flag;
-        uint16_t num_of_cacheblks;
-        uint64_t last_visit;
-    } modelsel;
-} ExtraTBInfo;
 
 // A structure storing VPMU configuration
 extern struct VPMU_Struct VPMU;
@@ -99,7 +78,5 @@ void VPMU_reset(void);
 void VPMU_dump_result(void);
 void vpmu_simulator_status(VPMU_Struct *vpmu);
 uint64_t vpmu_target_time_ns(void);
-
-void vpmu_inst_ref(uint8_t core, uint8_t mode, ExtraTBInfo *ptr);
 
 #endif

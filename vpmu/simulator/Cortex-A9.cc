@@ -2963,7 +2963,7 @@ void CPU_CortexA9::packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst
 
 void CPU_CortexA9::accumulate(VPMU_Inst::Reference& ref, VPMU_Inst::Data& inst_data)
 {
-    Inst_Data_Cell* cell = NULL;
+    VPMU_Inst::Inst_Data_Cell* cell = NULL;
     // Defining the types (struct) for communication
     enum CPU_MODE { // Copy from QEMU cpu.h
         USR = 0x10,
