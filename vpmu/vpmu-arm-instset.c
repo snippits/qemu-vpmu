@@ -1,4 +1,12 @@
-uint32_t arm_instr_time[ARM_INSTRUCTION_TOTAL_COUNTS];
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <inttypes.h>
+
+#include "vpmu-conf.h"        // Configurations from VPMU
+#include "config-target.h"    // QEMU Target Information
+#include "vpmu-arm-instset.h" // ARM Instruction SET
+#include "vpmu-log.h"         // ERR_MSG
 
 // Return array length if not found
 ARM_Instructions get_index_of_arm_inst(const char *s)
@@ -14,13 +22,10 @@ ARM_Instructions get_index_of_arm_inst(const char *s)
 
     ERR_MSG("get_index_of_arm_inst: could not find field \"%s\"\n", s);
 #undef etype
-    return sizeof(str_arm_instructions);
+    return ARM_INSTRUCTION_TOTAL_COUNTS;
 }
 
 #ifdef CONFIG_VPMU_VFP
-uint32_t arm_vfp_instr_time[] = {ARM_VFP_INSTRUCTION_TOTAL_COUNTS};
-uint32_t arm_vfp_latency[]    = {ARM_VFP_INSTRUCTION_TOTAL_COUNTS};
-
 // Return array length if not found
 ARM_VFP_Instructions get_index_of_arm_vfp_inst(const char *s)
 {
@@ -35,10 +40,6 @@ ARM_VFP_Instructions get_index_of_arm_vfp_inst(const char *s)
 
     ERR_MSG("get_index_of_arm_vfp_inst: could not find field \"%s\"\n", s);
 #undef etype
-    return sizeof(str_arm_vfp_instructions);
+    return ARM_VFP_INSTRUCTION_TOTAL_COUNTS;
 }
 #endif
-
-/* The staring address of system RAM. */
-#define SYSTEM_RAM_START 0x00000000
-#define SYSTEM_RAM_END 0x05ffffff

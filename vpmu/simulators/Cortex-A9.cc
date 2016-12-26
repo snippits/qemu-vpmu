@@ -1,28 +1,19 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <inttypes.h>
-
+#include <stdint.h> //uint8_t, uint32_t, etc.
+extern "C" {
 #include "config-target.h"
-#include "vpmu-arm-inst.h"
-#include "vpmu/include/vpmu-device.h"
-#include "vpmu/include/vpmu.h"
+#include "vpmu-conf.h"
+#include "vpmu.h"
+#include "vpmu-arm-translate.h"
+#include "vpmu-arm-instset.h" // Instruction Set
+}
 
-#include "default-arm-model.c"
-
-#ifdef CONFIG_VPMU_VFP
-// tianman
-uint8_t  vfp_locks[32] = {0};
-uint16_t vfp_base      = 0;
-// uint8_t  vfp_count[ARM_VFP_INSTRUCTION_TOTAL_COUNTS];
-#endif
-// uint8_t  arm_count[ARM_INSTRUCTION_TOTAL_COUNTS];
-uint64_t insn_buf[2]    = {0}; // For future 64 bits ARM insns
-uint8_t  insn_buf_index = 0;
-
-//====================  VPMU Instruction Cycles Counting   ===================
+#include "Cortex-A9.hpp"
+#include "vpmu-utils.hpp"
 
 #ifdef CONFIG_VPMU_VFP
-static inline void _vfp_lock_release(int insn)
+void CPU_CortexA9::Translation::_vfp_lock_release(int insn)
 {
     int i;
     /*for(i = 0; i < 32; i++){
@@ -41,7 +32,8 @@ static inline void _vfp_lock_release(int insn)
 }
 
 // tianman
-static inline void _vfp_lock_analyze(int rd, int rn, int rm, int dp, int insn)
+void CPU_CortexA9::Translation::_vfp_lock_analyze(
+  int rd, int rn, int rm, int dp, int insn)
 {
     int rd1, rd2;
     int rn1, rn2;
@@ -141,7 +133,7 @@ static inline void _vfp_lock_analyze(int rd, int rn, int rm, int dp, int insn)
  *  Implement by Tianman
  *  Simulate the VFP unit.
  */
-static inline int analyze_vfp_ticks(uint32_t insn, uint64_t vfp_vec_len)
+int CPU_CortexA9::Translation::_analyze_vfp_ticks(uint32_t insn, uint64_t vfp_vec_len)
 {
 
     uint32_t rd, rn, rm, op, i, n, offset, delta_d, delta_m, bank_mask;
@@ -387,8 +379,8 @@ static inline int analyze_vfp_ticks(uint32_t insn, uint64_t vfp_vec_len)
                 /* Perform the calculation.  */
                 switch (op) {
                 case 0: /* mac: fd + (fn * fm) */
-                    // vfp_count[ARM_VFP_INSTRUCTION_FMACD + (1-dp) ]+= 1;//tianman
-                    // vfp_count[ARM_VFP_INSTRUCTION_TOTAL_COUNT]+=1; //Christine
+                        // vfp_count[ARM_VFP_INSTRUCTION_FMACD + (1-dp) ]+= 1;//tianman
+                        // vfp_count[ARM_VFP_INSTRUCTION_TOTAL_COUNT]+=1; //Christine
                             _vfp_lock_analyze(rd, rn, rm, dp, ARM_VFP_INSTRUCTION_FMACD + (1-dp),&();
                             _vfp_lock_release(ARM_VFP_INSTRUCTION_FMACD + (1-dp),&();
                             break;
@@ -1508,7 +1500,7 @@ illegal_op:
  * It aims to calculate the ticks in each TB, instead of in helper function
  * TODO This might be wrong, need to check
  */
-static inline uint32_t get_arm_ticks(uint32_t insn)
+uint32_t CPU_CortexA9::Translation::_get_arm_ticks(uint32_t insn)
 {
 
     unsigned int cond, op1, shift, rn, rd, sh;
@@ -2360,7 +2352,7 @@ static inline uint32_t get_arm_ticks(uint32_t insn)
  * Check dual issue possibility, and reduce redundant ticks caculate
  * by analyze_arm_ticks if the two instruction could be dual issued
  */
-static inline uint16_t dual_issue_check()
+uint16_t CPU_CortexA9::Translation::_dual_issue_check()
 {
     /*Christine: This dual-issue pipeline is for Cortex-A7*/
     // It is a little bit different from Cortex-A9.
@@ -2453,15 +2445,12 @@ static inline uint16_t dual_issue_check()
  * the register in get_insn_ticks()
  */
 
-static int interlocks[16];
-static int interlock_base;
-
-static inline void _interlock_def(int reg, int delay) // interlock加delay
+void CPU_CortexA9::Translation::_interlock_def(int reg, int delay) // interlock加delay
 {
     if (reg >= 0) interlocks[reg] = interlock_base + delay;
 }
 
-static inline int _interlock_use(int reg) // lock和interlock_base的差異
+int CPU_CortexA9::Translation::_interlock_use(int reg) // lock和interlock_base的差異
 {
     int delay = 0;
 
@@ -2477,7 +2466,7 @@ static inline int _interlock_use(int reg) // lock和interlock_base的差異
 // is called for each instruction in a basic block when that
 // block is being translated.
 // VPMU CORE
-static inline int get_insn_ticks(uint32_t insn)
+int CPU_CortexA9::Translation::_get_insn_ticks(uint32_t insn)
 {
     int result = 1; /* by default, use 1 cycle */
 
@@ -2604,7 +2593,7 @@ static inline int get_insn_ticks(uint32_t insn)
                 //_interlock_use(Rd)
                 //來測試是否和上個指令衝突而需多算的cycle)
                 //_interlock_def(Rd,
-                //result+1);//rd這個lock=base(直到上個指令翻譯完總共花多少cycle)+(result+1)
+                // result+1);//rd這個lock=base(直到上個指令翻譯完總共花多少cycle)+(result+1)
                 // result代表這個insn花了多少cycle
                 // added by ppb
                 if ((insn & 0x00400000) != 0) { // SWPB
@@ -2899,7 +2888,7 @@ Exit:
     return result;
 }
 
-static inline int get_insn_ticks_thumb(uint32_t insn)
+int CPU_CortexA9::Translation::_get_insn_ticks_thumb(uint32_t insn)
 {
     // need implementation
     if (insn > 1000000)
@@ -2908,80 +2897,121 @@ static inline int get_insn_ticks_thumb(uint32_t insn)
         return 0;
 }
 
-// TODO After removeing this from here to a separate module.
-// And enable the timing feedback from VPMU to QEMU's virtual clock
-// We should count the instruction count in order to make time move.
-// And the final result of timing should subtract this value.
-//====================  VPMU Translation Instrumentation   ===================
-uint16_t vpmu_accumulate_arm_ticks(uint32_t insn)
+void CPU_CortexA9::build(VPMU_Inst& inst)
 {
-    uint16_t ticks = 0;
+    log_debug("Initializing");
 
-    // TODO detecting model here doesn't make any f**king sense
-    // This would cause incorrect results on translated TBs....
-    if (vpmu_model_has(VPMU_PIPELINE_SIM, VPMU)) {
-        ticks = get_arm_ticks(insn);
-        // TODO FIXME
-//        if (VPMU.cpu_model.dual_issue) {
-            insn_buf[insn_buf_index] = insn;
-            insn_buf_index++;
-            if (insn_buf_index == 2) {
-                ticks -= dual_issue_check();
-                insn_buf_index = 0;
-            }
-//        }
-        // DBG("%u\n", ticks);
-    }
-    else {
-        ticks = get_insn_ticks(insn);
-    }
-    return ticks;
+    log_debug(json_config.dump().c_str());
+
+    auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
+    strncpy(inst.model.name, model_name.c_str(), sizeof(inst.model.name));
+    inst.model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
+    inst.model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
+
+    translator.build(json_config);
+    log_debug("Initialized");
 }
 
-uint16_t vpmu_accumulate_thumb_ticks(uint32_t insn)
+void CPU_CortexA9::packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst& inst)
 {
-    uint16_t ticks = 0;
-
-    if (vpmu_model_has(VPMU_PIPELINE_SIM, VPMU)) {
-        ticks = get_insn_ticks_thumb(insn);
+#define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
+#define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    debug_packet_num_cnt++;
+    if (ref.type == VPMU_PACKET_DUMP_INFO) {
+        CONSOLE_LOG("    %'" PRIu64 " packets received\n", debug_packet_num_cnt);
+        debug_packet_num_cnt = 0;
     }
-    return ticks;
-    /* shocklink added to support branch count for portability */
-    /* TODO: branch counter for thumb mode */
-}
-
-uint16_t vpmu_accumulate_cp14_ticks(uint32_t insn)
-{
-    // TODO This is still not implemented yet
-    return 0;
-}
-
-#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_VFP)
-uint16_t vpmu_accumulate_vfp_ticks(uint32_t insn, uint64_t vfp_vec_len)
-{
-    uint16_t ticks = 0;
-
-    if (vpmu_model_has(VPMU_PIPELINE_SIM, VPMU)) {
-        ticks = analyze_vfp_ticks(insn, vfp_vec_len);
-        // DBG("%u\n", get_arm_ticks(insn));
-        // DBG("%u\n", ticks);
-        // There is no dual-issue problem of VFP and NEON on Cortex-A7
-    }
-    return ticks;
-}
 #endif
 
-// TODO build a series of output(print) functions
+    // Every simulators should handle VPMU_BARRIER_PACKET to support synchronization
+    // The implementation depends on your own packet type and writing style
+    switch (ref.type) {
+    case VPMU_PACKET_BARRIER:
+        inst.data.inst_cnt[0] = vpmu_total_inst_count(inst.data);
+        inst.data.cycles[0]   = cycles[0];
+        break;
+    case VPMU_PACKET_DUMP_INFO:
+        CONSOLE_LOG("  [%d] type : Cortex A9\n", id);
+        CONSOLE_U64(" Total instruction count       :", vpmu_total_inst_count(inst.data));
+        CONSOLE_U64("  ->User mode insn count       :", inst.data.user.total_inst);
+        CONSOLE_U64("  ->Supervisor mode insn count :", inst.data.system.total_inst);
+        CONSOLE_U64("  ->IRQ mode insn count        :", inst.data.interrupt.total_inst);
+        CONSOLE_U64("  ->Other mode insn count      :", inst.data.rest.total_inst);
+        CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(inst.data));
+        CONSOLE_U64("  ->User mode load count       :", inst.data.user.load);
+        CONSOLE_U64("  ->Supervisor mode load count :", inst.data.system.load);
+        CONSOLE_U64("  ->IRQ mode load count        :", inst.data.interrupt.load);
+        CONSOLE_U64("  ->Other mode load count      :", inst.data.rest.load);
+        CONSOLE_U64(" Total store instruction count :",
+                    vpmu_total_store_count(inst.data));
+        CONSOLE_U64("  ->User mode store count      :", inst.data.user.store);
+        CONSOLE_U64("  ->Supervisor mode store count:", inst.data.system.store);
+        CONSOLE_U64("  ->IRQ mode store count       :", inst.data.interrupt.store);
+        CONSOLE_U64("  ->Other mode store count     :", inst.data.rest.store);
 
-// tianman
+        break;
+    case VPMU_PACKET_RESET:
+        memset(cycles, 0, sizeof(cycles));
+        memset(&inst.data, 0, sizeof(VPMU_Inst::Data));
+        break;
+    case VPMU_PACKET_DATA:
+        accumulate(ref, inst.data);
+        break;
+    default:
+        log_fatal("Unexpected packet");
+    }
+
+#undef CONSOLE_TME
+#undef CONSOLE_U64
+}
+
+void CPU_CortexA9::accumulate(VPMU_Inst::Reference& ref, VPMU_Inst::Data& inst_data)
+{
+    Inst_Data_Cell* cell = NULL;
+    // Defining the types (struct) for communication
+    enum CPU_MODE { // Copy from QEMU cpu.h
+        USR = 0x10,
+        FIQ = 0x11,
+        IRQ = 0x12,
+        SVC = 0x13,
+        MON = 0x16,
+        ABT = 0x17,
+        HYP = 0x1a,
+        UND = 0x1b,
+        SYS = 0x1f
+    };
+
+    if (ref.mode == USR) {
+        cell = &inst_data.user;
+    } else if (ref.mode == SVC) {
+        // if (ref.swi_fired_flag) { // TODO This feature is still lack of
+        // setting this flag to true
+        //    cell = &inst_data.system_call;
+        //} else {
+        //    cell = &inst_data.system;
+        //}
+        cell = &inst_data.system;
+    } else if (ref.mode == IRQ) {
+        cell = &inst_data.interrupt;
+    } else {
+        cell = &inst_data.rest;
+    }
+    cell->total_inst += ref.tb_counters_ptr->counters.total;
+    cell->load += ref.tb_counters_ptr->counters.load;
+    cell->store += ref.tb_counters_ptr->counters.store;
+    cell->branch += ref.tb_counters_ptr->has_branch;
+    cycles[ref.core] += ref.tb_counters_ptr->ticks;
+}
+
 #ifdef CONFIG_VPMU_VFP
-void print_vfp_count(void)
+void CPU_CortexA9::print_vfp_count(void)
 {
 #define etype(x) macro_str(x)
     int                i;
     uint64_t           counted                    = 0;
     uint64_t           total_counted              = 0;
-    static const char *str_arm_vfp_instructions[] = {ARM_INSTRUCTION};
+    static const char* str_arm_vfp_instructions[] = {ARM_INSTRUCTION};
 
     for (i = 0; i < ARM_VFP_INSTRUCTION_TOTAL_COUNTS; i++) {
         if (GlobalVPMU.VFP_count[i] > 0) {
@@ -3004,5 +3034,77 @@ void print_vfp_count(void)
     CONSOLE_LOG("VFP : Counted instructions: %llu\n", counted);
     CONSOLE_LOG("VFP : total Counted cycle: %llu\n", total_counted);
 #undef etype
+}
+#endif
+void CPU_CortexA9::Translation::build(nlohmann::json config)
+{
+    auto model_name = vpmu::utils::get_json<std::string>(config, "name");
+    strncpy(cpu_model.name, model_name.c_str(), sizeof(cpu_model.name));
+    cpu_model.frequency  = vpmu::utils::get_json<int>(config, "frequency");
+    cpu_model.dual_issue = vpmu::utils::get_json<bool>(config, "dual_issue");
+
+    nlohmann::json root = config["instruction"];
+    // TODO move this to CPU model
+    for (nlohmann::json::iterator it = root.begin(); it != root.end(); ++it) {
+        // Skip the attribute next
+        std::string key   = it.key();
+        uint32_t    value = it.value();
+
+        arm_instr_time[get_index_of_arm_inst(key.c_str())] = value;
+    }
+}
+
+// TODO After removeing this from here to a separate module.
+// And enable the timing feedback from VPMU to QEMU's virtual clock
+// We should count the instruction count in order to make time move.
+// And the final result of timing should subtract this value.
+//====================  VPMU Translation Instrumentation   ===================
+uint16_t CPU_CortexA9::Translation::get_arm_ticks(uint32_t insn)
+{
+    uint16_t ticks = 0;
+
+    ticks = _get_arm_ticks(insn);
+    // TODO FIXME
+    if (cpu_model.dual_issue) {
+        insn_buf[insn_buf_index] = insn;
+        insn_buf_index++;
+        if (insn_buf_index == 2) {
+            ticks -= _dual_issue_check();
+            insn_buf_index = 0;
+        }
+    }
+    // DBG("%u\n", ticks);
+    // ticks = get_insn_ticks(insn);
+    // Remove unused function warnig
+    (void)_get_insn_ticks(insn);
+    return ticks;
+}
+
+uint16_t CPU_CortexA9::Translation::get_thumb_ticks(uint32_t insn)
+{
+    uint16_t ticks = 0;
+
+    ticks = _get_insn_ticks_thumb(insn);
+    return ticks;
+    /* shocklink added to support branch count for portability */
+    /* TODO: branch counter for thumb mode */
+}
+
+uint16_t CPU_CortexA9::Translation::get_cp14_ticks(uint32_t insn)
+{
+    // TODO This is still not implemented yet
+    return 1;
+}
+
+#ifdef CONFIG_VPMU_VFP
+uint16_t CPU_CortexA9::Translation::get_vfp_ticks(uint32_t insn, uint64_t vfp_vec_len)
+{
+    uint16_t ticks = 0;
+
+    ticks = _analyze_vfp_ticks(insn, vfp_vec_len);
+    // DBG("%u\n", get_arm_ticks(insn));
+    // DBG("%u\n", ticks);
+    // There is no dual-issue problem of VFP and NEON on Cortex-A7
+    return ticks;
 }
 #endif

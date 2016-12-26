@@ -10,11 +10,12 @@ extern "C" {
 #include <string>   // std::string
 #include "json.hpp" // nlohmann::json
 
-#include "vpmu.hpp"        // VPMU common header
-#include "vpmu-stream.hpp" // VPMUStream, VPMUStream_T
-#include "vpmu-inst.hpp"   // Inst_Stream
-#include "vpmu-cache.hpp"  // Cache_Stream
-#include "vpmu-branch.hpp" // Branch_Stream
+#include "vpmu.hpp"           // VPMU common header
+#include "vpmu-stream.hpp"    // VPMUStream, VPMUStream_T
+#include "vpmu-translate.hpp" // VPMUTranslate
+#include "vpmu-inst.hpp"      // Inst_Stream
+#include "vpmu-cache.hpp"     // Cache_Stream
+#include "vpmu-branch.hpp"    // Branch_Stream
 
 #include "json.hpp" // nlohmann::json
 using json = nlohmann::json;
@@ -81,13 +82,6 @@ attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
     return;
 }
 
-extern "C" {
-#include "simulators/vpmu-arm-inst.h"
-// TODO remove this
-extern uint32_t         arm_instr_time[ARM_INSTRUCTION_TOTAL_COUNTS];
-extern ARM_Instructions get_index_of_arm_inst(const char *s);
-}
-
 static void vpmu_core_init(const char *vpmu_config_file)
 {
     try {
@@ -96,16 +90,6 @@ static void vpmu_core_init(const char *vpmu_config_file)
         attach_vpmu_stream(vpmu_inst_stream, vpmu_config, "cpu_models");
         attach_vpmu_stream(vpmu_branch_stream, vpmu_config, "branch_models");
         attach_vpmu_stream(vpmu_cache_stream, vpmu_config, "cache_models");
-
-        json root = vpmu_config["cpu_models"]["instruction"];
-        // TODO move this to CPU model
-        for (json::iterator it = root.begin(); it != root.end(); ++it) {
-            // Skip the attribute next
-            std::string key   = it.key();
-            uint32_t    value = it.value();
-
-            arm_instr_time[get_index_of_arm_inst(key.c_str())] = value;
-        }
 
         // TODO remove this test code
         // sleep(2);
@@ -171,9 +155,9 @@ void VPMU_sync(void)
 
 void VPMU_reset(void)
 {
-    VPMU.cpu_idle_time_ns       = 0;
-    VPMU.ticks                  = 0;
-    VPMU.iomem_count            = 0;
+    VPMU.cpu_idle_time_ns                = 0;
+    VPMU.ticks                           = 0;
+    VPMU.iomem_count                     = 0;
     VPMU.modelsel.total_tb_visit_count   = 0;
     VPMU.modelsel.cold_tb_visit_count    = 0;
     VPMU.modelsel.hot_tb_visit_count     = 0;

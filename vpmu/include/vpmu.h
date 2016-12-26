@@ -9,8 +9,6 @@
 //========================  VPMU Common Definitions  ========================
 //==========================  VPMU Common Macros  ===========================
 
-#define macro_str(str) #str
-
 #define READ_FROM_GUEST_KERNEL(_cs, _addr, _offset)                                      \
     ((uint8_t *)vpmu_get_phy_addr_global((void *)_cs, (uintptr_t)_addr) + _offset)
 

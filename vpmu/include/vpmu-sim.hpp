@@ -1,10 +1,13 @@
 #ifndef __VPMU_SIM_HPP_
 #define __VPMU_SIM_HPP_
-#include <vector> // std::vector
-#include <string> // std::string
-#include <thread> // std::thread
-#include <vector> // std::forward
+#include <vector>       // std::vector
+#include <string>       // std::string
+#include <thread>       // std::thread
+#include <vector>       // std::forward
+#include "json.hpp"     // nlohmann::json
+#include "vpmu-log.hpp" // VPMULog
 #include "vpmu-packet.hpp"
+#include "vpmu-translate.hpp" // VPMUARMTranslate, etc.
 
 template <typename T>
 class VPMUSimulator : public VPMULog
@@ -39,6 +42,13 @@ public:
         // Remove states
         p_ref.type = p_ref.type & 0xF0FF;
         this->packet_processor(id, p_ref, t);
+    }
+
+    // This is used in instruction model only!
+    virtual VPMUARMTranslate *get_translator_handle(void)
+    {
+        log_fatal("get_translator function is not implemented!!");
+        return nullptr;
     }
 
 protected:

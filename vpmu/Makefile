@@ -3,18 +3,18 @@
 #'../../' and '../' are for config-host.h and config-target.h
 VPMU_FLAGS=-Wall -Wno-missing-braces -Wno-sign-compare -g \
 			-I../../ -I../ \
-			-I$(SRC_PATH) -I$(SRC_PATH)/target-arm -I$(SRC_PATH)/include \
+			-I$(SRC_PATH) -I$(SRC_PATH)/include \
 			-I$(SRC_PATH)/vpmu -I$(SRC_PATH)/vpmu/include -I$(SRC_PATH)/vpmu/include/arch \
 			-I$(SRC_PATH)/vpmu/libs\
 			-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
 
 # Target specific flags
 ifeq ($(TARGET_NAME),arm)
-VPMU_FLAGS+=-DCONFIG_VPMU_TARGET_ARM
+VPMU_FLAGS+=-DCONFIG_VPMU_TARGET_ARM -I$(SRC_PATH)/target-arm -I$(SRC_PATH)/tcg/arm/
 VPMU_FLAGS+=-DCONFIG_VPMU_LONG_BITS=32
 endif
 ifeq ($(TARGET_NAME),x86_64)
-VPMU_FLAGS+=-DCONFIG_VPMU_TARGET_X86_64
+VPMU_FLAGS+=-DCONFIG_VPMU_TARGET_X86_64 -I$(SRC_PATH)/target-i386 -I$(SRC_PATH)/tcg/i386/
 VPMU_FLAGS+=-DCONFIG_VPMU_LONG_BITS=64
 endif
 
@@ -34,7 +34,7 @@ VPMU_CXXFLAGS=$(VPMU_FLAGS) -O3 -std=c++14
 
 all	:	libvpmu_arm.a libvpmu_x86_64.a
 
-libvpmu_arm.a	:	$(VPMU_OBJS) vpmu-arm-inst.o
+libvpmu_arm.a	:	$(VPMU_OBJS) vpmu-arm-translate.o vpmu-arm-instset.o Cortex-A9.o
 	@echo "  BUILD VPMU for $(TARGET_NAME) with compiler: $(CC)"
 	@echo "  LINK    $@"
 	@ar -rcs $@ $^

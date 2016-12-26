@@ -79,7 +79,7 @@ static const char *regnames[] =
 #ifdef CONFIG_VPMU
 #include "../vpmu/include/vpmu-qemu.h"
 #include "../vpmu/include/vpmu-packet.h"
-#include "../vpmu/simulators/vpmu-arm-inst.h"
+#include "../vpmu/include/vpmu-arm-translate.h"
 #include "../vpmu/include/vpmu-log.h"
 static uint32_t *pc = NULL;
 // Branch filter, not a branch instruction

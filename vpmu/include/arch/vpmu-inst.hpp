@@ -56,9 +56,19 @@ public:
 
 #if defined(CONFIG_VPMU_TARGET_ARM)
     void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
+    VPMUARMTranslate* get_translator(int n)
+    {
+        if (n > jobs.size()) n = 0;
+        return jobs[n]->get_translator_handle();
+    }
 // End of CONFIG_VPMU_TARGET_ARM
 #elif defined(CONFIG_VPMU_TARGET_X86_64)
-
+    void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
+    VPMUi386Translate* get_translator(int n)
+    {
+        if (n > jobs.size()) n = 0;
+        return jobs[n]->get_translator_handle();
+    }
 #endif // End of CONFIG_VPMU_TARGET_X86_64
 
 private:

@@ -1,6 +1,7 @@
-#ifndef _VPMU_ARM_INST_H_
-#define _VPMU_ARM_INST_H_
-#include "config-target.h"
+#ifndef __VPMU_ARM_INSTSET_
+#define __VPMU_ARM_INSTSET_
+
+#define macro_str(str) #str
 
 #define etype(x) ARM_INSTRUCTION_##x
 
@@ -265,11 +266,11 @@ typedef enum { ARM_INSTRUCTION } ARM_Instructions;
 
 typedef enum { ARM_VFP_INSTRUCTION } ARM_VFP_Instructions;
 #undef etype
-#endif //CONFIG_VPMU_VFP
+#endif // CONFIG_VPMU_VFP
 
+ARM_Instructions get_index_of_arm_inst(const char *s);
+#ifdef CONFIG_VPMU_VFP
+ARM_VFP_Instructions get_index_of_arm_vfp_inst(const char *s);
+#endif // CONFIG_VPMU_VFP
 
-uint16_t vpmu_accumulate_arm_ticks(uint32_t insn);
-uint16_t vpmu_accumulate_thumb_ticks(uint32_t insn);
-uint16_t vpmu_accumulate_cp14_ticks(uint32_t insn);
-uint16_t vpmu_accumulate_vfp_ticks(uint32_t insn, uint32_t vfp_vec_len);
-#endif
+#endif // End of __VPMU_INSTSET_
