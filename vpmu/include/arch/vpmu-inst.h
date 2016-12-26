@@ -1,9 +1,8 @@
 #ifndef __VPMU_INST_H_
 #define __VPMU_INST_H_
 
-#include <stdint.h>       //uint8_t, uint32_t, etc.
-#include <string.h>       // strncpy
-#include "../vpmu-conf.h" // VPMU_MAX_CPU_CORES
+#include "../vpmu-conf.h"   // VPMU_MAX_CPU_CORES
+#include "../vpmu-common.h" // Include common headers
 
 typedef struct Inst_Counters {
     uint16_t total;

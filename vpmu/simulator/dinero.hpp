@@ -1,11 +1,9 @@
 #ifndef __CACHE_DINERO_HPP__
 #define __CACHE_DINERO_HPP__
-#include <string>
-
-#include "vpmu-sim.hpp"
-#include "vpmu-cache.hpp"
-#include "vpmu-packet.hpp"
-#include "vpmu-utils.hpp" // miscellaneous functions
+#include <string>          // std::string
+#include "vpmu-sim.hpp"    // VPMUSimulator
+#include "vpmu-packet.hpp" // VPMU_Cache::Reference
+#include "vpmu-utils.hpp"  // miscellaneous functions
 
 extern "C" {
 #include "d4-7/d4.h"
@@ -537,9 +535,9 @@ public:
         default:
             goto fallback;
         }
-        return ;
+        return;
 
-fallback:
+    fallback:
         // Remove states
         VPMU_Cache::Reference p_ref = ref;
         p_ref.type                  = p_ref.type & 0xF0FF;

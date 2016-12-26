@@ -1,6 +1,7 @@
-#include "vpmu-inst.hpp"
-#include "vpmu-packet.hpp"
+#include "vpmu-inst.hpp"   // InstructionStream
+#include "vpmu-packet.hpp" // VPMU_Inst::Reference
 
+// Define the global instance here for accessing
 InstructionStream vpmu_inst_stream;
 
 #if defined(CONFIG_VPMU_TARGET_ARM)

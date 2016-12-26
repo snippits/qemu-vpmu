@@ -1,10 +1,7 @@
 #ifndef __VPMU_LOG_H_
 #define __VPMU_LOG_H_
-#include <inttypes.h>  // Portable number types, ex: PRIu64, etc.
-#include <locale.h>    // C localization functions for ' support in printf
-#include <string.h>    // For some basic string operations
-#include <stdarg.h>    // va_list, va_start, va_arg, va_end
-#include "vpmu-conf.h" // Import the common configurations and QEMU config-host.h
+#include "vpmu-common.h" // Include common headers, macros
+#include "vpmu-conf.h"   // Import the common configurations and QEMU config-host.h
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
 #define DBG(str, ...)                                                                    \

@@ -2,14 +2,6 @@
 extern "C" {
 #include "libs/efd.h" // Extracting information from binary file
 }
-#include <iostream> // Basic I/O related C++ header
-#include <fstream>  // File I/O
-#include <sstream>  // String buffer
-#include <cerrno>   // Readable error messages
-#include <vector>   // std::vector
-#include <string>   // std::string
-#include "json.hpp" // nlohmann::json
-
 #include "vpmu.hpp"           // VPMU common header
 #include "vpmu-stream.hpp"    // VPMUStream, VPMUStream_T
 #include "vpmu-translate.hpp" // VPMUTranslate

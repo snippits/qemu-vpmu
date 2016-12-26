@@ -1,8 +1,7 @@
 #ifndef __BRANCH_ONE_BIT_HPP__
 #define __BRANCH_ONE_BIT_HPP__
-#include "vpmu-sim.hpp"
-#include "vpmu-branch.hpp"
-#include "vpmu-packet.hpp"
+#include "vpmu-sim.hpp"    // VPMUSimulator
+#include "vpmu-packet.hpp" // VPMU_Branch::Reference
 
 class Branch_One_Bit : public VPMUSimulator<VPMU_Branch>
 {

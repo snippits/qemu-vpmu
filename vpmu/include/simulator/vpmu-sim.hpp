@@ -1,12 +1,12 @@
 #ifndef __VPMU_SIM_HPP_
 #define __VPMU_SIM_HPP_
-#include <vector>       // std::vector
-#include <string>       // std::string
-#include <thread>       // std::thread
-#include <vector>       // std::forward
-#include "json.hpp"     // nlohmann::json
-#include "vpmu-log.hpp" // VPMULog
-#include "vpmu-packet.hpp"
+#include <vector>             // std::vector
+#include <string>             // std::string
+#include <thread>             // std::thread
+#include <vector>             // std::forward
+#include "json.hpp"           // nlohmann::json
+#include "vpmu-log.hpp"       // VPMULog
+#include "vpmu-packet.hpp"    // Packet types
 #include "vpmu-translate.hpp" // VPMUARMTranslate, etc.
 
 template <typename T>

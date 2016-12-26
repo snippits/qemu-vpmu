@@ -1,6 +1,6 @@
 #ifndef _VPMU_ARM_TRANSLATE_H_
 #define _VPMU_ARM_TRANSLATE_H_
-#include <stdint.h>        //uint8_t, uint32_t, etc.
+#include <stdint.h>        // uint8_t, uint32_t, etc.
 #include "config-target.h" // QEMU Target Information
 
 // TODO support multi-model??

@@ -1,8 +1,8 @@
 #include <sys/prctl.h> // prctl
 
+#include "vpmu.hpp"       // VPMU common headers
 #include "vpmu-utils.hpp" // miscellaneous functions
 #include "json.hpp"       // nlohmann::json
-#include "vpmu.h"         // VPMU printing/logging system
 
 #include "vpmu-inst.hpp"   // vpmu_inst_stream
 #include "vpmu-cache.hpp"  // vpmu_cache_stream

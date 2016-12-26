@@ -1,6 +1,7 @@
-#include "vpmu-branch.hpp"
-#include "vpmu-packet.hpp"
+#include "vpmu-branch.hpp" // BranchStream
+#include "vpmu-packet.hpp" // VPMU_Branch::Reference
 
+// Define the global instance here for accessing
 BranchStream vpmu_branch_stream;
 
 // Put your own timing simulator below
@@ -36,5 +37,4 @@ void branch_ref(uint8_t core, uint32_t pc, uint32_t taken)
 {
     vpmu_branch_stream.send(core, pc, taken);
 }
-
 }

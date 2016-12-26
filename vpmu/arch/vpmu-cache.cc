@@ -1,6 +1,7 @@
-#include "vpmu-cache.hpp"
-#include "vpmu-packet.hpp"
+#include "vpmu-cache.hpp"  // CacheStream
+#include "vpmu-packet.hpp" // VPMU_Cache::Reference
 
+// Define the global instance here for accessing
 CacheStream vpmu_cache_stream;
 
 // Put your own timing simulator below
@@ -23,7 +24,7 @@ bool CacheStream::data_possibly_hit(uint64_t addr, uint32_t rw)
     // pc for dcache sim
     static uint32_t block_addr_start[4] = {
       0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
-    static uint8_t counter = 0;
+    static uint8_t    counter     = 0;
     VPMU_Cache::Model cache_model = get_model(0);
 
     addr &= cache_model.i_log2_blocksize_mask[1];
@@ -34,22 +35,22 @@ bool CacheStream::data_possibly_hit(uint64_t addr, uint32_t rw)
     } else { // cold data access
         // classify cases for write-allocation
         if (rw == CACHE_PACKET_READ || cache_model.d_write_alloc[L1_CACHE]) {
-            block_addr_start[counter++] =
-              (addr & cache_model.i_log2_blocksize_mask[1]);
+            block_addr_start[counter++] = (addr & cache_model.i_log2_blocksize_mask[1]);
             counter &= 3;
         }
         return false;
     }
 }
 
-void CacheStream::send(uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size)
+void CacheStream::send(
+  uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size)
 {
     VPMU_Cache::Reference r;
-    r.type      = type;      // The type of reference
-    r.processor = proc;      // The address of pc
-    r.core      = core;      // The number of CPU core
-    r.addr      = addr;      // The virtual address of ld/st request
-    r.size      = size;      // If this is a taken branch
+    r.type      = type; // The type of reference
+    r.processor = proc; // The address of pc
+    r.core      = core; // The number of CPU core
+    r.addr      = addr; // The virtual address of ld/st request
+    r.size      = size; // If this is a taken branch
 
     send_ref(r);
 }
@@ -59,7 +60,7 @@ void CacheStream::send_hot_tb(
 {
     if (type == CACHE_PACKET_INSTRN) {
         VPMU_Cache::Model cache_model = get_model(0);
-        int num_of_cacheblks    = ((((addr + size) - 1) >> cache_model.i_log2_blocksize[1])
+        int num_of_cacheblks = ((((addr + size) - 1) >> cache_model.i_log2_blocksize[1])
                                 - ((addr >> cache_model.i_log2_blocksize[1]))
                                 + 1);
         VPMU.modelsel.hot_icache_count += num_of_cacheblks;

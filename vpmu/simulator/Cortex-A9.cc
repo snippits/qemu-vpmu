@@ -1,14 +1,9 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <stdint.h> //uint8_t, uint32_t, etc.
 extern "C" {
-#include "config-target.h"
-#include "vpmu-conf.h"
-#include "vpmu.h"
-#include "vpmu-arm-translate.h"
-#include "vpmu-arm-instset.h" // Instruction Set
+#include "vpmu-arm-translate.h" // Interface header between QEMU and VPMU
+#include "vpmu-arm-instset.h"   // Instruction Set
 }
 
+#include "vpmu.hpp" // VPMU common headers
 #include "Cortex-A9.hpp"
 #include "vpmu-utils.hpp"
 

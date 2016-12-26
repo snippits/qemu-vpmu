@@ -4,7 +4,7 @@ extern "C" {
 //#include "qemu/osdep.h"
 //#include "cpu.h"
 }
-#include "vpmu.hpp"
+#include "vpmu.hpp"      // VPMU common header
 #include "vpmu-inst.hpp" // Inst_Stream, vpmu_inst_stream
 
 // TODO add cpu cores

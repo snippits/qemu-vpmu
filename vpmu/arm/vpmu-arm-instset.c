@@ -1,10 +1,4 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
-
-#include "vpmu-conf.h"        // Configurations from VPMU
-#include "config-target.h"    // QEMU Target Information
+#include "vpmu.h"             // VPMU common headers
 #include "vpmu-arm-instset.h" // ARM Instruction SET
 #include "vpmu-log.h"         // ERR_MSG
 

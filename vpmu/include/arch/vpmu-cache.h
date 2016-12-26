@@ -1,8 +1,8 @@
 #ifndef __VPMU_CACHE_H_
 #define __VPMU_CACHE_H_
 
-#include <stdint.h>       //uint8_t, uint32_t, etc.
-#include "../vpmu-conf.h" // VPMU_MAX_CPU_CORES
+#include "../vpmu-conf.h"   // VPMU_MAX_CPU_CORES
+#include "../vpmu-common.h" // Include common headers
 
 enum Cache_Data_Index {
     CACHE_READ,

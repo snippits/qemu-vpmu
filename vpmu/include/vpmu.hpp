@@ -1,11 +1,16 @@
 #ifndef __VPMU_HPP_
 #define __VPMU_HPP_
 extern "C" {
-#include "vpmu.h"
+#include "vpmu.h" // VPMU common header
 }
-#include <vector>       // std::vector
-#include <string>       // std::string
-#include <thread>       // std::thread
+#include <vector>   // std::vector
+#include <string>   // std::string
+#include <thread>   // std::thread
+#include <iostream> // Basic I/O related C++ header
+#include <fstream>  // File I/O
+#include <sstream>  // String buffer
+#include <cerrno>   // Readable error messages
+
 #include "vpmu-log.hpp" // VPMU_Log
 #include "json.hpp"     // nlohmann::json
 

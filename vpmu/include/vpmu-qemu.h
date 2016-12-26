@@ -1,15 +1,12 @@
 #ifndef __VPMU_QEMU_H_
 #define __VPMU_QEMU_H_
 
-#include "vpmu-common.h" // Common headers and macros
-#include "arch/vpmu-inst.h"
-#include "arch/vpmu-cache.h"
-#include "arch/vpmu-branch.h"
+#include "vpmu-common.h"      // Common headers and macros
+#include "arch/vpmu-inst.h"   // vpmu_inst_ref
+#include "arch/vpmu-cache.h"  // vpmu_cache_ref
+#include "arch/vpmu-branch.h" // vpmu_branch_ref
 
-enum VPMU_CPU_MODE {
-    VPMU_CPU_MODE_ARM,
-    VPMU_CPU_MODE_THUMB
-};
+enum VPMU_CPU_MODE { VPMU_CPU_MODE_ARM, VPMU_CPU_MODE_THUMB };
 
 typedef struct VPMUPlatformInfo {
     struct {
@@ -48,7 +45,7 @@ typedef struct VPMU_Struct {
     VPMUPlatformInfo platform;
     /* Configurations VPMU needs to know */
     // TODO remove all these
-    VPMU_Cache_Model  cache_model;
+    VPMU_Cache_Model cache_model;
 } VPMU_Struct;
 
 // A structure to extend TB info for accumulating counters when executing each TB.
@@ -73,7 +70,7 @@ extern struct VPMU_Struct VPMU;
 extern ExtraTBInfo *vpmu_current_extra_tb_info;
 
 void VPMU_init(int argc, char **argv);
-void     vpmu_dump_readable_message(void);
+void vpmu_dump_readable_message(void);
 
 inline uint64_t h_time_difference(struct timespec *t1, struct timespec *t2)
 {
