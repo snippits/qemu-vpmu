@@ -14,11 +14,11 @@ VPMU_OBJS+=ref.o misc.o
 #VPMU_SRCS+=vpmu-cache.c ref.c misc.c
 
 ifeq ($(TARGET_NAME),arm)
-VPATH+=:$(SRC_PATH)/vpmu/arm
+VPATH+=:$(SRC_PATH)/vpmu/arch/arm
 VPMU_OBJS+=vpmu-arm-translate.o vpmu-arm-instset.o Cortex-A9.o
 endif
 ifeq ($(TARGET_NAME),x86_64)
-VPATH+=:$(SRC_PATH)/vpmu/i386
+VPATH+=:$(SRC_PATH)/vpmu/arch/i386
 VPMU_OBJS+=
 endif
 

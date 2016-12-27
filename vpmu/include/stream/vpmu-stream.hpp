@@ -140,7 +140,7 @@ public:
     {
         std::string sim_name = sim_config["name"];
 
-        log_debug("Attaching... " BASH_COLOR_CYAN "%s" BASH_COLOR_NONE, sim_name.c_str());
+        log("Attaching... " BASH_COLOR_CYAN "%s" BASH_COLOR_NONE, sim_name.c_str());
 
         auto ptr = create_sim(sim_name);
         if (ptr == nullptr) {

@@ -72,9 +72,11 @@ public: // VPMUSimulator
     void packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst& inst) override;
 
 private:
-    uint64_t cycles[VPMU_MAX_CPU_CORES] = {0};
+#ifdef CONFIG_VPMU_DEBUG_MSG
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;
+#endif
+    uint64_t cycles[VPMU_MAX_CPU_CORES] = {0};
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
     // The instance of Translator called from QEMU when doing binary translation

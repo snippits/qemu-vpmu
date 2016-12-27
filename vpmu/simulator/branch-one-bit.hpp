@@ -75,11 +75,13 @@ public:
     }
 
 private:
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    // The total number of packets counter for debugging
+    uint64_t debug_packet_num_cnt = 0;
+#endif
     // predictor (the states of branch predictors)
     uint64_t          predictor[VPMU_MAX_CPU_CORES] = {0};
     VPMU_Branch::Data counters                      = {0};
-    // The total number of packets counter for debugging
-    uint64_t debug_packet_num_cnt = 0;
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
 

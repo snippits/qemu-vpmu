@@ -7,7 +7,7 @@ VPMU_FLAGS=-Wall -Wno-missing-braces -Wno-sign-compare -g \
 			-I$(SRC_PATH)/vpmu -I$(SRC_PATH)/vpmu/include -I$(SRC_PATH)/vpmu/libs \
 			-I$(SRC_PATH)/vpmu/include/packet -I$(SRC_PATH)/vpmu/include/simulator \
 			-I$(SRC_PATH)/vpmu/include/arch -I$(SRC_PATH)/vpmu/include/stream \
-			-I$(SRC_PATH)/vpmu/include/arm -I$(SRC_PATH)/vpmu/i386 \
+			-I$(SRC_PATH)/vpmu/include/arch/arm -I$(SRC_PATH)/vpmu/arch/i386 \
 			-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
 
 # Target specific flags

@@ -570,8 +570,10 @@ public:
     }
 
 private:
+#ifdef CONFIG_VPMU_DEBUG_MSG
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;
+#endif
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
 
