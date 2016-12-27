@@ -208,7 +208,6 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         d4_cache[d4_num_caches].level = level;
         d4_num_caches++;
 
-        // TODO fix bug here!!!
         // ERR_MSG("%s\n\n", root.dump().c_str());
         for (json::iterator it = root.begin(); it != root.end(); ++it) {
             // Skip the attribute next

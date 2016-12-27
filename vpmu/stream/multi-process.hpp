@@ -34,7 +34,9 @@ public:
             buffer = nullptr;
         }
 
-        // TODO make it more gentle!!! make multiple files
+        // TODO Need a hased name for safely initializing (forking) simulators when
+        // concurrent VM execution is enabled. If hased named is implemented,
+        // the deletion of shared memory needs to be guaranteed when crushing.
         // Erases objects from the system. Returns false on error. Never throws
         shared_memory_object::remove("vpmu_cache_ring_buffer");
         shm = shared_memory_object(create_only, "vpmu_cache_ring_buffer", read_write);
@@ -98,7 +100,8 @@ public:
                 // Parent
                 slaves.push_back(pid);
             } else {
-                // TODO This ensure the performance a little bit
+                // This "move" improves the performance a little bit.
+                // It doesn't affect the host process. :D
                 auto sim = std::move(works[id]);
                 // auto &sim = works[id];
                 // Local buffers, the size is not necessary to be the same as sender

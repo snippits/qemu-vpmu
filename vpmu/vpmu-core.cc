@@ -104,7 +104,6 @@ static void vpmu_core_init(const char *vpmu_config_file)
 // vpmu_process_tracking_init();
 #endif
 
-    // TODO try to move JIT modular and not requiring this!!!
     CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
     InstructionStream::Model cpu_model    = vpmu_inst_stream.get_model(0);
     BranchStream::Model      branch_model = vpmu_branch_stream.get_model(0);
@@ -125,7 +124,8 @@ static void vpmu_core_init(const char *vpmu_config_file)
     for (int i = cache_model.levels; i > 0; i--) {
         CONSOLE_LOG(STR_VPMU "\t    L%d  : %d\n", i, cache_model.latency[i]);
     }
-    // sleep(2);
+    // Showing message for one second.
+    sleep(1);
     // exit(0);
 }
 

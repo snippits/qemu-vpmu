@@ -246,7 +246,6 @@ public:
         char     name[128];
         uint64_t frequency;
         uint8_t  dual_issue;
-        // TODO to be done!!
     } Model;
 #pragma pack(pop) // restore original alignment from stack
 

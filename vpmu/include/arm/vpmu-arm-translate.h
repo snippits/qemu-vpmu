@@ -4,6 +4,7 @@
 #include "config-target.h" // QEMU Target Information
 
 // TODO support multi-model??
+// TODO support multi-core(multi-thread)
 // Interface Functions for Instruction Timing.
 // It should be stateless and reentry-able for thread safe!!!
 uint16_t vpmu_get_arm_ticks(uint32_t insn);

@@ -107,7 +107,6 @@ private:
         return VPMU_INST_SUM(inst_data, branch);
     }
 
-// TODO build a series of output(print) functions
 #ifdef CONFIG_VPMU_VFP
     void print_vfp_count(void);
 #endif

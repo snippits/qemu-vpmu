@@ -1493,7 +1493,6 @@ illegal_op:
 /* Implement by evo0209
  * It's almost the same as analyze_arm_ticks, but return the insn latency.
  * It aims to calculate the ticks in each TB, instead of in helper function
- * TODO This might be wrong, need to check
  */
 uint32_t CPU_CortexA9::Translation::_get_arm_ticks(uint32_t insn)
 {
@@ -2496,8 +2495,7 @@ int CPU_CortexA9::Translation::_get_insn_ticks(uint32_t insn)
             == 0x00000090) /* Multiplies, extra load/store, Table 3-2 */
         // extract out all (5-8 bit)= 1001  temp_note by  ppb
         {
-            /* XXX: TODO: Add support for multiplier operand content penalties in the
-             * translator */
+            // TODO: Add support for multiplier operand content penalties in the translator
 
             // haven't done : ARM DDI 0222B p.8-20 SMULxy, SMLAxy, SMULWy, SMLAWy  by ppb
             if ((insn & 0x0fc000f0) == 0x00000090) /* 3-2: Multiply (accumulate) */
@@ -2635,7 +2633,7 @@ int CPU_CortexA9::Translation::_get_insn_ticks(uint32_t insn)
             } else if ((insn & 0x0e500fd0)
                        == 0x000000d0) /* 3-2: load/store two words, reg offset */
             {
-                /* XXX: TODO: Enhanced DSP instructions */
+                // TODO: Enhanced DSP instructions
                 // added by ppb
                 int Rd = (insn >> 12) & 15;
                 int Rn = (insn >> 16) & 15;
@@ -2663,7 +2661,7 @@ int CPU_CortexA9::Translation::_get_insn_ticks(uint32_t insn)
             } else if ((insn & 0x0e5000d0)
                        == 0x004000d0) /* 3-2: load/store two words, imm offset */
             {
-                /* XXX: TODO: Enhanced DSP instructions */
+                // TODO: Enhanced DSP instructions
                 // added by ppb
                 int Rd = (insn >> 12) & 15;
                 int Rn = (insn >> 16) & 15;
@@ -2747,7 +2745,7 @@ int CPU_CortexA9::Translation::_get_insn_ticks(uint32_t insn)
 
             // other case: software breakpoint   temp_note by ppb
             default:
-              /* TODO: Enhanced DSP instructions */
+              // TODO: Enhanced DSP instructions
               ;
             }
         } else /* Data processing */
@@ -2874,9 +2872,8 @@ int CPU_CortexA9::Translation::_get_insn_ticks(uint32_t insn)
         /* XXX: other things to do ? */
     } break;
 
-    default: /* i.e. 7 */
-             /* XXX: TODO: co-processor related things */
-             ;
+    default:   /* i.e. 7 */
+             ; // TODO: co-processor related things
     }
 Exit:
     interlock_base += result;

@@ -38,7 +38,7 @@ public:
     inline uint64_t get_cycles(int n)
     {
         VPMU_Inst::Data data = get_data(n);
-        return data.cycles[0]; // TODO Core number 0
+        return data.cycles[0];
     }
 
     inline uint64_t get_cycles(void)
