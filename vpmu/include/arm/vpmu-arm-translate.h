@@ -6,8 +6,8 @@
 // TODO support multi-model??
 // Interface Functions for Instruction Timing.
 // It should be stateless and reentry-able for thread safe!!!
-uint16_t vpmu_accumulate_arm_ticks(uint32_t insn);
-uint16_t vpmu_accumulate_thumb_ticks(uint32_t insn);
-uint16_t vpmu_accumulate_cp14_ticks(uint32_t insn);
-uint16_t vpmu_accumulate_vfp_ticks(uint32_t insn, uint32_t vfp_vec_len);
+uint16_t vpmu_get_arm_ticks(uint32_t insn);
+uint16_t vpmu_get_thumb_ticks(uint32_t insn);
+uint16_t vpmu_get_cp14_ticks(uint32_t insn);
+uint16_t vpmu_get_vfp_ticks(uint32_t insn, uint32_t vfp_vec_len);
 #endif
