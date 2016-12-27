@@ -1,33 +1,42 @@
 extern "C" {
 #include "vpmu-arm-translate.h"
-//#define NEED_CPU_H
-//#include "qemu/osdep.h"
-//#include "cpu.h"
-//#include "exec/exec-all.h"
-//#include "translate.h"
 }
 #include "vpmu.hpp"      // VPMU common header
 #include "vpmu-inst.hpp" // Inst_Stream, vpmu_inst_stream
 
-// TODO add cpu cores
-uint16_t vpmu_get_arm_ticks(uint32_t core, uint32_t insn)
+// NOTE: These interface function should NOT include CPU core index!!!
+// QEMU might translate TBs on core 1 and execute the same TB on core 1 and 2.
+// If you care about pipelining on different cores, inject some information
+// in extra TB info for runtime pipeline checking with core index.
+// The extra TB info could be modified for your needs!!!
+//
+// If you really want CPU information and some other functions,
+// include the following headers in another C file. (NOT CPP)
+// And implement your own interface and functions for doing magics.
+// #define NEED_CPU_H
+// #include "qemu/osdep.h"
+// #include "cpu.h"
+// #include "exec/exec-all.h"
+// #include "translate.h"
+
+void vpmu_accumulate_arm_ticks(ExtraTBInfo* ex_tb, uint32_t insn)
 {
-    return vpmu_inst_stream.get_translator(0)->get_arm_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_arm_ticks(insn);
 }
 
-uint16_t vpmu_get_thumb_ticks(uint32_t core, uint32_t insn)
+void vpmu_accumulate_thumb_ticks(ExtraTBInfo* ex_tb, uint32_t insn)
 {
-    return vpmu_inst_stream.get_translator(0)->get_thumb_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_thumb_ticks(insn);
 }
 
-uint16_t vpmu_get_cp14_ticks(uint32_t core, uint32_t insn)
+void vpmu_accumulate_cp14_ticks(ExtraTBInfo* ex_tb, uint32_t insn)
 {
-    return vpmu_inst_stream.get_translator(0)->get_cp14_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_cp14_ticks(insn);
 }
 
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_VFP)
-uint16_t vpmu_get_vfp_ticks(uint32_t core, uint32_t insn, uint64_t vfp_vec_len)
+void vpmu_accumulate_vfp_ticks(ExtraTBInfo* ex_tb, uint32_t insn, uint64_t vfp_vec_len)
 {
-    return vpmu_inst_stream.get_translator(0)->get_vfp_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_vfp_ticks(insn);
 }
 #endif

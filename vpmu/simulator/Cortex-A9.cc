@@ -2333,7 +2333,8 @@ uint32_t CPU_CortexA9::Translation::_get_arm_ticks(uint32_t insn)
             /*Christine ADD*/
             // Attemp to know the number of missing instructions.
             // arm_count[ARM_INSTRUCTION_UNKNOWN]+=1;
-            ERR_MSG("Unknown instruction");
+            // TODO Needs to be uncomment and check unimplementd instructions
+            // ERR_MSG("Unknown instruction\n");
 
             break;
         }

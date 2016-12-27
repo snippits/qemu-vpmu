@@ -16,6 +16,7 @@ void HELPER(vpmu_tlb_access)(uint32_t addr)
 void
   HELPER(vpmu_memory_access)(CPUARMState *env, uint32_t addr, uint32_t rw, uint32_t size)
 {
+    CPUState *cs = CPU(ENV_GET_CPU(env));
     // static uint32_t cnt = 0;
     if (likely(VPMU.enabled)) {
         if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
@@ -40,7 +41,7 @@ void
                 if (vpmu_current_extra_tb_info->modelsel.hot_tb_flag) {
                     rw |= VPMU_PACKET_HOT;
                 }
-                cache_ref(PROCESSOR_CPU, 0, addr, rw, size);
+                cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
             }
         }
     }
@@ -165,6 +166,7 @@ void HELPER(vpmu_branch)(CPUARMState *env, uint64_t target_addr, uint64_t return
 // helper function to accumulate counters
 void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 {
+    CPUState *cs = CPU(ENV_GET_CPU(env));
     // Thses are for branch
     static unsigned int last_tb_pc         = 0;
     static unsigned int last_tb_has_branch = 0;
@@ -203,7 +205,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
         } // End of VPMU_JIT_MODEL_SELECT
 
         if (vpmu_model_has(VPMU_INSN_COUNT_SIM, VPMU)) {
-            vpmu_inst_ref(0, mode, extra_tb_info);
+            vpmu_inst_ref(cs->cpu_index, mode, extra_tb_info);
         } // End of VPMU_INSN_COUNT_SIM
 
         if (vpmu_model_has(VPMU_ICACHE_SIM, VPMU)) {
@@ -212,7 +214,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
                 type |= VPMU_PACKET_HOT;
             }
             cache_ref(PROCESSOR_CPU,
-                      0,
+                      cs->cpu_index,
                       extra_tb_info->start_addr,
                       type,
                       extra_tb_info->counters.size_bytes);
@@ -226,9 +228,9 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
             // Add global counter value of branch count.
             if (last_tb_has_branch) {
                 if (extra_tb_info->start_addr - last_tb_pc <= 4) {
-                    branch_ref(0, last_tb_pc, 0); // Not taken
+                    branch_ref(cs->cpu_index, last_tb_pc, 0); // Not taken
                 } else {
-                    branch_ref(0, last_tb_pc, 1); // Taken
+                    branch_ref(cs->cpu_index, last_tb_pc, 1); // Taken
                 }
             }
             last_tb_pc = extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;

@@ -18,7 +18,6 @@ typedef struct Inst_Counters {
 typedef struct ExtraTBInfo {
     Inst_Counters counters;
     uint8_t       has_branch;
-    uint8_t       core_index;
     uint8_t       cpu_mode;
     uint16_t      ticks;
     uint64_t      start_addr;
