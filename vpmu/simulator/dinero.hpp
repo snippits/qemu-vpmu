@@ -280,6 +280,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         Demand_Data d;
 
         for (processor = 0; processor < ALL_PROC; processor++) {
+            if (num_cores[processor] == 0) continue;
             // Loop through from L1 to max level of current cache configuration
             for (level = VPMU_Cache::L1_CACHE; level <= d4_levels; level++) {
                 // Loop through all the processor cores
@@ -290,7 +291,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
                             num_cores[processor] +      // the offset of i-cache
                             i;                          // the offset of core
                     d        = calculate_data(d4_cache_leaf[index]);
-                    auto &ti = data.inst_cache[level][i];
+                    auto &ti = data.inst_cache[processor][level][i];
                     // Sync back values
                     ti[VPMU_Cache::READ]       = d.fetch_alltype;
                     ti[VPMU_Cache::WRITE]      = 0;
@@ -301,7 +302,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
                             0 +                         // the offset of d-cache
                             i;                          // the offset of core
                     d        = calculate_data(d4_cache_leaf[index]);
-                    auto &td = data.data_cache[level][i];
+                    auto &td = data.data_cache[processor][level][i];
                     // Sync back values
                     td[VPMU_Cache::READ]       = d.fetch_read;
                     td[VPMU_Cache::WRITE]      = d4_cache_leaf[index]->fetch[D4XWRITE];

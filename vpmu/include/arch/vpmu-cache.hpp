@@ -42,7 +42,7 @@ public:
         for (int level = VPMU_Cache::L1_CACHE; level < VPMU_Cache::MAX_LEVEL; level++) {
             uint64_t miss_cnt = 0, hit_cnt = 0;
             for (int core = 0; core < VPMU_MAX_CPU_CORES; core++) {
-                auto& cache = data.inst_cache[level][core];
+                auto& cache = data.inst_cache[PROCESSOR_CPU][level][core];
                 miss_cnt += cache[VPMU_Cache::READ_MISS];
                 hit_cnt += cache[VPMU_Cache::READ] - cache[VPMU_Cache::READ_MISS];
             }
@@ -50,7 +50,7 @@ public:
 
             miss_cnt = hit_cnt = 0;
             for (int core = 0; core < VPMU_MAX_CPU_CORES; core++) {
-                auto& cache = data.data_cache[level][core];
+                auto& cache = data.data_cache[PROCESSOR_CPU][level][core];
                 miss_cnt += cache[VPMU_Cache::READ_MISS] + cache[VPMU_Cache::WRITE_MISS];
                 hit_cnt += cache[VPMU_Cache::READ] + cache[VPMU_Cache::WRITE]
                            - cache[VPMU_Cache::READ_MISS] - cache[VPMU_Cache::WRITE_MISS];
