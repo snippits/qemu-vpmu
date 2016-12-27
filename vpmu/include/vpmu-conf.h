@@ -2,7 +2,6 @@
 #define __VPMU_CONF_H_
 
 #define VPMU_MAX_CPU_CORES 64
-#define BRANCH_TRACE_BUFFER_SIZE 1024
 
 #define LINUX_NAMELEN 16
 
@@ -32,6 +31,7 @@
 #define STR_SET    BASH_COLOR_GREEN "[SET]" BASH_COLOR_NONE "       "
 
 #ifndef CONFIG_SOFTMMU
+// TODO remove this?
 // Only include this QEMU config when config-target.h is not included
 #include "config-host.h"
 #endif

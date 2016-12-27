@@ -3318,7 +3318,8 @@ static int disas_vfp_insn(DisasContext *s, uint32_t insn)
     s->tb->extra_tb_info.counters.vfp++;
     s->tb->extra_tb_info.counters.alu++;
 #ifdef CONFIG_VPMU_VFP
-    s->tb->extra_tb_info.ticks += vpmu_get_vfp_ticks(insn, env->vfp.vec_len);
+    ExtraTBInfo *vtb = &(s->tb->extra_tb_info);
+    vtb->ticks += vpmu_get_vfp_ticks(vtb->core_index, insn, env->vfp.vec_len);
 #endif
 #endif
 
@@ -7638,7 +7639,8 @@ static int disas_coproc_insn(DisasContext *s, uint32_t insn)
     cpnum = (insn >> 8) & 0xf;
 
 #ifdef CONFIG_VPMU
-    s->tb->extra_tb_info.ticks += vpmu_get_cp14_ticks(insn);
+    ExtraTBInfo *vtb = &(s->tb->extra_tb_info);
+    vtb->ticks += vpmu_get_cp14_ticks(vtb->core_index, insn);
 #endif
     /* First check for coprocessor space used for XScale/iwMMXt insns */
     if (arm_dc_feature(s, ARM_FEATURE_XSCALE) && (cpnum < 2)) {
@@ -8186,7 +8188,8 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
     }
 
 #ifdef CONFIG_VPMU
-    s->tb->extra_tb_info.ticks += vpmu_get_arm_ticks(insn);
+    ExtraTBInfo *vtb = &(s->tb->extra_tb_info);
+    vtb->ticks += vpmu_get_arm_ticks(vtb->core_index, insn);
 #endif
     cond = insn >> 28;
     if (cond == 0xf){
@@ -9896,7 +9899,8 @@ static int disas_thumb2_insn(CPUARMState *env, DisasContext *s, uint16_t insn_hw
 
 #ifdef CONFIG_VPMU
     // paslab : data sheet model
-    s->tb->extra_tb_info.ticks += vpmu_get_thumb_ticks(insn);
+    ExtraTBInfo *vtb = &(s->tb->extra_tb_info);
+    vtb->ticks += vpmu_get_thumb_ticks(vtb->core_index, insn);
 // shocklink added to support branch count for portability
 // TODO: branch counter for thumb mode
 #endif
@@ -11299,7 +11303,8 @@ static void disas_thumb_insn(CPUARMState *env, DisasContext *s)
     insn = arm_lduw_code(env, s->pc, s->sctlr_b);
     s->pc += 2;
 #ifdef CONFIG_VPMU
-    s->tb->extra_tb_info.ticks += vpmu_get_thumb_ticks(insn);
+    ExtraTBInfo *vtb = &(s->tb->extra_tb_info);
+    vtb->ticks += vpmu_get_thumb_ticks(vtb->core_index, insn);
 #endif
 
     switch (insn >> 12) {
@@ -12199,6 +12204,7 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     memset(&(tb->extra_tb_info), 0, sizeof(ExtraTBInfo));
     gen_helper_vpmu_accumulate_tb_info(cpu_env,
                                        tcg_const_ptr((uint64_t) & (tb->extra_tb_info)));
+    tb->extra_tb_info.core_index = cs->cpu_index;
     vpmu_branch_from_store = false;
 #endif
 
