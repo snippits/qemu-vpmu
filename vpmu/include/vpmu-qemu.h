@@ -15,10 +15,10 @@ typedef struct VPMUPlatformInfo {
 
 typedef struct VPMU_Struct {
     // A flag that indicate whether VPMU is enabled
-    int8_t enabled;
-    int8_t all_cpu_idle_flag;
-    int8_t iomem_access_flag;
-    int8_t swi_fired_flag;
+    bool enabled;
+    bool all_cpu_idle_flag;
+    bool iomem_access_flag;
+    bool swi_fired_flag;
     /* for timer interrupt */
     uint64_t timer_interrupt_return_pc;
 
@@ -31,7 +31,10 @@ typedef struct VPMU_Struct {
 
     uint64_t timing_model;
 
-    /* TODO move to anotehr place Modelsel*/
+    // TODO Is there a better way for multi-core execution env?
+    // Should be set for vpmu device only.
+    void *cs; // This is for identifying MMU table
+
     struct {
         uint64_t total_tb_visit_count;
         uint64_t cold_tb_visit_count;

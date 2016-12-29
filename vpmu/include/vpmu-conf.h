@@ -30,10 +30,4 @@
 #define STR_VPMU   BASH_COLOR_GREEN "[VPMU]" BASH_COLOR_NONE "      "
 #define STR_SET    BASH_COLOR_GREEN "[SET]" BASH_COLOR_NONE "       "
 
-#ifndef CONFIG_SOFTMMU
-// TODO remove this?
-// Only include this QEMU config when config-target.h is not included
-#include "config-host.h"
-#endif
-
 #endif

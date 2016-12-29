@@ -97,7 +97,7 @@ static bool elf_check_format(EFD *efd)
     return true;
 }
 
-EFD *efd_open_elf(char *name)
+EFD *efd_open_elf(const char *name)
 {
     EFD *  efd;
     size_t size;
@@ -292,16 +292,3 @@ uint32_t efd_find_dynsym_by_name(EFD *efd, char *name)
     return 0;
 }
 
-void dump_symbol_table(EFD *efd)
-{
-    /* Push special functions into hash table */
-    for (int i = 0; i < efd_get_sym_num(efd); i++) {
-        if ((efd_get_sym_type(efd, i) == STT_FUNC)
-            && (efd_get_sym_vis(efd, i) == STV_DEFAULT)
-            && (efd_get_sym_shndx(efd, i) != SHN_UNDEF)) {
-            uint32_t vaddr    = efd_get_sym_value(efd, i) & 0xfffffffe;
-            char *   funcName = efd_get_sym_name(efd, i);
-            fprintf(stderr, "%s\n", funcName);
-        }
-    }
-}

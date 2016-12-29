@@ -44,9 +44,8 @@ typedef struct EFD {
     PLTentry    *plt;
 } EFD;
 
-EFD *efd_open_elf(char *name);
+EFD *efd_open_elf(const char *name);
 void efd_close(EFD *efd);
-void dump_symbol_table(EFD *efd);
 
 #define efd_get_entry_point(efd)    ((efd)->elf_hdr.e_entry)
 #define efd_get_sec_num(efd)        ((efd)->sec_num)
