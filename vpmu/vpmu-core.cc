@@ -139,8 +139,6 @@ static void vpmu_core_init(const char *vpmu_config_file)
     // exit(0);
 }
 
-extern "C" {
-
 void VPMU_sync_non_blocking(void)
 {
     for (auto s : vpmu_streams) {
@@ -297,4 +295,3 @@ void vpmu_dump_readable_message(void)
 #undef CONSOLE_U64
 }
 
-} // End of extern "C"

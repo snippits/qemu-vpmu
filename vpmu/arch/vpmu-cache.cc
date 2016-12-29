@@ -93,3 +93,4 @@ void hot_cache_ref(
 {
     vpmu_cache_stream.send_hot_tb(proc, core, addr, type, data_size);
 }
+

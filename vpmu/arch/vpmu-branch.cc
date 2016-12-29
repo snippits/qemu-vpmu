@@ -31,10 +31,8 @@ void BranchStream::send(uint8_t core, uint64_t pc, uint32_t taken)
     send_ref(r);
 }
 
-extern "C" {
-
 void branch_ref(uint8_t core, uint32_t pc, uint32_t taken)
 {
     vpmu_branch_stream.send(core, pc, taken);
 }
-}
+
