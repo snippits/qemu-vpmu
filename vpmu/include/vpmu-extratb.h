@@ -1,15 +1,20 @@
 #ifndef __VPMU_EXTRA_TB_H_
 #define __VPMU_EXTRA_TB_H_
 
+#include "config-target.h" // Target configuration
+
 typedef struct Inst_Counters {
     uint16_t total;
     uint8_t  load;
     uint8_t  store;
     uint8_t  alu;
     uint8_t  bit; // shift, and, or, xor
-    uint8_t  fpu;
-    uint8_t  vfp;
-    uint8_t  neon;
+#if defined(TARGET_ARM)
+    uint8_t fpu;
+    uint8_t vfp;
+    uint8_t neon;
+#elif defined(TARGET_X86_64)
+#endif
     uint8_t  co_processor;
     uint16_t size_bytes;
 } Inst_Counters;
@@ -29,4 +34,6 @@ typedef struct ExtraTBInfo {
     } modelsel;
 } ExtraTBInfo;
 
+// A pointer to current Extra TB Info
+extern ExtraTBInfo *vpmu_current_extra_tb_info;
 #endif

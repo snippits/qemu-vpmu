@@ -1,10 +1,11 @@
+#include "config-target.h" // Target Configuration (CONFIG_ARM)
 #include "vpmu-inst.hpp"   // InstructionStream
 #include "vpmu-packet.hpp" // VPMU_Inst::Reference
 
 // Define the global instance here for accessing
 InstructionStream vpmu_inst_stream;
 
-#if defined(CONFIG_VPMU_TARGET_ARM)
+#if defined(TARGET_ARM)
 // Put your own timing simulator below
 #include "simulator/Cortex-A9.hpp"
 // Put you own timing simulator above
@@ -29,10 +30,10 @@ void InstructionStream::send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr)
     send_ref(r);
 }
 
-// End of CONFIG_VPMU_TARGET_ARM
-#elif defined(CONFIG_VPMU_TARGET_X86_64)
+// End of TARGET_ARM
+#elif defined(TARGET_X86_64)
 
-#endif // End of CONFIG_VPMU_TARGET_X86_64
+#endif // End of TARGET_X86_64
 
 extern "C" {
 

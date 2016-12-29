@@ -2,11 +2,11 @@
 #define __VPMU_PACKET_HPP__
 
 extern "C" {
-#include "vpmu-packet.h"
-#include "shm-ringbuffer.h"
-#include "arch/vpmu-inst.h"
-#include "arch/vpmu-cache.h"
-#include "arch/vpmu-branch.h"
+#include "config-target.h"  // Target Configuration (CONFIG_ARM)
+#include "vpmu-conf.h"      // VPMU_MAX_CPU_CORES
+#include "vpmu-extratb.h"   // Extra TB Information
+#include "vpmu-packet.h"    // VPMU Packet Types
+#include "shm-ringbuffer.h" // Lightening Ring Buffer Implementation
 }
 
 // This static class defines the layout of VPMU ring buffer with its common data, etc.
@@ -210,7 +210,7 @@ public:
     uint32_t _paddings[4];
 };
 
-#if defined(CONFIG_VPMU_TARGET_ARM)
+#if defined(TARGET_ARM)
 class VPMU_Inst
 {
 public:
@@ -272,9 +272,9 @@ public:
     uint32_t _paddings[4];
 };
 
-// End of CONFIG_VPMU_TARGET_ARM
-#elif defined(CONFIG_VPMU_TARGET_X86_64)
+// End of TARGET_ARM
+#elif defined(TARGET_X86_64)
 
-#endif // End of CONFIG_VPMU_TARGET_X86_64
+#endif // End of TARGET_X86_64
 
 #endif

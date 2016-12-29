@@ -13,11 +13,11 @@ VPMU_FLAGS=-Wall -Wno-missing-braces -Wno-sign-compare -g \
 
 # Target specific flags
 ifeq ($(TARGET_NAME),arm)
-VPMU_FLAGS+=-DCONFIG_VPMU_TARGET_ARM -I$(SRC_PATH)/target-arm -I$(SRC_PATH)/tcg/arm/
+VPMU_FLAGS+=-I$(SRC_PATH)/target-arm -I$(SRC_PATH)/tcg/arm/
 VPMU_FLAGS+=-DCONFIG_VPMU_LONG_BITS=32
 endif
 ifeq ($(TARGET_NAME),x86_64)
-VPMU_FLAGS+=-DCONFIG_VPMU_TARGET_X86_64 -I$(SRC_PATH)/target-i386 -I$(SRC_PATH)/tcg/i386/
+VPMU_FLAGS+=-I$(SRC_PATH)/target-i386 -I$(SRC_PATH)/tcg/i386/
 VPMU_FLAGS+=-DCONFIG_VPMU_LONG_BITS=64
 endif
 

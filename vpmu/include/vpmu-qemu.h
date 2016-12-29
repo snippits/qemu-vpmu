@@ -2,7 +2,6 @@
 #define __VPMU_QEMU_H_
 
 #include "vpmu-common.h"  // Common headers and macros
-#include "vpmu-extratb.h" // Extra TB Information
 
 enum VPMU_CPU_MODE { VPMU_CPU_MODE_ARM, VPMU_CPU_MODE_THUMB };
 
@@ -48,11 +47,6 @@ typedef struct VPMU_Struct {
 
 // A structure storing VPMU configuration
 extern struct VPMU_Struct VPMU;
-// A pointer to current Extra TB Info
-extern ExtraTBInfo *vpmu_current_extra_tb_info;
-
-void VPMU_init(int argc, char **argv);
-void vpmu_dump_readable_message(void);
 
 inline uint64_t h_time_difference(struct timespec *t1, struct timespec *t2)
 {
@@ -75,10 +69,12 @@ inline uint64_t toc(struct timespec *t1, struct timespec *t2)
     return h_time_difference(t1, t2);
 }
 
+void VPMU_init(int argc, char **argv);
+void VPMU_reset(void);
 void VPMU_sync(void);
 void VPMU_sync_non_blocking(void);
-void VPMU_reset(void);
 void VPMU_dump_result(void);
+void vpmu_dump_readable_message(void);
 void vpmu_simulator_status(VPMU_Struct *vpmu);
 uint64_t vpmu_target_time_ns(void);
 

@@ -131,7 +131,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             }
             vpmu_cpu_context[0] = vpmu_clone_qemu_cpu_state(VPMU.cs);
             paddr               = vpmu_get_phy_addr_global(vpmu_cpu_context[0], value);
-            DBG(STR_SET "trace process name:%s\n", (char *)paddr);
+            DBG(STR_ET "trace process name:%s\n", (char *)paddr);
             // TODO find a way to remove/clear the process name
             et_add_program_to_list((const char *)paddr);
         }

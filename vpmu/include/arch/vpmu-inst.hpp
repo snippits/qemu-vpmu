@@ -1,6 +1,7 @@
 #ifndef __VPMU_INST_HPP_
 #define __VPMU_INST_HPP_
 extern "C" {
+#include "config-target.h" // Target Configuration (CONFIG_ARM)
 #include "vpmu-inst.h"
 }
 #include "vpmu.hpp"        // VPMU common header
@@ -54,22 +55,22 @@ public:
         f(std::forward<Args>(args)...);
     }
 
-#if defined(CONFIG_VPMU_TARGET_ARM)
+#if defined(TARGET_ARM)
     void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
     VPMUARMTranslate* get_translator(int n)
     {
         if (n > jobs.size()) n = 0;
         return jobs[n]->get_translator_handle();
     }
-// End of CONFIG_VPMU_TARGET_ARM
-#elif defined(CONFIG_VPMU_TARGET_X86_64)
+// End of TARGET_ARM
+#elif defined(TARGET_X86_64)
     void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
     VPMUi386Translate* get_translator(int n)
     {
         if (n > jobs.size()) n = 0;
         return jobs[n]->get_translator_handle();
     }
-#endif // End of CONFIG_VPMU_TARGET_X86_64
+#endif // End of TARGET_X86_64
 
 private:
     // This is a register function declared in the vpmu-inst.cc file.

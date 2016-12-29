@@ -1,6 +1,7 @@
 #ifndef __VPMU_INST_H_
 #define __VPMU_INST_H_
 
+#include "config-target.h"   // Target Configuration (CONFIG_ARM)
 #include "../vpmu-conf.h"    // VPMU_MAX_CPU_CORES
 #include "../vpmu-common.h"  // Include common headers
 #include "../vpmu-extratb.h" // Extra TB Information
