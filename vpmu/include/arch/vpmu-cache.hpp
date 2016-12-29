@@ -63,13 +63,8 @@ public:
 
     inline uint64_t get_memory_time_ns(int n)
     {
-        VPMU_Cache::Model model   = get_model(n);
-        VPMU_Cache::Data  data    = get_data(n);
-        uint64_t          time_ns = 0;
-
-        time_ns += data.memory_accesses * model.latency[VPMU_Cache::Data_Level::MEMORY]
-                   * vpmu::target::scale_factor();
-        return time_ns;
+        VPMU_Cache::Data data = get_data(n);
+        return data.memory_cycles;
     }
 
     inline uint64_t get_cycles(int n)

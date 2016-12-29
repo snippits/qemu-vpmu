@@ -162,7 +162,7 @@ public:
         //[level][core][r/w miss/hit]
         uint64_t inst_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         uint64_t data_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
-        uint64_t memory_accesses;
+        uint64_t memory_accesses, memory_cycles;
     } Data;
 
     // The architectural configuration information

@@ -9,6 +9,8 @@ extern "C" {
 #include "d4-7/d4.h"
 }
 
+// TODO refactor this code
+//
 #define LRU ((char *)"LRU")
 #define FIFO ((char *)"FIFO")
 #define RANDOM ((char *)"RANDOM")
@@ -237,12 +239,12 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
     }
 
     // BFS search to form an one dimensional array
-    void recursively_parse_json(json &root, D4_CACHE_CONFIG *c, int level)
+    void recursively_parse_json(json root, D4_CACHE_CONFIG *c, int level)
     {
         int i, index, local_index = 0;
 
         if (level == VPMU_Cache::NOT_USED) return; // There's no level 0 cache
-        if (root.is_array()) {
+        if (level != VPMU_Cache::L1_CACHE && root.is_array()) {
             local_index = d4_num_caches;
             for (int i = 0; i < root.size(); i++) {
                 parse_and_set(root[i], c, 0x00, level);
@@ -255,6 +257,9 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
                 }
             }
         } else {
+            if (root.is_array()) {
+                root = root[0];
+            }
             index                     = get_processor_index(root["d-cache"]);
             int leaf_index            = core_num_table[index];
             flag_has_processor[index] = 1;
@@ -274,7 +279,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         }
     }
 
-    void sync_cache_data(VPMU_Cache::Data &data)
+    void sync_cache_data(VPMU_Cache::Data &data, VPMU_Cache::Model &model)
     {
         int         i, level, processor;
         Demand_Data d;
@@ -314,6 +319,9 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         d = calculate_data(d4_cache[0].cache);
 
         data.memory_accesses = d.fetch_read;
+        // TODO separate sequential and random access count, add new field in config
+        data.memory_cycles =
+          data.memory_accesses * model.latency[VPMU_Cache::Data_Level::MEMORY];
     }
 
     void sync_back_config_to_vpmu(VPMU_Cache::Model &model, json &config)
@@ -459,14 +467,14 @@ public:
         // The implementation depends on your own packet type and writing style
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
-            sync_cache_data(cache.data);
+            sync_cache_data(cache.data, cache.model);
             break;
         case VPMU_PACKET_SYNC_DATA:
             // Sync only ensure the data in the array is up to date to and not ahead of
             // the time packet processor receive the sync packet.
             // Slave can stealthily do simulations as long as it does not have a pending
             // sync job.
-            sync_cache_data(cache.data);
+            sync_cache_data(cache.data, cache.model);
             // pkg->sync_counter++;  // Increase the timestamp of counter
             // pkg->synced_flag = 1; // Set up the flag
             break;
