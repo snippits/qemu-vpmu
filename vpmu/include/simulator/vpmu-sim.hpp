@@ -16,7 +16,8 @@ public:
     VPMUSimulator() {}
     VPMUSimulator(const char *module_name) { set_name(module_name); }
     VPMUSimulator(std::string module_name) { set_name(module_name); }
-    ~VPMUSimulator() { log_debug("Destructed"); }
+    ~VPMUSimulator() {} // Do nothing here. Use destroy to deallocate resources, instead.
+
     // VPMUStream is not copyable.
     VPMUSimulator(const VPMUSimulator &) = delete;
 
@@ -28,6 +29,10 @@ public:
     // Allocating big memory is allowed here.
     // Also, You need to reply your simulator configurations to VPMU here!
     virtual void build(T &t) {}
+
+    // This is where to release/free/deallocate resources holded by simulator
+    // It's designed for making programer being aware of releasing resource
+    virtual void destroy() { log_fatal("destroy function is not implemented!!"); }
 
     // To avoid unnecessary (virtual) function calls,
     // each simulator has to implement its packet processor

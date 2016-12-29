@@ -320,7 +320,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 
         data.memory_accesses = d.fetch_read;
         // TODO separate sequential and random access count, add new field in config
-        data.memory_cycles =
+        data.memory_time_ns =
           data.memory_accesses * model.latency[VPMU_Cache::Data_Level::MEMORY];
     }
 
@@ -393,6 +393,15 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 public:
     Cache_Dinero() : VPMUSimulator("Dinero") { log_debug("Constructed"); }
     ~Cache_Dinero() { log_debug("Destructed"); }
+
+    void destroy() override
+    {
+        for (int i = 0; i < MAX_D4_CACHES; i++) {
+            if (d4_cache[i].cache != nullptr) {
+                free(d4_cache[i].cache);
+            }
+        }
+    }
 
     void build(VPMU_Cache &cache) override
     {

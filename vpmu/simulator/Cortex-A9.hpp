@@ -68,6 +68,8 @@ public: // VPMUSimulator
     ~CPU_CortexA9() { log_debug("Destructed"); }
 
     VPMUARMTranslate* get_translator_handle(void) override { return &translator; }
+
+    void destroy() override { ; } // Nothing to do
     void build(VPMU_Inst& inst) override;
     void packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst& inst) override;
 

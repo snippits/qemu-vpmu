@@ -19,7 +19,7 @@ public:
     InstructionStream(const char* module_name) : VPMUStream_T<VPMU_Inst>(module_name) {}
     InstructionStream(std::string module_name) : VPMUStream_T<VPMU_Inst>(module_name) {}
 
-    void set_stream_impl(void) override
+    void set_default_stream_impl(void) override
     {
         // Get the default implementation of stream interface.
         // impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Inst>>("I_Strm");

@@ -9,6 +9,8 @@ public:
     Branch_Two_Bits() : VPMUSimulator("Two Bits") { log_debug("Constructed"); }
     ~Branch_Two_Bits() { log_debug("Destructed"); }
 
+    void destroy() override { ; } // Nothing to do
+
     void build(VPMU_Branch& branch) override
     {
         log_debug("Initializing");

@@ -118,7 +118,7 @@ public:
                 sem_init(&stream_comm[id].job_semaphore, true, 0);
                 // Set synced_flag to tell master it's done
                 stream_comm[id].synced_flag = true;
-                log_debug("worker thread %d start", id);
+                log_debug("worker process %d start", id);
                 while (1) {
                     this->wait_semaphore(id); // Down semaphore
                     // Keep draining traces till it's empty

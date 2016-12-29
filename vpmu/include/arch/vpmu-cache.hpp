@@ -19,7 +19,7 @@ public:
     CacheStream(const char* module_name) : VPMUStream_T<VPMU_Cache>(module_name) {}
     CacheStream(std::string module_name) : VPMUStream_T<VPMU_Cache>(module_name) {}
 
-    void set_stream_impl(void) override
+    void set_default_stream_impl(void) override
     {
         // Get the default implementation of stream interface.
         impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>("C_Strm");
@@ -64,7 +64,7 @@ public:
     inline uint64_t get_memory_time_ns(int n)
     {
         VPMU_Cache::Data data = get_data(n);
-        return data.memory_cycles;
+        return data.memory_time_ns;
     }
 
     inline uint64_t get_cycles(int n)

@@ -63,9 +63,9 @@ attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
     // Check its existence and print helpful message to user
     vpmu::utils::json_check_or_exit(config, name);
     // Set the default implementation for each stream
-    s.set_stream_impl();
+    s.set_default_stream_impl();
     // Initialize all trace stream channels with its configuration
-    s.build(config[name]);
+    s.bind(config[name]);
     // Push pointers of all trace streams.
     // The pointer must point to bss section, i.e. global variable.
     // Thus, this is a safe pointer which would never be dangling.
@@ -83,15 +83,6 @@ static void vpmu_core_init(const char *vpmu_config_file)
         attach_vpmu_stream(vpmu_branch_stream, vpmu_config, "branch_models");
         attach_vpmu_stream(vpmu_cache_stream, vpmu_config, "cache_models");
 
-        // TODO remove this test code
-        // sleep(2);
-        // for (auto vs: vpmu_streams) {
-        //     vs->destroy();
-        // }
-        // vpmu_inst_stream.build(vpmu_config["cpu_models"]);
-        // vpmu_branch_stream.build(vpmu_config["branch_models"]);
-        // vpmu_cache_stream.build(vpmu_config["cache_models"]);
-        // sleep(2);
     } catch (std::invalid_argument e) {
         ERR_MSG("%s\n", e.what());
         exit(EXIT_FAILURE);
@@ -99,6 +90,25 @@ static void vpmu_core_init(const char *vpmu_config_file)
         ERR_MSG("%s\n", e.what());
         exit(EXIT_FAILURE);
     }
+
+    { // Example of changing the implementation of VPMU stream
+        auto impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>("C_Strm");
+        impl->build(1024 * 64); // 64K elements
+        vpmu_cache_stream.set_stream_impl(std::move(impl));
+    }
+    // Allocate and build resources.
+    for (auto vs : vpmu_streams) {
+        vs->build();
+    }
+// TODO remove this test code
+// sleep(2);
+// for (auto vs: vpmu_streams) {
+//     vs->destroy();
+// }
+// vpmu_inst_stream.build(vpmu_config["cpu_models"]);
+// vpmu_branch_stream.build(vpmu_config["branch_models"]);
+// vpmu_cache_stream.build(vpmu_config["cache_models"]);
+// sleep(2);
 
 #ifdef CONFIG_VPMU_SET
 // vpmu_process_tracking_init();

@@ -14,8 +14,12 @@ public:
     VPMUStream(const VPMUStream&) = delete;
     VPMUStream& operator=(const VPMUStream&) = delete;
 
-    virtual void set_stream_impl(void) { log_fatal("set_stream_impl is not implemented"); }
-    virtual void build(nlohmann::json) { log_fatal("build is not implemented"); }
+    virtual void set_default_stream_impl(void)
+    {
+        log_fatal("set_default_stream_impl is not implemented");
+    }
+    virtual void bind(nlohmann::json) { log_fatal("bind is not implemented"); }
+    virtual void build() { log_fatal("build is not implemented"); }
     virtual void destroy(void) { log_fatal("destroy is not implemented"); }
     virtual void reset(void) { log_fatal("reset is not implemented"); }
     virtual void sync(void) { log_fatal("sync is not implemented"); }
@@ -50,32 +54,34 @@ public:
     VPMUStream_T(const VPMUStream_T&) = delete;
     VPMUStream_T& operator=(const VPMUStream_T&) = delete;
 
-    void build(nlohmann::json configs) override
+    void bind(nlohmann::json configs) override
     {
-        // Destroy all if job queue is not empty
-        if (jobs.size() != 0) {
-            destroy();
-        }
         // std::cout << configs.dump();
-        log_debug("Initializing");
-
         if (configs.size() < 1) {
-            ERR_MSG("There is no content!");
+            log_fatal("There is no content!");
         }
+        target_configs = configs;
+    }
+
+    void build() override
+    {
+        // Destroy all stuff from last build
+        destroy();
+        log_debug("Initializing");
 
         // Get the default implementation of stream interface.
         if (impl == nullptr) {
             // Call child default implementation builder
-            this->set_stream_impl();
+            this->set_default_stream_impl();
         }
 
         // Locate and create instances of simulator according to the name.
-        if (configs.is_array()) {
-            for (auto sim_config : configs) {
+        if (target_configs.is_array()) {
+            for (auto sim_config : target_configs) {
                 attach_simulator(sim_config);
             }
         } else {
-            attach_simulator(configs);
+            attach_simulator(target_configs);
         }
 
         log_debug("attaching %d simulators", jobs.size());
@@ -87,13 +93,17 @@ public:
 
     void destroy(void) override
     {
-        if (impl != nullptr) {
-            impl->destroy();
-            impl.release();
-        }
-        for (auto& s : jobs) s.reset();
-        jobs.clear();
-        local_index = 0;
+        // Only release resources here.
+        // Do not clear states, ex: target_configs
+        impl.reset(nullptr);
+        // Call de-allocation of each simulator manually
+        // Since some simulators might use unsafe pointers, we need to call this
+        // to allow simulator releasing the memory it aquires.
+        for (auto& s : jobs) s->destroy();
+        // NOTE the following line won't call destructor of overrided virtual function
+        // It only calls the destructor of parent class...
+        jobs.clear(); // Clear arrays and call destructors
+        local_buffer_index = 0;
     }
 
     void reset(void) override
@@ -127,12 +137,12 @@ public:
         // Basic safety check
         if (impl == nullptr) return;
 
-        local_buffer[local_index] = new_ref;
+        local_buffer[local_buffer_index] = new_ref;
 
-        local_index++;
-        if (unlikely(local_index == local_buffer_size)) {
-            impl->send(local_buffer, local_index, local_buffer_size);
-            local_index = 0;
+        local_buffer_index++;
+        if (unlikely(local_buffer_index == local_buffer_size)) {
+            impl->send(local_buffer, local_buffer_index, local_buffer_size);
+            local_buffer_index = 0;
         }
     }
 
@@ -151,8 +161,12 @@ public:
         jobs.push_back(std::move(ptr));
     }
 
-    void set_stream_impl(Impl_ptr& s) { impl = std::move(s); }
-    void set_stream_impl(void) override { log_fatal("set_stream_impl is not implemented"); }
+    void set_stream_impl(Impl_ptr&& s) { impl = std::move(s); }
+
+    void set_default_stream_impl(void) override
+    {
+        log_fatal("set_stream_impl is not implemented");
+    }
 
     // Getter functions for C side to use.
     // Must use the inline hint to ensure the performance.
@@ -174,9 +188,9 @@ protected:
         // Basic safety check
         if (impl == nullptr) return;
         // Flush out local buffer when index is not zero
-        if (local_index != 0) {
-            impl->send(local_buffer, local_index, local_buffer_size);
-            local_index = 0;
+        if (local_buffer_index != 0) {
+            impl->send(local_buffer, local_buffer_index, local_buffer_size);
+            local_buffer_index = 0;
         }
     }
 
@@ -190,7 +204,9 @@ private:
     // Statically assigining the size for best performance
     static const uint32_t local_buffer_size = 256;
     Reference             local_buffer[local_buffer_size];
-    uint32_t              local_index = 0;
+    uint32_t              local_buffer_index = 0;
+    // A copy of configuration sent to simulators
+    nlohmann::json target_configs;
 
     virtual Sim_ptr create_sim(std::string sim_name)
     {
