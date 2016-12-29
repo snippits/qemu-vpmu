@@ -41,6 +41,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
     typedef struct D4_CACHE_CONFIG {
         d4cache *cache;
         int      level;
+        int      core;
     } D4_CACHE_CONFIG;
 
     // This is a structure that sums the dinero cache data
@@ -192,7 +193,8 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 #undef IF_KEY_IS
     }
 
-    d4cache *parse_and_set(json &root, D4_CACHE_CONFIG *parent, int extra_flag, int level)
+    d4cache *parse_and_set(
+      json &root, D4_CACHE_CONFIG *parent, int extra_flag, int level, int core)
     {
         d4cache *child = NULL;
 
@@ -208,6 +210,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         child                         = d4new(parent->cache);
         d4_cache[d4_num_caches].cache = child;
         d4_cache[d4_num_caches].level = level;
+        d4_cache[d4_num_caches].core  = core;
         d4_num_caches++;
 
         // ERR_MSG("%s\n\n", root.dump().c_str());
@@ -238,6 +241,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         return -1;
     }
 
+    // TODO how to support multiple L2 cache?
     // BFS search to form an one dimensional array
     void recursively_parse_json(json root, D4_CACHE_CONFIG *c, int level)
     {
@@ -247,7 +251,8 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         if (level != VPMU_Cache::L1_CACHE && root.is_array()) {
             local_index = d4_num_caches;
             for (int i = 0; i < root.size(); i++) {
-                parse_and_set(root[i], c, 0x00, level);
+                // TODO multi-processor, and how to assign core id with multiple L2 cache
+                parse_and_set(root[i], c, 0x00, level, 0);
             }
             for (int i = 0; i < root.size(); i++) {
                 // If there's next level of cache topology, dive into it!
@@ -267,13 +272,13 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
             index = get_processor_index(root["d-cache"]);
             for (i = 0; i < num_cores[index]; i++) {
                 d4_cache_leaf[leaf_index] =
-                  parse_and_set(root["d-cache"], c, 0x00, level);
+                  parse_and_set(root["d-cache"], c, 0x00, level, i);
                 leaf_index++;
             }
             index = get_processor_index(root["i-cache"]);
             for (i = 0; i < num_cores[index]; i++) {
                 d4_cache_leaf[leaf_index] =
-                  parse_and_set(root["i-cache"], c, D4F_RO, level);
+                  parse_and_set(root["i-cache"], c, D4F_RO, level, i);
                 leaf_index++;
             }
         }
@@ -281,42 +286,35 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 
     void sync_cache_data(VPMU_Cache::Data &data, VPMU_Cache::Model &model)
     {
-        int         i, level, processor;
-        Demand_Data d;
-
-        for (processor = 0; processor < ALL_PROC; processor++) {
+        for (int processor = 0; processor < ALL_PROC; processor++) {
             if (num_cores[processor] == 0) continue;
-            // Loop through from L1 to max level of current cache configuration
-            for (level = VPMU_Cache::L1_CACHE; level <= d4_levels; level++) {
-                // Loop through all the processor cores
-                for (i = 0; i < num_cores[processor]; i++) {
-                    int index;
+            for (int i = 1; i < MAX_D4_CACHES && d4_cache[i].cache != NULL; i++) {
+                d4cache *   c = d4_cache[i].cache;
+                Demand_Data d = calculate_data(c);
 
-                    index = core_num_table[processor] + // the offset of processor
-                            num_cores[processor] +      // the offset of i-cache
-                            i;                          // the offset of core
-                    d        = calculate_data(d4_cache_leaf[index]);
-                    auto &ti = data.inst_cache[processor][level][i];
-                    // Sync back values
-                    ti[VPMU_Cache::READ]       = d.fetch_alltype;
-                    ti[VPMU_Cache::WRITE]      = 0;
-                    ti[VPMU_Cache::READ_MISS]  = d.data_alltype;
-                    ti[VPMU_Cache::WRITE_MISS] = 0;
+                int level = d4_cache[i].level;
+                int core  = d4_cache[i].core;
 
-                    index = core_num_table[processor] + // the offset of processor
-                            0 +                         // the offset of d-cache
-                            i;                          // the offset of core
-                    d        = calculate_data(d4_cache_leaf[index]);
-                    auto &td = data.data_cache[processor][level][i];
+                if (c->flags & D4F_RO) {
+                    // i-cache
+                    auto &cache = data.inst_cache[processor][level][core];
                     // Sync back values
-                    td[VPMU_Cache::READ]       = d.fetch_read;
-                    td[VPMU_Cache::WRITE]      = d4_cache_leaf[index]->fetch[D4XWRITE];
-                    td[VPMU_Cache::READ_MISS]  = d.data_read;
-                    td[VPMU_Cache::WRITE_MISS] = d4_cache_leaf[index]->miss[D4XWRITE];
+                    cache[VPMU_Cache::READ]       = d.fetch_alltype;
+                    cache[VPMU_Cache::WRITE]      = 0;
+                    cache[VPMU_Cache::READ_MISS]  = d.data_alltype;
+                    cache[VPMU_Cache::WRITE_MISS] = 0;
+                } else {
+                    // d-cache
+                    auto &cache = data.data_cache[processor][level][core];
+                    // Sync back values
+                    cache[VPMU_Cache::READ]       = d.fetch_alltype - c->fetch[D4XWRITE];
+                    cache[VPMU_Cache::WRITE]      = c->fetch[D4XWRITE];
+                    cache[VPMU_Cache::READ_MISS]  = d.data_read;
+                    cache[VPMU_Cache::WRITE_MISS] = c->miss[D4XWRITE];
                 }
             }
         }
-        d = calculate_data(d4_cache[0].cache);
+        Demand_Data d = calculate_data(d4_cache[0].cache);
 
         data.memory_accesses = d.fetch_read;
         // TODO separate sequential and random access count, add new field in config
@@ -421,6 +419,7 @@ public:
         vpmu::utils::json_check_or_exit(json_config, "topology");
         d4_cache[d4_num_caches].cache = d4_mem_create();
         d4_cache[d4_num_caches].level = VPMU_Cache::MEMORY;
+        d4_cache[d4_num_caches].core  = 0;
         d4_num_caches++;
         recursively_parse_json(json_config["topology"], &d4_cache[0], d4_levels);
         sync_back_config_to_vpmu(cache.model, json_config);
