@@ -19,11 +19,11 @@ VPMU_OBJS+=ref.o misc.o
 
 ifeq ($(TARGET_NAME),arm)
 VPATH+=:$(SRC_PATH)/vpmu/arch/arm
-VPMU_OBJS+=vpmu-arm-translate.o vpmu-arm-instset.o Cortex-A9.o
+VPMU_OBJS+=vpmu-arm-inst.o vpmu-arm-translate.o vpmu-arm-instset.o Cortex-A9.o
 endif
 ifeq ($(TARGET_NAME),x86_64)
 VPATH+=:$(SRC_PATH)/vpmu/arch/i386
-VPMU_OBJS+=
+VPMU_OBJS+=vpmu-i386-inst.o
 endif
 
 ifeq ($(CONFIG_VPMU_SET),y)

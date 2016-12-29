@@ -50,7 +50,11 @@ public:
     }
 
     // This is used in instruction model only!
+#if defined(TARGET_ARM)
     virtual VPMUARMTranslate *get_translator_handle(void)
+#else
+    virtual VPMUi386Translate *get_translator_handle(void)
+#endif
     {
         log_fatal("get_translator function is not implemented!!");
         return nullptr;

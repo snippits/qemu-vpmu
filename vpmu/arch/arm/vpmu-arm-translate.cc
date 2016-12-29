@@ -13,7 +13,6 @@ extern "C" {
 // If you really want CPU information and some other functions,
 // include the following headers in another C file. (NOT CPP)
 // And implement your own interface and functions for doing magics.
-// #define NEED_CPU_H
 // #include "qemu/osdep.h"
 // #include "cpu.h"
 // #include "exec/exec-all.h"

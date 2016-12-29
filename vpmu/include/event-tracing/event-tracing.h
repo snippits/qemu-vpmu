@@ -24,7 +24,9 @@ enum ET_KERNEL_EVENT_TYPE {
 #include "exec/exec-all.h" // tlb_fill()
 
 // Implemented in C side
-void et_check_function_call(CPUARMState* env, uint64_t target_addr, uint64_t return_addr);
+void et_check_function_call(CPUArchState* env,
+                            uint64_t      target_addr,
+                            uint64_t      return_addr);
 #endif
 
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);

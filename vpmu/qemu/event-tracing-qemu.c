@@ -1,9 +1,10 @@
 #include "vpmu/include/vpmu.h"
 #include "vpmu/include/event-tracing/event-tracing.h"
 
-void et_check_function_call(CPUARMState *env, uint64_t target_addr, uint64_t return_addr)
+#if defined(TARGET_ARM)
+void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t return_addr)
 {
-    // TODO Move this to another place and thread safe and need to check branch!!!!!!!
+    // TODO make this thread safe and need to check branch!!!!!!!
     CPUState *cs                = CPU(ENV_GET_CPU(env));
     VPMU.cs                     = cs;
     static uint32_t current_pid = 0;
@@ -76,3 +77,12 @@ void et_check_function_call(CPUARMState *env, uint64_t target_addr, uint64_t ret
         break;
     }
 }
+
+#else
+void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t return_addr)
+{
+    // TODO try to integrate this function cross-architecture
+    // by separating magic read_uint32... from this function to other functions
+}
+#endif
+
