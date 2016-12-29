@@ -57,20 +57,16 @@ public:
 
 #if defined(TARGET_ARM)
     void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
-    VPMUARMTranslate* get_translator(int n)
-    {
-        if (n > jobs.size()) n = 0;
-        return jobs[n]->get_translator_handle();
-    }
 // End of TARGET_ARM
 #elif defined(TARGET_X86_64)
     void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
-    VPMUi386Translate* get_translator(int n)
+#endif // End of TARGET_X86_64
+
+    VPMUArchTranslate& get_translator(int n)
     {
         if (n > jobs.size()) n = 0;
         return jobs[n]->get_translator_handle();
     }
-#endif // End of TARGET_X86_64
 
 private:
     // This is a register function declared in the vpmu-inst.cc file.

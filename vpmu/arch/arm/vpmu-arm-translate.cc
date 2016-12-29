@@ -20,22 +20,22 @@ extern "C" {
 
 void vpmu_accumulate_arm_ticks(ExtraTBInfo* ex_tb, uint32_t insn)
 {
-    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_arm_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0).get_arm_ticks(insn);
 }
 
 void vpmu_accumulate_thumb_ticks(ExtraTBInfo* ex_tb, uint32_t insn)
 {
-    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_thumb_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0).get_thumb_ticks(insn);
 }
 
 void vpmu_accumulate_cp14_ticks(ExtraTBInfo* ex_tb, uint32_t insn)
 {
-    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_cp14_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0).get_cp14_ticks(insn);
 }
 
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_VFP)
 void vpmu_accumulate_vfp_ticks(ExtraTBInfo* ex_tb, uint32_t insn, uint64_t vfp_vec_len)
 {
-    ex_tb->ticks += vpmu_inst_stream.get_translator(0)->get_vfp_ticks(insn);
+    ex_tb->ticks += vpmu_inst_stream.get_translator(0).get_vfp_ticks(insn);
 }
 #endif

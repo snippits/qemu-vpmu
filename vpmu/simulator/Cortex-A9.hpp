@@ -67,7 +67,7 @@ public: // VPMUSimulator
     CPU_CortexA9() : VPMUSimulator("CortexA9") { log_debug("Constructed"); }
     ~CPU_CortexA9() { log_debug("Destructed"); }
 
-    VPMUARMTranslate* get_translator_handle(void) override { return &translator; }
+    VPMUARMTranslate& get_translator_handle(void) override { return translator; }
 
     void destroy() override { ; } // Nothing to do
     void build(VPMU_Inst& inst) override;

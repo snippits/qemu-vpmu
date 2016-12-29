@@ -38,4 +38,13 @@ public:
     // TODO x86 models
 };
 
+
+#if defined(TARGET_ARM)
+using VPMUArchTranslate = VPMUARMTranslate;
+#elif defined(TARGET_I386)
+using VPMUArchTranslate = VPMUi386Translate;
+#elif defined(TARGET_X86_64)
+using VPMUArchTranslate = VPMUi386Translate;
+#endif
+
 #endif // End of __VPMU_TRANSLATE_HPP_
