@@ -297,7 +297,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 
                 if (c->flags & D4F_RO) {
                     // i-cache
-                    auto &cache = data.inst_cache[processor][level][core];
+                    auto &cache = data.insn_cache[processor][level][core];
                     // Sync back values
                     cache[VPMU_Cache::READ]       = d.fetch_alltype;
                     cache[VPMU_Cache::WRITE]      = 0;
@@ -453,7 +453,7 @@ public:
         d4memref d4_ref;
 
         // Calculate the index of target cache reference index
-        if (ref.type == CACHE_PACKET_INSTRN)
+        if (ref.type == CACHE_PACKET_INSN)
             index = core_num_table[ref.processor] + // the offset of processor
                     num_cores[ref.processor] +      // the offset of i-cache
                     ref.core;                       // the offset of core
@@ -495,7 +495,7 @@ public:
             break;
         case CACHE_PACKET_READ:
         case CACHE_PACKET_WRITE:
-        case CACHE_PACKET_INSTRN:
+        case CACHE_PACKET_INSN:
             // DBG("index=%d, %x\n", index, d4_cache_leaf[index]);
             // Ignore all packets if this configuration does not support
             if (unlikely(num_cores[ref.processor] == 0)) return;
@@ -514,7 +514,7 @@ public:
         uint16_t type  = ref.type & 0xF0FF; // Remove states
 
         // Calculate the index of target cache reference index
-        if (type == CACHE_PACKET_INSTRN)
+        if (type == CACHE_PACKET_INSN)
             index = core_num_table[ref.processor] + // the offset of processor
                     num_cores[ref.processor] +      // the offset of i-cache
                     ref.core;                       // the offset of core
@@ -530,7 +530,7 @@ public:
         int s_block = ref.addr >> cache.model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
         int num_of_cacheblks = e_block - s_block + 1;
         switch (type) {
-        case CACHE_PACKET_INSTRN:
+        case CACHE_PACKET_INSN:
             d4_cache_leaf[index]->fetch[D4XINSTRN] += num_of_cacheblks;
 #ifdef CONFIG_VPMU_DEBUG_MSG
             debug_packet_num_cnt++;

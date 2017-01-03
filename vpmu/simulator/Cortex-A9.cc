@@ -1,6 +1,6 @@
 extern "C" {
 #include "vpmu-arm-translate.h" // Interface header between QEMU and VPMU
-#include "vpmu-arm-instset.h"   // Instruction Set
+#include "vpmu-arm-insnset.h"   // Instruction Set
 }
 
 #include "vpmu.hpp" // VPMU common headers
@@ -2890,22 +2890,22 @@ int CPU_CortexA9::Translation::_get_insn_ticks_thumb(uint32_t insn)
         return 0;
 }
 
-void CPU_CortexA9::build(VPMU_Inst& inst)
+void CPU_CortexA9::build(VPMU_Insn& insn)
 {
     log_debug("Initializing");
 
     log_debug(json_config.dump().c_str());
 
     auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
-    strncpy(inst.model.name, model_name.c_str(), sizeof(inst.model.name));
-    inst.model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
-    inst.model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
+    strncpy(insn.model.name, model_name.c_str(), sizeof(insn.model.name));
+    insn.model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
+    insn.model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
 
     translator.build(json_config);
     log_debug("Initialized");
 }
 
-void CPU_CortexA9::packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst& inst)
+void CPU_CortexA9::packet_processor(int id, VPMU_Insn::Reference& ref, VPMU_Insn& insn)
 {
 #define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
 #define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
@@ -2921,35 +2921,35 @@ void CPU_CortexA9::packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst
     // The implementation depends on your own packet type and writing style
     switch (ref.type) {
     case VPMU_PACKET_BARRIER:
-        inst.data.inst_cnt[0] = vpmu_total_inst_count(inst.data);
-        inst.data.cycles[0]   = cycles[0];
+        insn.data.insn_cnt[0] = vpmu_total_insn_count(insn.data);
+        insn.data.cycles[0]   = cycles[0];
         break;
     case VPMU_PACKET_DUMP_INFO:
         CONSOLE_LOG("  [%d] type : Cortex A9\n", id);
-        CONSOLE_U64(" Total instruction count       :", vpmu_total_inst_count(inst.data));
-        CONSOLE_U64("  ->User mode insn count       :", inst.data.user.total_inst);
-        CONSOLE_U64("  ->Supervisor mode insn count :", inst.data.system.total_inst);
-        CONSOLE_U64("  ->IRQ mode insn count        :", inst.data.interrupt.total_inst);
-        CONSOLE_U64("  ->Other mode insn count      :", inst.data.rest.total_inst);
-        CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(inst.data));
-        CONSOLE_U64("  ->User mode load count       :", inst.data.user.load);
-        CONSOLE_U64("  ->Supervisor mode load count :", inst.data.system.load);
-        CONSOLE_U64("  ->IRQ mode load count        :", inst.data.interrupt.load);
-        CONSOLE_U64("  ->Other mode load count      :", inst.data.rest.load);
+        CONSOLE_U64(" Total instruction count       :", vpmu_total_insn_count(insn.data));
+        CONSOLE_U64("  ->User mode insn count       :", insn.data.user.total_insn);
+        CONSOLE_U64("  ->Supervisor mode insn count :", insn.data.system.total_insn);
+        CONSOLE_U64("  ->IRQ mode insn count        :", insn.data.interrupt.total_insn);
+        CONSOLE_U64("  ->Other mode insn count      :", insn.data.rest.total_insn);
+        CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(insn.data));
+        CONSOLE_U64("  ->User mode load count       :", insn.data.user.load);
+        CONSOLE_U64("  ->Supervisor mode load count :", insn.data.system.load);
+        CONSOLE_U64("  ->IRQ mode load count        :", insn.data.interrupt.load);
+        CONSOLE_U64("  ->Other mode load count      :", insn.data.rest.load);
         CONSOLE_U64(" Total store instruction count :",
-                    vpmu_total_store_count(inst.data));
-        CONSOLE_U64("  ->User mode store count      :", inst.data.user.store);
-        CONSOLE_U64("  ->Supervisor mode store count:", inst.data.system.store);
-        CONSOLE_U64("  ->IRQ mode store count       :", inst.data.interrupt.store);
-        CONSOLE_U64("  ->Other mode store count     :", inst.data.rest.store);
+                    vpmu_total_store_count(insn.data));
+        CONSOLE_U64("  ->User mode store count      :", insn.data.user.store);
+        CONSOLE_U64("  ->Supervisor mode store count:", insn.data.system.store);
+        CONSOLE_U64("  ->IRQ mode store count       :", insn.data.interrupt.store);
+        CONSOLE_U64("  ->Other mode store count     :", insn.data.rest.store);
 
         break;
     case VPMU_PACKET_RESET:
         memset(cycles, 0, sizeof(cycles));
-        memset(&inst.data, 0, sizeof(VPMU_Inst::Data));
+        memset(&insn.data, 0, sizeof(VPMU_Insn::Data));
         break;
     case VPMU_PACKET_DATA:
-        accumulate(ref, inst.data);
+        accumulate(ref, insn.data);
         break;
     default:
         log_fatal("Unexpected packet");
@@ -2959,9 +2959,9 @@ void CPU_CortexA9::packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst
 #undef CONSOLE_U64
 }
 
-void CPU_CortexA9::accumulate(VPMU_Inst::Reference& ref, VPMU_Inst::Data& inst_data)
+void CPU_CortexA9::accumulate(VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data)
 {
-    VPMU_Inst::Inst_Data_Cell* cell = NULL;
+    VPMU_Insn::Insn_Data_Cell* cell = NULL;
     // Defining the types (struct) for communication
     enum CPU_MODE { // Copy from QEMU cpu.h
         USR = 0x10,
@@ -2976,21 +2976,21 @@ void CPU_CortexA9::accumulate(VPMU_Inst::Reference& ref, VPMU_Inst::Data& inst_d
     };
 
     if (ref.mode == USR) {
-        cell = &inst_data.user;
+        cell = &insn_data.user;
     } else if (ref.mode == SVC) {
         // if (ref.swi_fired_flag) { // TODO This feature is still lack of
         // setting this flag to true
-        //    cell = &inst_data.system_call;
+        //    cell = &insn_data.system_call;
         //} else {
-        //    cell = &inst_data.system;
+        //    cell = &insn_data.system;
         //}
-        cell = &inst_data.system;
+        cell = &insn_data.system;
     } else if (ref.mode == IRQ) {
-        cell = &inst_data.interrupt;
+        cell = &insn_data.interrupt;
     } else {
-        cell = &inst_data.rest;
+        cell = &insn_data.rest;
     }
-    cell->total_inst += ref.tb_counters_ptr->counters.total;
+    cell->total_insn += ref.tb_counters_ptr->counters.total;
     cell->load += ref.tb_counters_ptr->counters.load;
     cell->store += ref.tb_counters_ptr->counters.store;
     cell->branch += ref.tb_counters_ptr->has_branch;
@@ -3043,7 +3043,7 @@ void CPU_CortexA9::Translation::build(nlohmann::json config)
         std::string key   = it.key();
         uint32_t    value = it.value();
 
-        arm_instr_time[get_index_of_arm_inst(key.c_str())] = value;
+        arm_instr_time[get_index_of_arm_insn(key.c_str())] = value;
     }
 }
 

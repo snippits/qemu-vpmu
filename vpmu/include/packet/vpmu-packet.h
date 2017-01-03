@@ -17,7 +17,7 @@ enum PACKET_PROCESSOR_TYPE { PROCESSOR_CPU, PROCESSOR_GPU, ALL_PROC };
 // These are cache related
 #define CACHE_PACKET_READ     0x0000
 #define CACHE_PACKET_WRITE    0x0001
-#define CACHE_PACKET_INSTRN   0x0002
+#define CACHE_PACKET_INSN     0x0002
 
 // Values above 0xFF00 belongs to control packets
 #define VPMU_PACKET_BARRIER   (0x00FF | VPMU_PACKET_CONTROL)

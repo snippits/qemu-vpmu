@@ -5,7 +5,7 @@ extern "C" {
 }
 #include "vpmu.hpp"        // VPMU common header
 #include "vpmu-stream.hpp" // VPMUStream, VPMUStream_T
-#include "vpmu-packet.hpp" // VPMU_Inst, VPMU_Branch, VPMU_Cache
+#include "vpmu-packet.hpp" // VPMU_Insn, VPMU_Branch, VPMU_Cache
 #include "json.hpp"        // nlohmann::json
 // The implementaion of stream buffer and multi- threading/processing
 #include "stream/single-thread.hpp" // VPMU_Stream_Single_Thread
@@ -41,7 +41,7 @@ public:
             int      core     = 0;
             uint64_t miss_cnt = 0, hit_cnt = 0;
             { // Instruction cache
-                auto& cache = data.inst_cache[PROCESSOR_CPU][level][core];
+                auto& cache = data.insn_cache[PROCESSOR_CPU][level][core];
                 miss_cnt += cache[VPMU_Cache::READ_MISS];
                 hit_cnt += cache[VPMU_Cache::READ] - cache[VPMU_Cache::READ_MISS];
             }

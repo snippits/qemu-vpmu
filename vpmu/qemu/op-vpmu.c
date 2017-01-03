@@ -1,7 +1,7 @@
 #include "vpmu/include/vpmu-qemu.h"          // ExtraTB, XXX_ref() etc.
 #include "vpmu/include/packet/vpmu-packet.h" // data types for sending traces
 #include "vpmu/include/vpmu-device.h"        // vpmu_model_has and its macros
-#include "vpmu/include/arch/vpmu-inst.h"     // vpmu_inst_ref
+#include "vpmu/include/arch/vpmu-insn.h"     // vpmu_insn_ref
 #include "vpmu/include/arch/vpmu-cache.h"    // vpmu_cache_ref
 #include "vpmu/include/arch/vpmu-branch.h"   // vpmu_branch_ref
 
@@ -107,11 +107,11 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
         } // End of VPMU_JIT_MODEL_SELECT
 
         if (vpmu_model_has(VPMU_INSN_COUNT_SIM, VPMU)) {
-            vpmu_inst_ref(cs->cpu_index, mode, extra_tb_info);
+            vpmu_insn_ref(cs->cpu_index, mode, extra_tb_info);
         } // End of VPMU_INSN_COUNT_SIM
 
         if (vpmu_model_has(VPMU_ICACHE_SIM, VPMU)) {
-            uint16_t type = CACHE_PACKET_INSTRN;
+            uint16_t type = CACHE_PACKET_INSN;
             if (extra_tb_info->modelsel.hot_tb_flag) {
                 type |= VPMU_PACKET_HOT;
             }

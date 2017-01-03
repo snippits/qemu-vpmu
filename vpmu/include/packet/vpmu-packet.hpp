@@ -22,7 +22,7 @@ extern "C" {
 //                                T             uint32_t
 //
 // Where the template type "T" could be one of the following:
-//     VPMU_Inst, VPMU_Branch, VPMU_Cache
+//     VPMU_Insn, VPMU_Branch, VPMU_Cache
 // Where the number "N" is the default maximum number of workers: VPMU_MAX_NUM_WORKERS
 // Where "buffer_size" is a given number from stream implementation
 template <typename T>
@@ -169,7 +169,7 @@ public:
     // The data/states of each simulators for VPMU
     typedef struct {
         //[level][core][r/w miss/hit]
-        uint64_t inst_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
+        uint64_t insn_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         uint64_t data_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         uint64_t memory_accesses, memory_time_ns;
     } Data;
@@ -220,7 +220,7 @@ public:
 };
 
 #if defined(TARGET_ARM)
-class VPMU_Inst
+class VPMU_Insn
 {
 public:
 #pragma pack(push) // push current alignment to stack
@@ -234,19 +234,19 @@ public:
         ExtraTBInfo *tb_counters_ptr; // A pointer pointing to TB info
     } Reference;
 
-    typedef struct Inst_Data_Cell {
-        uint64_t total_inst;
+    typedef struct Insn_Data_Cell {
+        uint64_t total_insn;
         uint64_t load;
         uint64_t store;
         uint64_t branch;
-    } Inst_Data_Cell;
+    } Insn_Data_Cell;
 
     // The data/states of each simulators for VPMU
     typedef struct {
-        Inst_Data_Cell user, system, interrupt, system_call, rest, fpu, co_processor;
+        Insn_Data_Cell user, system, interrupt, system_call, rest, fpu, co_processor;
 
         uint64_t cycles[VPMU_MAX_CPU_CORES];   // Total cycles
-        uint64_t inst_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
+        uint64_t insn_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
     } Data;
 
     // The architectural configuration information
@@ -283,7 +283,7 @@ public:
 
 // End of TARGET_ARM
 #elif defined(TARGET_X86_64)
-class VPMU_Inst
+class VPMU_Insn
 {
 public:
 #pragma pack(push) // push current alignment to stack
@@ -297,19 +297,19 @@ public:
         ExtraTBInfo *tb_counters_ptr; // A pointer pointing to TB info
     } Reference;
 
-    typedef struct Inst_Data_Cell {
-        uint64_t total_inst;
+    typedef struct Insn_Data_Cell {
+        uint64_t total_insn;
         uint64_t load;
         uint64_t store;
         uint64_t branch;
-    } Inst_Data_Cell;
+    } Insn_Data_Cell;
 
     // The data/states of each simulators for VPMU
     typedef struct {
-        Inst_Data_Cell user, system, interrupt, system_call, rest, fpu, co_processor;
+        Insn_Data_Cell user, system, interrupt, system_call, rest, fpu, co_processor;
 
         uint64_t cycles[VPMU_MAX_CPU_CORES];   // Total cycles
-        uint64_t inst_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
+        uint64_t insn_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
     } Data;
 
     // The architectural configuration information

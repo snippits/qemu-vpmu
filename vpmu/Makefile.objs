@@ -10,7 +10,7 @@ VPATH+=:$(SRC_PATH)/vpmu/qemu
 all-obj-$(CONFIG_VPMU) += vpmu-device.o vpmu.o event-tracing-qemu.o
 
 #Please add your VPMU source code here
-VPMU_OBJS=vpmu-core.o vpmu-inst.o vpmu-branch.o vpmu-cache.o vpmu-utils.o
+VPMU_OBJS=vpmu-core.o vpmu-insn.o vpmu-branch.o vpmu-cache.o vpmu-utils.o
 VPMU_OBJS+=event-tracing.o
 VPMU_OBJS+=ref.o misc.o
 #VPMU_SRCS=vpmu-oprofile.c vpmu-print.c vpmu-vtd.c vpmu-core.c vpmu-profile.c
@@ -19,11 +19,11 @@ VPMU_OBJS+=ref.o misc.o
 
 ifeq ($(TARGET_NAME),arm)
 VPATH+=:$(SRC_PATH)/vpmu/arch/arm
-VPMU_OBJS+=vpmu-arm-inst.o vpmu-arm-translate.o vpmu-arm-instset.o Cortex-A9.o
+VPMU_OBJS+=vpmu-arm-insn.o vpmu-arm-translate.o vpmu-arm-insnset.o Cortex-A9.o
 endif
 ifeq ($(TARGET_NAME),x86_64)
 VPATH+=:$(SRC_PATH)/vpmu/arch/i386
-VPMU_OBJS+=vpmu-i386-inst.o
+VPMU_OBJS+=vpmu-i386-insn.o
 endif
 
 ifeq ($(CONFIG_VPMU_SET),y)

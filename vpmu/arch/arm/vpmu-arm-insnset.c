@@ -1,9 +1,9 @@
 #include "vpmu.h"             // VPMU common headers
-#include "vpmu-arm-instset.h" // ARM Instruction SET
+#include "vpmu-arm-insnset.h" // ARM Instruction SET
 #include "vpmu-log.h"         // ERR_MSG
 
 // Return array length if not found
-ARM_Instructions get_index_of_arm_inst(const char *s)
+ARM_Instructions get_index_of_arm_insn(const char *s)
 {
 #define etype(x) macro_str(x)
     // static is for putting it in global space
@@ -14,14 +14,14 @@ ARM_Instructions get_index_of_arm_inst(const char *s)
         if (strcmp(str_arm_instructions[i], s) == 0) return (ARM_Instructions)i;
     }
 
-    ERR_MSG("get_index_of_arm_inst: could not find field \"%s\"\n", s);
+    ERR_MSG("get_index_of_arm_insn: could not find field \"%s\"\n", s);
 #undef etype
     return ARM_INSTRUCTION_TOTAL_COUNTS;
 }
 
 #ifdef CONFIG_VPMU_VFP
 // Return array length if not found
-ARM_VFP_Instructions get_index_of_arm_vfp_inst(const char *s)
+ARM_VFP_Instructions get_index_of_arm_vfp_insn(const char *s)
 {
 #define etype(x) macro_str(x)
     // static is for putting it in global space
@@ -32,7 +32,7 @@ ARM_VFP_Instructions get_index_of_arm_vfp_inst(const char *s)
         if (strcmp(str_arm_vfp_instructions[i], s) == 0) return (ARM_VFP_Instructions)i;
     }
 
-    ERR_MSG("get_index_of_arm_vfp_inst: could not find field \"%s\"\n", s);
+    ERR_MSG("get_index_of_arm_vfp_insn: could not find field \"%s\"\n", s);
 #undef etype
     return ARM_VFP_INSTRUCTION_TOTAL_COUNTS;
 }

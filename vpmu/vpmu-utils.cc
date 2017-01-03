@@ -4,7 +4,7 @@
 #include "vpmu-utils.hpp" // miscellaneous functions
 #include "json.hpp"       // nlohmann::json
 
-#include "vpmu-inst.hpp"   // vpmu_inst_stream
+#include "vpmu-insn.hpp"   // vpmu_insn_stream
 #include "vpmu-cache.hpp"  // vpmu_cache_stream
 #include "vpmu-branch.hpp" // vpmu_branch_stream
 
@@ -91,7 +91,7 @@ namespace target
 {
     double scale_factor(void) { return 1 / (VPMU.platform.cpu.frequency / 1000.0); }
 
-    uint64_t cpu_cycles(void) { return vpmu_inst_stream.get_cycles(0); }
+    uint64_t cpu_cycles(void) { return vpmu_insn_stream.get_cycles(0); }
 
     uint64_t branch_cycles(void) { return vpmu_branch_stream.get_cycles(0); }
 

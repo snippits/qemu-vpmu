@@ -1,5 +1,5 @@
-#ifndef __VPMU_ARM_INSTSET_
-#define __VPMU_ARM_INSTSET_
+#ifndef __VPMU_ARM_INSNSET_
+#define __VPMU_ARM_INSNSET_
 
 #define macro_str(str) #str
 
@@ -268,9 +268,9 @@ typedef enum { ARM_VFP_INSTRUCTION } ARM_VFP_Instructions;
 #undef etype
 #endif // CONFIG_VPMU_VFP
 
-ARM_Instructions get_index_of_arm_inst(const char *s);
+ARM_Instructions get_index_of_arm_insn(const char *s);
 #ifdef CONFIG_VPMU_VFP
-ARM_VFP_Instructions get_index_of_arm_vfp_inst(const char *s);
+ARM_VFP_Instructions get_index_of_arm_vfp_insn(const char *s);
 #endif // CONFIG_VPMU_VFP
 
-#endif // End of __VPMU_INSTSET_
+#endif // End of __VPMU_INSNSET_

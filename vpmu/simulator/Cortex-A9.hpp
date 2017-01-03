@@ -2,17 +2,17 @@
 #define __CPU_CORTEX_A9_HPP__
 extern "C" {
 #include "vpmu-qemu.h"        // ExtraTBInfo
-#include "vpmu-arm-instset.h" // Instruction Set
+#include "vpmu-arm-insnset.h" // Instruction Set
 }
 #include "vpmu-sim.hpp"       // VPMUSimulator
 #include "vpmu-translate.hpp" // VPMUARMTranslate
-#include "vpmu-packet.hpp"    // VPMU_Inst
+#include "vpmu-packet.hpp"    // VPMU_Insn
 
-#define VPMU_INST_SUM(_D, _N)                                                            \
+#define VPMU_INSN_SUM(_D, _N)                                                            \
     _D.user._N + _D.system._N + _D.interrupt._N + _D.system_call._N + _D.rest._N         \
       + _D.fpu._N + _D.co_processor._N
 
-class CPU_CortexA9 : public VPMUSimulator<VPMU_Inst>
+class CPU_CortexA9 : public VPMUSimulator<VPMU_Insn>
 {
 private: // VPMUARMTranslate
     class Translation : public VPMUARMTranslate
@@ -70,8 +70,8 @@ public: // VPMUSimulator
     VPMUARMTranslate& get_translator_handle(void) override { return translator; }
 
     void destroy() override { ; } // Nothing to do
-    void build(VPMU_Inst& inst) override;
-    void packet_processor(int id, VPMU_Inst::Reference& ref, VPMU_Inst& inst) override;
+    void build(VPMU_Insn& insn) override;
+    void packet_processor(int id, VPMU_Insn::Reference& ref, VPMU_Insn& inst) override;
 
 private:
 #ifdef CONFIG_VPMU_DEBUG_MSG
@@ -84,31 +84,31 @@ private:
     // The instance of Translator called from QEMU when doing binary translation
     Translation translator;
 
-    void accumulate(VPMU_Inst::Reference& ref, VPMU_Inst::Data& inst_data);
+    void accumulate(VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data);
 
-    uint64_t vpmu_total_inst_count(VPMU_Inst::Data& inst_data)
+    uint64_t vpmu_total_insn_count(VPMU_Insn::Data& insn_data)
     {
-        return VPMU_INST_SUM(inst_data, total_inst);
+        return VPMU_INSN_SUM(insn_data, total_insn);
     }
 
-    uint64_t vpmu_total_ldst_count(VPMU_Inst::Data& inst_data)
+    uint64_t vpmu_total_ldst_count(VPMU_Insn::Data& insn_data)
     {
-        return VPMU_INST_SUM(inst_data, load) + VPMU_INST_SUM(inst_data, store);
+        return VPMU_INSN_SUM(insn_data, load) + VPMU_INSN_SUM(insn_data, store);
     }
 
-    uint64_t vpmu_total_load_count(VPMU_Inst::Data& inst_data)
+    uint64_t vpmu_total_load_count(VPMU_Insn::Data& insn_data)
     {
-        return VPMU_INST_SUM(inst_data, load);
+        return VPMU_INSN_SUM(insn_data, load);
     }
 
-    uint64_t vpmu_total_store_count(VPMU_Inst::Data& inst_data)
+    uint64_t vpmu_total_store_count(VPMU_Insn::Data& insn_data)
     {
-        return VPMU_INST_SUM(inst_data, store);
+        return VPMU_INSN_SUM(insn_data, store);
     }
 
-    uint64_t vpmu_branch_insn_count(VPMU_Inst::Data& inst_data)
+    uint64_t vpmu_branch_insn_count(VPMU_Insn::Data& insn_data)
     {
-        return VPMU_INST_SUM(inst_data, branch);
+        return VPMU_INSN_SUM(insn_data, branch);
     }
 
 #ifdef CONFIG_VPMU_VFP
@@ -117,5 +117,5 @@ private:
     // End of VPMUSimulator
 };
 
-#undef VPMU_INST_SUM
+#undef VPMU_INSN_SUM
 #endif

@@ -5,9 +5,9 @@ extern "C" {
 #include "vpmu.hpp"           // VPMU common header
 #include "vpmu-stream.hpp"    // VPMUStream, VPMUStream_T
 #include "vpmu-translate.hpp" // VPMUTranslate
-#include "vpmu-inst.hpp"      // Inst_Stream
-#include "vpmu-cache.hpp"     // Cache_Stream
-#include "vpmu-branch.hpp"    // Branch_Stream
+#include "vpmu-insn.hpp"      // InsnStream
+#include "vpmu-cache.hpp"     // CacheStream
+#include "vpmu-branch.hpp"    // BranchStream
 
 #include "json.hpp" // nlohmann::json
 using json = nlohmann::json;
@@ -79,7 +79,7 @@ static void vpmu_core_init(const char *vpmu_config_file)
     try {
         json vpmu_config = VPMU_load_json(vpmu_config_file);
 
-        attach_vpmu_stream(vpmu_inst_stream, vpmu_config, "cpu_models");
+        attach_vpmu_stream(vpmu_insn_stream, vpmu_config, "cpu_models");
         attach_vpmu_stream(vpmu_branch_stream, vpmu_config, "branch_models");
         attach_vpmu_stream(vpmu_cache_stream, vpmu_config, "cache_models");
 
@@ -105,7 +105,7 @@ static void vpmu_core_init(const char *vpmu_config_file)
 // for (auto vs: vpmu_streams) {
 //     vs->destroy();
 // }
-// vpmu_inst_stream.build(vpmu_config["cpu_models"]);
+// vpmu_insn_stream.build(vpmu_config["cpu_models"]);
 // vpmu_branch_stream.build(vpmu_config["branch_models"]);
 // vpmu_cache_stream.build(vpmu_config["cache_models"]);
 // sleep(2);
@@ -115,12 +115,12 @@ static void vpmu_core_init(const char *vpmu_config_file)
 #endif
 
     CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
-    InstructionStream::Model cpu_model    = vpmu_inst_stream.get_model(0);
+    InstructionStream::Model cpu_model    = vpmu_insn_stream.get_model(0);
     BranchStream::Model      branch_model = vpmu_branch_stream.get_model(0);
     VPMU.platform.cpu.frequency           = cpu_model.frequency;
     std::function<void(std::string)> func(
       [=](auto i) { std::cout << i << cpu_model.name << std::endl; });
-    vpmu_inst_stream.async(func, "hello async callback\n");
+    vpmu_insn_stream.async(func, "hello async callback\n");
     // After this line, the configs from simulators are synced!!!
     CONSOLE_LOG(STR_VPMU "VPMU configurations:\n");
     CONSOLE_LOG(STR_VPMU "    CPU Model    : %s\n", cpu_model.name);
@@ -247,7 +247,7 @@ void vpmu_dump_readable_message(void)
 #define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
 #define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
     CONSOLE_LOG("Instructions:\n");
-    vpmu_inst_stream.dump();
+    vpmu_insn_stream.dump();
     CONSOLE_LOG("Branch:\n");
     vpmu_branch_stream.dump();
     CONSOLE_LOG("CACHE:\n");
@@ -268,7 +268,7 @@ void vpmu_dump_readable_message(void)
     CONSOLE_LOG("\n");
     CONSOLE_TME("Emulation Time :", wall_clock_period());
     CONSOLE_LOG("MIPS           : %'0.2lf\n\n",
-                (double)vpmu_total_inst_count() / (wall_clock_period() / 1000.0));
+                (double)vpmu_total_insn_count() / (wall_clock_period() / 1000.0));
 
 #if 0
     CONSOLE_LOG("Memory:\n");

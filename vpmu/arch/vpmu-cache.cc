@@ -60,7 +60,7 @@ void CacheStream::send(
 void CacheStream::send_hot_tb(
   uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size)
 {
-    if (type == CACHE_PACKET_INSTRN) {
+    if (type == CACHE_PACKET_INSN) {
         VPMU_Cache::Model cache_model = get_model(0);
 
         uint64_t bs       = cache_model.i_log2_blocksize[VPMU_Cache::L1_CACHE];

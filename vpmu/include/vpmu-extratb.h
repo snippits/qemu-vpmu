@@ -3,7 +3,7 @@
 
 #include "config-target.h" // Target configuration
 
-typedef struct Inst_Counters {
+typedef struct Insn_Counters {
     uint16_t total;
     uint8_t  load;
     uint8_t  store;
@@ -17,11 +17,11 @@ typedef struct Inst_Counters {
 #endif
     uint8_t  co_processor;
     uint16_t size_bytes;
-} Inst_Counters;
+} Insn_Counters;
 
 // A structure to extend TB info for accumulating counters when executing each TB.
 typedef struct ExtraTBInfo {
-    Inst_Counters counters;
+    Insn_Counters counters;
     uint8_t       has_branch;
     uint8_t       cpu_mode;
     uint16_t      ticks;
