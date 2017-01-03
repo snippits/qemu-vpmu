@@ -59,7 +59,7 @@ public:
 
 protected:
     nlohmann::json   json_config;
-    VPMUPlatformInfo platform_info = {0};
+    VPMUPlatformInfo platform_info = {}; // Zero initializer
 
 public:
     // Ids for management

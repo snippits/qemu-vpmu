@@ -175,7 +175,8 @@ static const MemoryRegionOps vpmu_dev_ops = {
 
 static void start_vpmu_tick(vpmu_state_t *status)
 {
-    for (int type = 0; type < QEMU_CLOCK_MAX; type++) {
+    int type;
+    for (type = 0; type < QEMU_CLOCK_MAX; type++) {
         if (status->timer[type] != NULL) {
             status->last_tick[type] = qemu_clock_get_us(type);
             timer_mod(status->timer[type], status->last_tick[type]);
@@ -225,6 +226,7 @@ static void vpmu_dev_reset(DeviceState *dev)
 
 static void vpmu_dev_instance_init(Object *obj)
 {
+    int i;
     DeviceState * dev    = DEVICE(obj);
     vpmu_state_t *status = OBJECT_CHECK(vpmu_state_t, dev, VPMU_DEVICE_NAME);
     SysBusDevice *sbd    = SYS_BUS_DEVICE(obj);
@@ -243,7 +245,7 @@ static void vpmu_dev_instance_init(Object *obj)
     sysbus_init_mmio(sbd, &status->iomem);
 
     // Clear timer array first!
-    for (int i = 0; i < QEMU_CLOCK_MAX; i++) status->timer[i] = NULL;
+    for (i = 0; i < QEMU_CLOCK_MAX; i++) status->timer[i] = NULL;
     // Assign timers
     status->timer[QEMU_CLOCK_REALTIME] =
       timer_new_us(QEMU_CLOCK_REALTIME, vpmu_tick_real, status);

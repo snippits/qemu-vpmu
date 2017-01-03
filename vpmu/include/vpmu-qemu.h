@@ -1,7 +1,7 @@
 #ifndef __VPMU_QEMU_H_
 #define __VPMU_QEMU_H_
 
-#include "vpmu-common.h"  // Common headers and macros
+#include "vpmu-common.h" // Common headers and macros
 
 enum VPMU_CPU_MODE { VPMU_CPU_MODE_ARM, VPMU_CPU_MODE_THUMB };
 
@@ -48,26 +48,10 @@ typedef struct VPMU_Struct {
 // A structure storing VPMU configuration
 extern struct VPMU_Struct VPMU;
 
-inline uint64_t h_time_difference(struct timespec *t1, struct timespec *t2)
-{
-    uint64_t period = 0;
-
-    period = t2->tv_nsec - t1->tv_nsec;
-    period += (t2->tv_sec - t1->tv_sec) * 1000000000;
-
-    return period;
-}
-
-inline void tic(struct timespec *t1)
-{
-    clock_gettime(CLOCK_REALTIME, t1);
-}
-
-inline uint64_t toc(struct timespec *t1, struct timespec *t2)
-{
-    clock_gettime(CLOCK_REALTIME, t2);
-    return h_time_difference(t1, t2);
-}
+// Prevent prototype warnings from some compilers
+uint64_t h_time_difference(struct timespec *t1, struct timespec *t2);
+void tic(struct timespec *t1);
+uint64_t toc(struct timespec *t1, struct timespec *t2);
 
 void VPMU_init(int argc, char **argv);
 void VPMU_reset(void);

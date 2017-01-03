@@ -203,7 +203,7 @@ include vpmu/Makefile.objs
 all-obj-$(CONFIG_VPMU) += vpmu/libvpmu_$(TARGET_NAME).a
 # This phony will force QEMU to call make vpmu for correctness!!!!!
 .PHONY: vpmu/libvpmu_$(TARGET_NAME).a
-LIBS += -ljson-c -lboost_system -lboost_thread
+LIBS += -lboost_system -lboost_thread
 VPMU_CLANG := $(shell command -v clang++ 2> /dev/null)
 ifndef VPMU_CLANG
 $(warning "clang++" is not available, \

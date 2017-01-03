@@ -84,8 +84,9 @@ void *vpmu_clone_qemu_cpu_state(void *cpu_v)
 
 static void dump_symbol_table(EFD *efd)
 {
+    int i;
     /* Push special functions into hash table */
-    for (int i = 0; i < efd_get_sym_num(efd); i++) {
+    for (i = 0; i < efd_get_sym_num(efd); i++) {
         if ((efd_get_sym_type(efd, i) == STT_FUNC)
             && (efd_get_sym_vis(efd, i) == STV_DEFAULT)
             && (efd_get_sym_shndx(efd, i) != SHN_UNDEF)) {
@@ -101,5 +102,56 @@ void vpmu_dump_elf_symbols(const char *file_path)
     EFD *efd = efd_open_elf((char *)file_path);
     dump_symbol_table(efd);
     efd_close(efd);
+}
+
+uint64_t h_time_difference(struct timespec *t1, struct timespec *t2)
+{
+    uint64_t period = 0;
+
+    period = t2->tv_nsec - t1->tv_nsec;
+    period += (t2->tv_sec - t1->tv_sec) * 1000000000;
+
+    return period;
+}
+
+void tic(struct timespec *t1)
+{
+    clock_gettime(CLOCK_REALTIME, t1);
+}
+
+uint64_t toc(struct timespec *t1, struct timespec *t2)
+{
+    clock_gettime(CLOCK_REALTIME, t2);
+    return h_time_difference(t1, t2);
+}
+
+uint8_t *vpmu_read_ptr_from_guest(void *cs, uint64_t addr, uint64_t offset)
+{
+    return (uint8_t *)vpmu_get_phy_addr_global((void *)cs, (uint64_t)addr) + offset;
+}
+
+uint8_t vpmu_read_uint8_from_guest(void *cs, uint64_t addr, uint64_t offset)
+{
+    return *((uint8_t *)vpmu_read_ptr_from_guest(cs, addr, offset));
+}
+
+uint16_t vpmu_read_uint16_from_guest(void *cs, uint64_t addr, uint64_t offset)
+{
+    return *((uint16_t *)vpmu_read_ptr_from_guest(cs, addr, offset));
+}
+
+uint32_t vpmu_read_uint32_from_guest(void *cs, uint64_t addr, uint64_t offset)
+{
+    return *((uint32_t *)vpmu_read_ptr_from_guest(cs, addr, offset));
+}
+
+uint64_t vpmu_read_uint64_from_guest(void *cs, uint64_t addr, uint64_t offset)
+{
+    return *((uint64_t *)vpmu_read_ptr_from_guest(cs, addr, offset));
+}
+
+uintptr_t vpmu_read_uintptr_from_guest(void *cs, uint64_t addr, uint64_t offset)
+{
+    return *((uintptr_t *)vpmu_read_ptr_from_guest(cs, addr, offset));
 }
 

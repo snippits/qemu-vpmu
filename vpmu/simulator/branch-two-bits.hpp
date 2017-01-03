@@ -83,7 +83,7 @@ private:
 #endif
     // predictor (the states of branch predictors)
     uint64_t          predictor[VPMU_MAX_CPU_CORES] = {0};
-    VPMU_Branch::Data counters                      = {0};
+    VPMU_Branch::Data counters                      = {}; // Zero initializer
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
 
