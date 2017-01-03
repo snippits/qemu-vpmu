@@ -119,13 +119,13 @@ public:
     // Get the results from a timing simulator
     inline Data get_data(int n)
     {
-        if (pointer_safety_check(n) == false) return {0};
+        if (pointer_safety_check(n) == false) return {}; // Zero initializer
         return stream_comm[n].data;
     }
     // Get model configuration back from timing a simulator
     Model get_model(int n)
     {
-        if (pointer_safety_check(n) == false) return {0};
+        if (pointer_safety_check(n) == false) return {}; // Zero initializer
         return stream_comm[n].model;
     }
 

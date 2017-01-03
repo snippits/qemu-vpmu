@@ -66,7 +66,7 @@ public:
             CONSOLE_LOG("%'" PRIu64 ")\n", counters.wrong[i]);
             break;
         case VPMU_PACKET_RESET:
-            counters = {0};
+            counters = {}; // Zero initializer
             break;
         case VPMU_PACKET_DATA:
             one_bit_branch_predictor(&ref);

@@ -1,7 +1,7 @@
 -include ../../config-host.mak
 -include Makefile.objs
 #'../../' and '../' are for config-host.h and config-target.h
-VPMU_FLAGS=-Wall -Wno-missing-braces -Wno-sign-compare -g \
+VPMU_FLAGS=-Wall -Wno-sign-compare -g \
 			-I../../ -I../ \
 			-I$(SRC_PATH) -I$(SRC_PATH)/include \
 			-I$(SRC_PATH)/vpmu -I$(SRC_PATH)/vpmu/include -I$(SRC_PATH)/vpmu/libs \
