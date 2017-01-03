@@ -13,16 +13,20 @@ public:
     using Sim_ptr     = std::unique_ptr<VPMUSimulator<T>>;
 
 public:
-    VPMUStreamSingleThread(std::string name) : VPMUStream_Impl<T>(name) {}
+    VPMUStreamSingleThread(std::string name, uint64_t num_elems)
+        : VPMUStream_Impl<T>(name)
+    {
+        num_trace_buffer_elems = num_elems;
+    }
 
     ~VPMUStreamSingleThread()
     {
         destroy();
     }
 
-    void build(int buffer_size) override
+    void build() override
     {
-        int total_buffer_size = Stream_Layout<T>::total_size(buffer_size);
+        int total_buffer_size = Stream_Layout<T>::total_size(num_trace_buffer_elems);
 
         if (buffer != nullptr) {
             free(buffer);
@@ -37,10 +41,10 @@ public:
         // Assign the pointer of token
         token = Stream_Layout<T>::get_token(buffer);
         // Assign pointer of trace buffer
-        shm_bufferInit(trace_buffer, // the pointer of trace buffer
-                       buffer_size,  // the number of packets (size of buffer)
-                       Reference,    // the type of packet
-                       TraceBuffer,  // the type of trace buffer
+        shm_bufferInit(trace_buffer,           // the pointer of trace buffer
+                       num_trace_buffer_elems, // the number of packets
+                       Reference,              // the type of packet
+                       TraceBuffer,            // the type of trace buffer
                        Stream_Layout<T>::get_trace_buffer(buffer));
 
         // Initialize semaphores to zero
@@ -185,6 +189,7 @@ private:
     using VPMUStream_Impl<T>::buffer;
     using VPMUStream_Impl<T>::stream_comm;
     using VPMUStream_Impl<T>::trace_buffer;
+    using VPMUStream_Impl<T>::num_trace_buffer_elems;
     using VPMUStream_Impl<T>::token;
     using VPMUStream_Impl<T>::num_workers;
 

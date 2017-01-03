@@ -22,11 +22,7 @@ public:
     void set_default_stream_impl(void) override
     {
         // Get the default implementation of stream interface.
-        // impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Branch>>("B_Strm");
-        impl = std::make_unique<VPMUStreamMultiThread<VPMU_Branch>>("B_Strm");
-        // impl = std::make_unique<VPMUStreamSingleThread<VPMU_Branch>>("B_Strm");
-        // Construct the channel (buffer) and allocate resources
-        impl->build(1024 * 8);
+        impl = std::make_unique<VPMUStreamMultiThread<VPMU_Branch>>("B_Strm", 1024 * 8);
     }
 
     void send(uint8_t core, uint64_t pc, uint32_t taken);

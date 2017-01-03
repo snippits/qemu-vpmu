@@ -20,17 +20,21 @@ public:
     using Sim_ptr     = std::unique_ptr<VPMUSimulator<T>>;
 
 public:
-    VPMUStreamMultiProcess(std::string name) : VPMUStream_Impl<T>(name) {}
+    VPMUStreamMultiProcess(std::string name, uint64_t num_elems)
+        : VPMUStream_Impl<T>(name)
+    {
+        num_trace_buffer_elems = num_elems;
+    }
 
     ~VPMUStreamMultiProcess()
     {
         destroy();
     }
 
-    void build(int buffer_size) override
+    void build() override
     {
         using namespace boost::interprocess;
-        int total_buffer_size = Stream_Layout<T>::total_size(buffer_size);
+        int total_buffer_size = Stream_Layout<T>::total_size(num_trace_buffer_elems);
 
         if (buffer != nullptr) {
             // shmdt(buffer);
@@ -64,10 +68,10 @@ public:
         // Assign the pointer of heart beat signal
         heart_beat = Stream_Layout<T>::get_heart_beat(buffer);
         // Assign pointer of trace buffer
-        shm_bufferInit(trace_buffer, // the pointer of trace buffer
-                       buffer_size,  // the number of packets (size of buffer)
-                       Reference,    // the type of packet
-                       TraceBuffer,  // the type of trace buffer
+        shm_bufferInit(trace_buffer,           // the pointer of trace buffer
+                       num_trace_buffer_elems, // the number of packets
+                       Reference,              // the type of packet
+                       TraceBuffer,            // the type of trace buffer
                        Stream_Layout<T>::get_trace_buffer(buffer));
 
         // Initialize semaphores to zero, and set to process-shared!!
@@ -243,6 +247,7 @@ private:
     using VPMUStream_Impl<T>::stream_comm;
     using VPMUStream_Impl<T>::heart_beat;
     using VPMUStream_Impl<T>::trace_buffer;
+    using VPMUStream_Impl<T>::num_trace_buffer_elems;
     using VPMUStream_Impl<T>::token;
     using VPMUStream_Impl<T>::num_workers;
 

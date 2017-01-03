@@ -92,8 +92,8 @@ static void vpmu_core_init(const char *vpmu_config_file)
     }
 
     { // Example of changing the implementation of VPMU stream
-        auto impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>("C_Strm");
-        impl->build(1024 * 64); // 64K elements
+        auto impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>(
+          "C_Strm", 1024 * 64); // 64K elements
         vpmu_cache_stream.set_stream_impl(std::move(impl));
     }
     // Allocate and build resources.
@@ -294,4 +294,3 @@ void vpmu_dump_readable_message(void)
 #undef CONSOLE_TME
 #undef CONSOLE_U64
 }
-

@@ -23,11 +23,7 @@ public:
     void set_default_stream_impl(void) override
     {
         // Get the default implementation of stream interface.
-        // impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Inst>>("I_Strm");
-        // impl = std::make_unique<VPMUStreamMultiThread<VPMU_Inst>>("I_Strm");
-        impl = std::make_unique<VPMUStreamSingleThread<VPMU_Inst>>("I_Strm");
-        // Construct the channel (buffer) and allocate resources
-        impl->build(1024 * 64);
+        impl = std::make_unique<VPMUStreamSingleThread<VPMU_Inst>>("I_Strm", 1024 * 64);
     }
 
     inline uint64_t get_inst_count(void)

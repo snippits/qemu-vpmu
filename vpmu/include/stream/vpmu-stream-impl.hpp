@@ -31,6 +31,8 @@ protected:
     volatile uint64_t* heart_beat;
     // Trace buffer
     TraceBuffer* trace_buffer = nullptr;
+    // Number of elements in the trace buffer
+    uint64_t num_trace_buffer_elems = 0;
     // Record how many workers in process
     uint32_t          num_workers   = 0;
     VPMUPlatformInfo* platform_info = nullptr;
@@ -41,7 +43,7 @@ public:
     //
 
     // This is for initializing common resources for workers
-    virtual void build(int buffer_size) { log_fatal("build is not implemented"); }
+    virtual void build() { log_fatal("build is not implemented"); }
     // Initialize resources for individual workers and execute them in parallel.
     virtual void run(std::vector<Sim_ptr>& jobs) { log_fatal("run is not implemented"); }
     virtual void destroy(void) { log_fatal("destroy is not implemented"); }

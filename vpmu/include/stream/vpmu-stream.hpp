@@ -75,6 +75,10 @@ public:
             // Call child default implementation builder
             this->set_default_stream_impl();
         }
+        if (impl->get_trace_buffer() == nullptr) {
+            // Call build if buffer is not built yet.
+            impl->build();
+        }
 
         // Locate and create instances of simulator according to the name.
         if (target_configs.is_array()) {
