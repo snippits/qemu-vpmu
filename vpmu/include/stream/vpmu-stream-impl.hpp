@@ -18,7 +18,7 @@ public:
     // Define ring buffer with lightening
     VPMUStream_Impl() : VPMULog("StreamImpl") {}
     VPMUStream_Impl(std::string name) : VPMULog(name) {}
-    ~VPMUStream_Impl() { log("Destructed"); }
+    virtual ~VPMUStream_Impl() { log("Destructed"); }
 
 protected:
     // The real buffer, use byte address mode

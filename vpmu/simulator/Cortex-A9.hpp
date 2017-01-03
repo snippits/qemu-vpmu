@@ -64,8 +64,8 @@ private: // VPMUARMTranslate
     }; // End of class Translation
 
 public: // VPMUSimulator
-    CPU_CortexA9() : VPMUSimulator("CortexA9") { log_debug("Constructed"); }
-    ~CPU_CortexA9() { log_debug("Destructed"); }
+    CPU_CortexA9() : VPMUSimulator("CortexA9") {}
+    ~CPU_CortexA9() {}
 
     VPMUARMTranslate& get_translator_handle(void) override { return translator; }
 

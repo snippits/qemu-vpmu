@@ -389,8 +389,8 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
     }
 
 public:
-    Cache_Dinero() : VPMUSimulator("Dinero") { log_debug("Constructed"); }
-    ~Cache_Dinero() { log_debug("Destructed"); }
+    Cache_Dinero() : VPMUSimulator("Dinero") {}
+    ~Cache_Dinero() {}
 
     void destroy() override
     {

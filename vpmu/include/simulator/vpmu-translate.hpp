@@ -12,7 +12,7 @@ public:
     VPMUARMTranslate() { set_name("ARMTranslate"); }
     VPMUARMTranslate(const char *module_name) { set_name(module_name); }
     VPMUARMTranslate(std::string module_name) { set_name(module_name); }
-    ~VPMUARMTranslate() { log_debug("Destructed"); }
+    virtual ~VPMUARMTranslate() {}
     // VPMUStream is not copyable.
     VPMUARMTranslate(const VPMUARMTranslate &) = delete;
 
@@ -31,7 +31,7 @@ public:
     VPMUi386Translate() { set_name("i386Translate"); }
     VPMUi386Translate(const char *module_name) { set_name(module_name); }
     VPMUi386Translate(std::string module_name) { set_name(module_name); }
-    ~VPMUi386Translate() { log_debug("Destructed"); }
+    virtual ~VPMUi386Translate() {}
     // VPMUStream is not copyable.
     VPMUi386Translate(const VPMUi386Translate &) = delete;
 

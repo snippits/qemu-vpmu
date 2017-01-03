@@ -6,8 +6,8 @@
 class Branch_One_Bit : public VPMUSimulator<VPMU_Branch>
 {
 public:
-    Branch_One_Bit() : VPMUSimulator("One Bit") { log_debug("Constructed"); }
-    ~Branch_One_Bit() { log_debug("Destructed"); }
+    Branch_One_Bit() : VPMUSimulator("One Bit") {}
+    ~Branch_One_Bit() {}
 
     void destroy() override { ; } // Nothing to do
 

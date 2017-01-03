@@ -8,6 +8,7 @@ class VPMUStream : public VPMULog
 {
 public:
     VPMUStream() {}
+    virtual ~VPMUStream() {}
     VPMUStream(const char* module_name) : VPMULog(module_name) {}
     VPMUStream(std::string module_name) : VPMULog(module_name) {}
     // VPMUStream is neither copyable nor movable.
@@ -45,7 +46,7 @@ public:
     VPMUStream_T() {}
     VPMUStream_T(const char* module_name) : VPMUStream(module_name) {}
     VPMUStream_T(std::string module_name) : VPMUStream(module_name) {}
-    ~VPMUStream_T()
+    virtual ~VPMUStream_T()
     {
         destroy();
         log_debug("Destructed");
@@ -97,11 +98,6 @@ public:
         // Do not clear states, ex: target_configs
         impl.reset(nullptr);
         // Call de-allocation of each simulator manually
-        // Since some simulators might use unsafe pointers, we need to call this
-        // to allow simulator releasing the memory it aquires.
-        for (auto& s : jobs) s->destroy();
-        // NOTE the following line won't call destructor of overrided virtual function
-        // It only calls the destructor of parent class...
         jobs.clear(); // Clear arrays and call destructors
         local_buffer_index = 0;
     }

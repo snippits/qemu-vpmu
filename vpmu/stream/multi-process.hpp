@@ -1,8 +1,8 @@
 #ifndef __VPMU_STREAM_MULTI_PROCESS_HPP_
 #define __VPMU_STREAM_MULTI_PROCESS_HPP_
-#include "vpmu-stream-impl.hpp" // VPMUStream_Impl
 #include <thread>               // std::thread
 #include <memory>               // Smart pointers and mem management
+#include "vpmu-stream-impl.hpp" // VPMUStream_Impl
 // Boost Library for inter-process communications
 #include <boost/interprocess/shared_memory_object.hpp>
 #include <boost/interprocess/mapped_region.hpp>
@@ -21,7 +21,6 @@ public:
     ~VPMUStreamMultiProcess()
     {
         destroy();
-        log_debug("Destructed");
     }
 
     void build(int buffer_size) override

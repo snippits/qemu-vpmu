@@ -18,7 +18,6 @@ public:
     ~VPMUStreamMultiThread()
     {
         destroy();
-        log_debug("Destructed");
     }
 
     void build(int buffer_size) override

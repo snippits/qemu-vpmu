@@ -16,7 +16,8 @@ public:
     VPMUSimulator() {}
     VPMUSimulator(const char *module_name) { set_name(module_name); }
     VPMUSimulator(std::string module_name) { set_name(module_name); }
-    ~VPMUSimulator() {} // Do nothing here. Use destroy to deallocate resources, instead.
+    // Do nothing here. Use destroy to deallocate resources, instead.
+    virtual ~VPMUSimulator() { log_debug("Destructed"); }
 
     // VPMUStream is not copyable.
     VPMUSimulator(const VPMUSimulator &) = delete;
