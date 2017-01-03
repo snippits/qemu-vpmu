@@ -81,6 +81,7 @@ public:
             Reference      local_buffer[local_buffer_size];
             uint32_t       num_refs = 0;
 
+            vpmu::utils::name_thread(this->get_name() + std::to_string(0));
             // Only be cancelable at cancellation points, ex: sem_wait
             pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
             // Set synced_flag to tell master it's done
@@ -122,7 +123,7 @@ public:
                 }
             }
         });
-        vpmu::utils::name_thread(slave, this->get_name() + std::to_string(0));
+
         // Wait all forked process to be initialized
         if (this->timed_wait_sync_flag(5000) == false) {
             log_fatal("Some component timing simulators might not be alive!");

@@ -27,6 +27,8 @@ protected:
     T* stream_comm;
     // The pointer to the token var for serialization
     volatile uint32_t* token;
+    // The pointer to the heart beat var for zombie killer
+    volatile uint64_t* heart_beat;
     // Trace buffer
     TraceBuffer* trace_buffer = nullptr;
     // Record how many workers in process

@@ -13,6 +13,7 @@ namespace utils
 {
 
     void name_process(std::string new_name);
+    void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
     int32_t clog2(uint32_t x);
 

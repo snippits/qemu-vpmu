@@ -82,6 +82,7 @@ public:
                   Reference      local_buffer[local_buffer_size];
                   int            num_refs = 0;
 
+                  vpmu::utils::name_thread(this->get_name() + std::to_string(id));
                   // Initialize (build) the target simulation with its configuration
                   sim->set_platform_info(*platform_info);
                   sim->build(stream_comm[id]);
@@ -124,10 +125,6 @@ public:
                   }
               },
               id));
-        }
-
-        for (int id = 0; id < slaves.size(); id++) {
-            vpmu::utils::name_thread(slaves[id], this->get_name() + std::to_string(id));
         }
 
         // Wait all forked process to be initialized

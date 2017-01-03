@@ -26,6 +26,20 @@ namespace utils
         prctl(PR_SET_NAME, process_name);
     }
 
+    void name_thread(std::string new_name)
+    {
+        char  thread_name[LINUX_NAMELEN] = {0};
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        if (new_name.size() >= LINUX_NAMELEN) {
+            ERR_MSG(
+              "Name %s is grater than kernel default name size. It would be truncated!\n",
+              new_name.c_str());
+        }
+#endif
+        snprintf(thread_name, LINUX_NAMELEN, "%s", new_name.c_str());
+        pthread_setname_np(pthread_self(), thread_name);
+    }
+
     void name_thread(std::thread &t, std::string new_name)
     {
         char thread_name[LINUX_NAMELEN] = {0};

@@ -64,6 +64,14 @@ public:
           );
     }
 
+    static inline uint64_t *get_heart_beat(void *buff)
+    {
+        return &(          // Cast to pointer
+          ((Layout *)buff) // Cast to Layout structure
+            ->heart_beat   // Find the offset
+          );
+    }
+
     static inline TraceBuffer *get_trace_buffer(void *buff)
     {
         return &(          // Cast to pointer
@@ -80,6 +88,7 @@ private:
         VPMUPlatformInfo platform_info;                     // The cpu information
         T                stream_comm[VPMU_MAX_NUM_WORKERS]; // Configs/states
         uint32_t         token;                             // Token variable
+        uint64_t         heart_beat;                        // Heartbeat signals
         uint64_t         padding[8];                        // 8 words of padding
         TraceBuffer      trace_buffer;                      // The trace buffer
     } Layout;

@@ -1,5 +1,9 @@
 #ifndef __VPMU_STREAM_MULTI_PROCESS_HPP_
 #define __VPMU_STREAM_MULTI_PROCESS_HPP_
+extern "C" {
+#include <sys/types.h> // Types of kernel related (pid_t, etc.)
+#include <signal.h>    // kill()
+}
 #include <thread>               // std::thread
 #include <memory>               // Smart pointers and mem management
 #include "vpmu-stream-impl.hpp" // VPMUStream_Impl
@@ -57,6 +61,8 @@ public:
         stream_comm = Stream_Layout<T>::get_stream_comm(buffer);
         // Assign the pointer of token
         token = Stream_Layout<T>::get_token(buffer);
+        // Assign the pointer of heart beat signal
+        heart_beat = Stream_Layout<T>::get_heart_beat(buffer);
         // Assign pointer of trace buffer
         shm_bufferInit(trace_buffer, // the pointer of trace buffer
                        buffer_size,  // the number of packets (size of buffer)
@@ -72,6 +78,13 @@ public:
 
     void destroy(void) override
     {
+        // De-allocating the thread resources appropriately, required by C++ standard
+        if (heart_beat_thread.native_handle() != 0) {
+            pthread_cancel(heart_beat_thread.native_handle());
+            // Standard thread library require this for correct destructor behavior
+            heart_beat_thread.join();
+        }
+
         // De-allocating resources must be the opposite order of resource allocation
         for (auto &s : slaves) {
             kill(s, SIGKILL);
@@ -152,9 +165,11 @@ public:
                     }
                 }
                 // It should never return!!!
-                exit(EXIT_FAILURE);
+                abort();
             }
         }
+        fork_zombie_killer();
+
         // Wait all forked process to be initialized
         if (this->timed_wait_sync_flag(5000) == false) {
             log_fatal("Some component timing simulators might not be alive!");
@@ -226,6 +241,7 @@ private:
     using VPMUStream_Impl<T>::platform_info;
     using VPMUStream_Impl<T>::buffer;
     using VPMUStream_Impl<T>::stream_comm;
+    using VPMUStream_Impl<T>::heart_beat;
     using VPMUStream_Impl<T>::trace_buffer;
     using VPMUStream_Impl<T>::token;
     using VPMUStream_Impl<T>::num_workers;
@@ -233,9 +249,48 @@ private:
     boost::interprocess::shared_memory_object shm;
     boost::interprocess::mapped_region        region;
     std::vector<pid_t>                        slaves;
+    std::thread                               heart_beat_thread;
 
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;
+
+    void fork_zombie_killer()
+    {
+        pid_t pid = fork();
+
+        if (pid) {
+            // Parent
+            slaves.push_back(pid);
+            heart_beat_thread = std::thread([=] {
+                vpmu::utils::name_thread("heart beat");
+                while (true) {
+                    // Only be cancelable at cancellation points
+                    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+                    usleep(100 * 1000); // 0.1 second
+                    *heart_beat += 1;
+                }
+            });
+        } else {
+            uint64_t last_heart_beat = 0;
+
+            vpmu::utils::name_process("zombie-killer");
+            // TODO finish the heartbeat signals
+            while (true) {
+                usleep(500 * 1000); // 0.5 second
+                if (*heart_beat == last_heart_beat) {
+                    log_fatal("QEMU stops beating... kill all zombies!!\n");
+                    this->destroy();
+                    log("Destructed\n");
+                    // Exit without calling unnecessary destructor of global variables.
+                    // This prevents double-free shared resources.
+                    abort();
+                }
+                last_heart_beat = *heart_beat;
+            }
+            // It should never return!!!
+            abort();
+        }
+    }
 };
 
 #endif
