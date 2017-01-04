@@ -200,35 +200,23 @@ include vpmu/Makefile.objs
 # Ensure the dependency of vpmu-device.o here...
 -include vpmu-device.d
 
-all-obj-$(CONFIG_VPMU) += vpmu/libvpmu_$(TARGET_NAME).a
+all-obj-$(CONFIG_VPMU) += vpmu/libvpmu_$(TARGET_NAME).a $(VPMU_EXTERNAL_LIBS)
 # This phony will force QEMU to call make vpmu for correctness!!!!!
-.PHONY: vpmu/libvpmu_$(TARGET_NAME).a
+.PHONY: vpmu/libvpmu_$(TARGET_NAME).a $(VPMU_EXTERNAL_LIBS)
 LIBS += -lboost_system -lboost_thread
-VPMU_CLANG := $(shell command -v clang++ 2> /dev/null)
-ifndef VPMU_CLANG
-$(warning "clang++" is not available, \
-          we strongly suggest to compile VPMU with "clang++" for best performance)
+VPMU_MAKE_ARG=TARGET_NAME=$(TARGET_NAME)
 
-vpmu/libvpmu_$(TARGET_NAME).a  :
-	$(call quiet-command,$(MAKE) TARGET_NAME=$(TARGET_NAME) -C ./vpmu libvpmu_$(TARGET_NAME).a)
-
-else
-vpmu_use_clang_warning	:
-	@touch $@
-	$(warning Default compiler is changed from $(CXX) to "clang++")
-	@echo -e "\033[1;33m" \
-             "Attention: Use of Clang for compiling VPMU module.\n\n" \
-             "  We strongly suggest to use clang for compiling VPMU module for the best performance!\n" \
-             "According to our experiments, the clang compiler generates 1.3x faster code.\n" \
-             "Thus, we force to choose clang no matter what you configure with QEMU.\n" \
-             "If you hit some problems with clang, feel free to modify the Makefile of the following line.\n" \
-             "Lastly, this message will only show up once." \
-             "\033[0;00m\n"
-
-vpmu/libvpmu_$(TARGET_NAME).a  :	vpmu_use_clang_warning
-	$(call quiet-command,$(MAKE) CC=clang CXX=clang++ TARGET_NAME=$(TARGET_NAME) -C ./vpmu libvpmu_$(TARGET_NAME).a)
+ifeq ($(CONFIG_VPMU_CLANG),y)
+VPMU_MAKE_ARG+= CC=clang CXX=clang++
 LINKPROG=clang++
-endif # VPMU_CLANG
+endif
+
+vpmu/libvpmu_$(TARGET_NAME).a	:
+	$(call quiet-command,$(MAKE) $(VPMU_MAKE_ARG) -C ./vpmu libvpmu_$(TARGET_NAME).a)
+
+$(VPMU_EXTERNAL_LIBS)	:
+	$(call quiet-command,$(MAKE) $(VPMU_MAKE_ARG) -C ./vpmu $@)
+
 endif # CONFIG_VPMU
 
 # build either PROG or PROGW

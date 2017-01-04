@@ -37,3 +37,6 @@
 [submodule "roms/QemuMacDrivers"]
 	path = roms/QemuMacDrivers
 	url = git://git.qemu.org/QemuMacDrivers.git
+[submodule "vpmu/libs/libelfin"]
+	path = vpmu/libs/libelfin
+	url = https://github.com/aclements/libelfin.git

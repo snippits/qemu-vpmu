@@ -22,6 +22,7 @@ uint8_t vpmu_read_uint8_from_guest(void *cs, uint64_t addr, uint64_t offset);
 uint16_t vpmu_read_uint16_from_guest(void *cs, uint64_t addr, uint64_t offset);
 uint32_t vpmu_read_uint32_from_guest(void *cs, uint64_t addr, uint64_t offset);
 uint64_t vpmu_read_uint64_from_guest(void *cs, uint64_t addr, uint64_t offset);
+// Note: This function reads target long bits (32/64) and cast to uintptr_t
 uintptr_t vpmu_read_uintptr_from_guest(void *cs, uint64_t addr, uint64_t offset);
 
 #endif

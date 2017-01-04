@@ -1,45 +1,104 @@
-#include "event-tracing.hpp" // Header
+extern "C" {
+#include "vpmu-common.h" // Include common C headers
+}
+#include "elf++.hh"          // elf::elf
+#include "event-tracing.hpp" // EventTracer
 
-EventTracer tracer;
+EventTracer event_tracer;
+
+void EventTracer::parse_and_set_kernel_symbol(const char* filename)
+{
+    int fd = open(filename, O_RDONLY);
+    if (fd < 0) {
+        log_fatal("Kernel File %s not found!", filename);
+        return;
+    }
+
+    elf::elf f(elf::create_mmap_loader(fd));
+    for (auto& sec : f.sections()) {
+        if (sec.get_hdr().type != elf::sht::symtab
+            && sec.get_hdr().type != elf::sht::dynsym)
+            continue;
+        log_debug("Symbol table '%s':\n", sec.get_name().c_str());
+        log_debug("%-16s %-5s %-7s %-7s %-5s %s\n",
+                  "Value",
+                  "Size",
+                  "Type",
+                  "Binding",
+                  "Index",
+                  "Name");
+
+        for (auto sym : sec.as_symtab()) {
+            auto& d = sym.get_data();
+            if (d.type() == elf::stt::func) {
+                kernel.add_symbol(sym.get_name(), d.value);
+
+                bool print_content_flag = true;
+                if (sym.get_name() == "do_execve") {
+                    kernel.set_event_address(ET_KERNEL_EXECV, d.value);
+                } else if (sym.get_name() == "__switch_to") {
+                    kernel.set_event_address(ET_KERNEL_CONTEXT_SWITCH, d.value);
+                } else if (sym.get_name() == "do_exit") {
+                    kernel.set_event_address(ET_KERNEL_EXIT, d.value);
+                } else if (sym.get_name() == "wake_up_new_task") {
+                    kernel.set_event_address(ET_KERNEL_WAKE_NEW_TASK, d.value);
+                } else if (sym.get_name() == "do_fork") {
+                    kernel.set_event_address(ET_KERNEL_FORK, d.value);
+                } else {
+                    print_content_flag = false;
+                }
+                if (print_content_flag) {
+                    log_debug("%016" PRIx64 " %5" PRId64 " %-7s %-7s %5s %s\n",
+                              d.value,
+                              d.size,
+                              to_string(d.type()).c_str(),
+                              to_string(d.binding()).c_str(),
+                              to_string(d.shnxd).c_str(),
+                              sym.get_name().c_str());
+                }
+            }
+        }
+    }
+}
 
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr)
 {
-    return ET_KERNEL_NONE;
+    return event_tracer.get_kernel().find_event(vaddr);
 }
 
 void et_add_program_to_list(const char* name)
 {
-    tracer.add_program(name);
+    event_tracer.add_program(name);
 }
 
 void et_remove_program_from_list(const char* name)
 {
-    tracer.remove_program(name);
+    event_tracer.remove_program(name);
 }
 
 bool et_find_traced_pid(uint64_t pid)
 {
-    return tracer.find_traced_process(pid);
+    return event_tracer.find_traced_process(pid);
 }
 
 bool et_find_traced_process(const char* name)
 {
-    return tracer.find_traced_process(name);
+    return event_tracer.find_traced_process(name);
 }
 
 void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)
 {
-    return tracer.attach_to_parent(parent_pid, child_pid);
+    return event_tracer.attach_to_parent(parent_pid, child_pid);
 }
 
 void et_add_new_process(const char* name, uint64_t pid)
 {
-    tracer.add_new_process(name, pid);
+    event_tracer.add_new_process(name, pid);
 }
 
 void et_remove_process(uint64_t pid)
 {
-    tracer.remove_process(pid);
+    event_tracer.remove_process(pid);
     /*
     int flag_hit = 0;
     // Loop through pid list to find if hit
@@ -59,4 +118,3 @@ void et_remove_process(uint64_t pid)
         flag_tracing = 0;
     }*/
 }
-

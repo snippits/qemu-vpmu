@@ -1,13 +1,11 @@
 // C headers
-extern "C" {
-#include "libs/efd.h" // Extracting information from binary file
-}
 #include "vpmu.hpp"           // VPMU common header
 #include "vpmu-stream.hpp"    // VPMUStream, VPMUStream_T
 #include "vpmu-translate.hpp" // VPMUTranslate
 #include "vpmu-insn.hpp"      // InsnStream
 #include "vpmu-cache.hpp"     // CacheStream
 #include "vpmu-branch.hpp"    // BranchStream
+#include "event-tracing.hpp"  // EventTracer event_tracer
 
 #include "json.hpp" // nlohmann::json
 using json = nlohmann::json;
@@ -29,34 +27,6 @@ extern FILE *qemu_logfile;
 extern int   qemu_loglevel;
 #endif
 
-static std::string get_file_contents(const char *filename)
-{
-    std::ifstream in(filename, std::ios::in);
-    if (in) {
-        std::string contents;
-        in.seekg(0, std::ios::end);
-        contents.resize(in.tellg());
-        in.seekg(0, std::ios::beg);
-        in.read(&contents[0], contents.size());
-        in.close();
-        return (contents);
-    }
-    ERR_MSG("File not found: %s\n", filename);
-    exit(EXIT_FAILURE);
-}
-
-static json VPMU_load_json(const char *vpmu_config_file)
-{
-    // Read file in
-    std::string vpmu_config_str = get_file_contents(vpmu_config_file);
-
-    // Parse json
-    auto j = json::parse(vpmu_config_str);
-    // DBG("%s\n", j.dump(4).c_str());
-
-    return j;
-}
-
 static inline void
 attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
 {
@@ -77,7 +47,7 @@ attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
 static void vpmu_core_init(const char *vpmu_config_file)
 {
     try {
-        json vpmu_config = VPMU_load_json(vpmu_config_file);
+        json vpmu_config = vpmu::utils::load_json(vpmu_config_file);
 
         attach_vpmu_stream(vpmu_insn_stream, vpmu_config, "cpu_models");
         attach_vpmu_stream(vpmu_branch_stream, vpmu_config, "branch_models");
@@ -207,16 +177,18 @@ void disable_QEMU_log()
 
 void VPMU_init(int argc, char **argv)
 {
-    char vpmu_config_file[1024] = {0};
+    char config_file[1024] = {0};
+    char kernel_file[1024] = {0};
 
     for (int i = 0; i < (argc - 1); i++) {
-        if (std::string(argv[i]) == "-vpmu-config") strcpy(vpmu_config_file, argv[i + 1]);
+        if (std::string(argv[i]) == "-vpmu-config") strcpy(config_file, argv[i + 1]);
         if (std::string(argv[i]) == "-smp") VPMU.platform.cpu.cores = atoi(argv[i + 1]);
+        if (std::string(argv[i]) == "-vpmu-kernel-symbol") strcpy(kernel_file, argv[i + 1]);
     }
 
     // Set to 1 if (1) no -smp presents. (2) the argument after smp is not a number.
     if (VPMU.platform.cpu.cores == 0) VPMU.platform.cpu.cores = 1;
-    if (strlen(vpmu_config_file) == 0) {
+    if (strlen(config_file) == 0) {
         ERR_MSG("VPMU Config File Path is not set!!\n"
                 "\tPlease specify '-vpmu-config <PATH>' when executing QEMU\n\n");
         exit(EXIT_FAILURE);
@@ -224,12 +196,23 @@ void VPMU_init(int argc, char **argv)
 
     if (vpmu_log_file == NULL) vpmu_log_file = fopen("/tmp/vpmu.log", "w");
 
+#ifdef CONFIG_VPMU_SET
+    if (strlen(kernel_file) > 0) {
+        event_tracer.parse_and_set_kernel_symbol(kernel_file);
+    }
+    else {
+        ERR_MSG("Path to vmlinux is not set!!\n"
+                "\tPlease specify '-vpmu-kernel-symbol <PATH>' when executing QEMU\n\n");
+        exit(EXIT_FAILURE);
+    }
+#endif
     // this would let print system support comma.
     setlocale(LC_NUMERIC, "");
     // enable_QEMU_log();
+    // TODO thread pools and callbacks
     // VPMU.thpool = thpool_init(1);
     DBG(STR_VPMU "Thread Pool Initialized\n");
-    vpmu_core_init(vpmu_config_file);
+    vpmu_core_init(config_file);
     CONSOLE_LOG(STR_VPMU "Initialized\n");
 }
 

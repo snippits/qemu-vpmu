@@ -9,6 +9,7 @@
 
 uintptr_t vpmu_get_phy_addr_global(void *ptr, uintptr_t vaddr)
 {
+    int           retry            = 0;
     const int     READ_ACCESS_TYPE = 0;
     uintptr_t     paddr            = 0;
     CPUState *    cpu_state        = (CPUState *)ptr;
@@ -19,6 +20,11 @@ uintptr_t vpmu_get_phy_addr_global(void *ptr, uintptr_t vaddr)
 
     index = (vaddr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
 redo:
+    retry++;
+    if (retry > 10) {
+        ERR_MSG(STR_VPMU "fail to find vaddr 0x%lx\n", vaddr);
+        return 0;
+    }
     tlb_addr = cpu_env->tlb_table[mmu_idx][index].addr_read;
     if ((vaddr & TARGET_PAGE_MASK)
         == (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
@@ -82,6 +88,7 @@ void *vpmu_clone_qemu_cpu_state(void *cpu_v)
 }
 #endif
 
+#if 0
 static void dump_symbol_table(EFD *efd)
 {
     int i;
@@ -96,12 +103,13 @@ static void dump_symbol_table(EFD *efd)
         }
     }
 }
+#endif
 
 void vpmu_dump_elf_symbols(const char *file_path)
 {
-    EFD *efd = efd_open_elf((char *)file_path);
-    dump_symbol_table(efd);
-    efd_close(efd);
+//    EFD *efd = efd_open_elf((char *)file_path);
+//    dump_symbol_table(efd);
+//    efd_close(efd);
 }
 
 uint64_t h_time_difference(struct timespec *t1, struct timespec *t2)
@@ -152,6 +160,13 @@ uint64_t vpmu_read_uint64_from_guest(void *cs, uint64_t addr, uint64_t offset)
 
 uintptr_t vpmu_read_uintptr_from_guest(void *cs, uint64_t addr, uint64_t offset)
 {
-    return *((uintptr_t *)vpmu_read_ptr_from_guest(cs, addr, offset));
+#if defined(TARGET_LONG_BITS)
+#if (TARGET_LONG_BITS == 32)
+    return (uintptr_t)vpmu_read_uint32_from_guest(cs, addr, offset);
+#elif defined(TARGET_LONG_BITS == 64)
+    return (uintptr_t)vpmu_read_uint64_from_guest(cs, addr, offset);
+#endif
+#else
+#error TARGET_LONG_BITS undefined
+#endif
 }
-

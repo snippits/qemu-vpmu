@@ -11,5 +11,7 @@
 #include <locale.h>   // C localization functions for ' support in printf
 #include <string.h>   // For some basic string operations
 #include <stdarg.h>   // va_list, va_start, va_arg, va_end
+#include <sys/stat.h> // open(const char *path, int oflag, ... );
+#include <fcntl.h>    // O_RDONLY, O_WRONLY, O_RDWR
 
 #endif

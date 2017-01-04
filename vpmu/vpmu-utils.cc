@@ -77,6 +77,57 @@ namespace utils
 
         return period;
     }
+
+    std::ifstream::pos_type get_file_size(const char *filename)
+    {
+        std::ifstream fin(filename, std::ifstream::ate | std::ifstream::binary);
+        if (fin)
+            return fin.tellg();
+        else
+            return 0;
+    }
+
+    std::string read_text_content(const char *filename)
+    {
+        uint64_t size_byte = get_file_size(filename);
+        // Open file
+        std::ifstream fin(filename, std::ios::in);
+        if (fin) {
+            std::string contents;
+            contents.resize(size_byte);
+            fin.read(&contents[0], contents.size());
+            return (contents);
+        }
+        ERR_MSG("File not found: %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    std::unique_ptr<char> read_binary_content(const char *filename)
+    {
+        uint64_t size_byte = get_file_size(filename);
+        auto     buffer    = std::make_unique<char>(size_byte);
+        // Open file
+        std::ifstream fin(filename, std::ios::in | std::ios::binary);
+        if (fin) {
+            fin.read(buffer.get(), size_byte);
+            return buffer;
+        }
+        ERR_MSG("File not found: %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    nlohmann::json load_json(const char *vpmu_config_file)
+    {
+        // Read file in
+        std::string vpmu_config_str = read_text_content(vpmu_config_file);
+
+        // Parse json
+        auto j = nlohmann::json::parse(vpmu_config_str);
+        // DBG("%s\n", j.dump(4).c_str());
+
+        return j;
+    }
+
 } // End of namespace vpmu::utils
 
 namespace host

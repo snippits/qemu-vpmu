@@ -7,12 +7,12 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     // TODO make this thread safe and need to check branch!!!!!!!
     CPUState *cs                = CPU(ENV_GET_CPU(env));
     VPMU.cs                     = cs;
-    static uint32_t current_pid = 0;
+    static uint64_t current_pid = 0;
 
     switch (et_find_kernel_event(target_addr)) {
     case ET_KERNEL_FORK: {
         // Linux Kernel: Fork a process
-        // DBG("fork from %d\n", current_pid);
+        // DBG("fork from %lu\n", current_pid);
         break;
     }
     case ET_KERNEL_WAKE_NEW_TASK: {
@@ -34,11 +34,10 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         uintptr_t name_addr =
           (uintptr_t)vpmu_read_uintptr_from_guest(cs, env->regs[0], 0);
         char *filepath = (char *)vpmu_read_ptr_from_guest(cs, name_addr, 0);
+
         if (et_find_traced_process(filepath)) {
-            // if (VPMU.traced_process_name[0] != '\0'
-            //     && strstr(filepath, VPMU.traced_process_name) != NULL) {
-            // DBG("target_addr == %x from %x\n", target_addr, return_addr);
-            // DBG("file: %s (pid=%d)\n", filepath, current_pid);
+            // DBG("target_addr == %lx from %lx\n", target_addr, return_addr);
+            // DBG("file: %s (pid=%lu)\n", filepath, current_pid);
             tic(&(VPMU.start_time));
             VPMU_reset();
             vpmu_simulator_status(&VPMU);
@@ -59,11 +58,11 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
 #else
 #pragma message("VPMU SET: 64 bits Not supported!!")
 #endif
-        // current_pid = vpmu_read_uint32_from_guest(cs, task_ptr, 204); //This is kernel
-        // v3.6.11
-        current_pid =
-          vpmu_read_uint32_from_guest(cs, task_ptr, 512); // This is kernel v4.4.0
-        // ERR_MSG("pid = %x %d\n", env->regs[2], current_pid);
+        // This is kernel v3.6.11
+        // current_pid = vpmu_read_uint32_from_guest(cs, task_ptr, 204);
+        // This is kernel v4.4.0
+        current_pid = vpmu_read_uint32_from_guest(cs, task_ptr, 512);
+        // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[2], current_pid);
 
         // Switching VPMU when current process is traced
         if (et_find_traced_pid(current_pid))
@@ -85,4 +84,3 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     // by separating magic read_uint32... from this function to other functions
 }
 #endif
-

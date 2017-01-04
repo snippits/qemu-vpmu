@@ -39,6 +39,11 @@ public:
         return (found != std::string::npos);
     }
 
+    void add_symbol(std::string name, uint64_t address)
+    {
+        sym_table.insert(std::pair<std::string, uint64_t>(name, address));
+    }
+
 public:
     // These two are used too often, make it public for speed and convenience.
     std::string name;
@@ -62,6 +67,11 @@ public:
             if (kernel_event_table[i] == vaddr) return (ET_KERNEL_EVENT_TYPE)i;
         }
         return ET_KERNEL_NONE;
+    }
+
+    void set_event_address(ET_KERNEL_EVENT_TYPE event, uint64_t address)
+    {
+        kernel_event_table[event] = address;
     }
 
 private:
@@ -108,11 +118,10 @@ public:
     inline void remove_process(uint64_t pid)
     {
         // The STL way cost a little more time than hand coding, but it's much more SAFE!
-        processes.erase(
-          std::remove_if(processes.begin(),
-                         processes.end(),
-                         [&](ET_Process& p) { return p.pid == pid; }),
-          processes.end());
+        processes.erase(std::remove_if(processes.begin(),
+                                       processes.end(),
+                                       [&](ET_Process& p) { return p.pid == pid; }),
+                        processes.end());
     }
 
     inline bool find_traced_process(uint64_t pid)
@@ -123,8 +132,19 @@ public:
         return false;
     }
 
-    inline bool find_traced_process(const char* name)
+    inline bool find_traced_process(const char* path)
     {
+        // Match full path first
+        for (auto& p : processes) {
+            if (p.compare_name(path)) return true;
+        }
+        const char* name = nullptr;
+        for (int i = 0; path[i] != '\0'; i++) {
+            if (path[i] == '/') {
+                name = &path[i + 1];
+            }
+        }
+        // Match program name
         for (auto& p : processes) {
             if (p.compare_name(name)) return true;
         }
@@ -140,11 +160,17 @@ public:
         }
     }
 
+    ET_Kernel& get_kernel(void) { return kernel; }
+
+    void parse_and_set_kernel_symbol(const char* filename);
+
 private:
     void*                   cs;
     ET_Kernel               kernel;
     std::vector<ET_Process> processes;
     std::vector<ET_Process> program_list;
 };
+
+extern EventTracer event_tracer;
 
 #endif // __VPMU_EVENT_TRACING_HPP_

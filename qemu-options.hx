@@ -4442,6 +4442,8 @@ ETEXI
 #ifdef CONFIG_VPMU
 DEFHEADING(\nVPMU Related Options)
 DEF("vpmu-config", HAS_ARG, QEMU_OPTION_vpmu_config, \
-    "-vpmu-config <PATH>      set the path to VPMU configuration file\n",QEMU_ARCH_ARM)
+    "-vpmu-config <PATH>          set the path to VPMU configuration file\n",QEMU_ARCH_ALL)
+DEF("vpmu-kernel-symbol", HAS_ARG, QEMU_OPTION_vpmu_kernel_symbol, \
+    "-vpmu-kernel-symbol <PATH>   set the path to vmlinux file\n",QEMU_ARCH_ALL)
 #endif
 

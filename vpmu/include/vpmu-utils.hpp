@@ -41,6 +41,11 @@ namespace utils
         // Should only reach here when there is something wrong.
         exit(EXIT_FAILURE);
     }
+
+    std::ifstream::pos_type get_file_size(const char *filename);
+    std::string read_text_content(const char *filename);
+    std::unique_ptr<char> read_binary_content(const char *filename);
+    nlohmann::json load_json(const char *vpmu_config_file);
 } // End of namespace vpmu::utils
 
 namespace host

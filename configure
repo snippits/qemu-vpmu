@@ -261,6 +261,7 @@ debug_info="yes"
 stack_protector=""
 #CONFIG_VPMU
 vpmu="no"
+vpmu_use_clang="yes"
 vpmu_debug="no"
 vpmu_cpu_fence="no"
 vpmu_vfp="no"
@@ -1254,6 +1255,10 @@ for opt do
   ;;
   --disable-vpmu) vpmu="no"
   ;;
+  --enable-vpmu-clang) vpmu_use_clang="yes"
+  ;;
+  --disable-vpmu-clang) vpmu_use_clang="no"
+  ;;
   --enable-vpmu-set) vpmu_set="yes"
   ;;
   --disable-vpmu-set) vpmu_set="no"
@@ -1568,6 +1573,7 @@ disabled with --disable-FEATURE, default is enabled if available:
 Optional VPMU(CONFIG_VPMU) features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
   vpmu            set to enable VPMU (default is disable)
+  vpmu-clang      set to use clang++ for compiling VPMU (default is enable)
   vpmu-set        set to enable Smart Event Tracking (default is disable)
   vpmu-debug      enable debug message
   vpmu-mem-fence  force CPU memory order on ring buffer(non-x86 platform needed)
@@ -5447,6 +5453,7 @@ echo "VxHS block device $vxhs"
 
 #CONFIG_VPMU
 echo "VPMU              $vpmu"
+echo "VPMU Use clang++  $vpmu_use_clang"
 echo "VPMU SET          $vpmu_set"
 echo "VPMU debug        $vpmu_debug"
 echo "VPMU mem fence    $vpmu_cpu_fence"
@@ -6288,6 +6295,10 @@ case "$target_name" in
       #  This is for build-system itself
       echo "CONFIG_VPMU=y" >> $config_host_mak
 
+      if test "$vpmu_use_clang" = "yes" ; then
+          echo "CONFIG_VPMU_CLANG=y" >> $config_host_mak
+      fi
+
       if test "$qemu_version" = "0.15.1" ; then
           echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_target_mak
           echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_host_mak
@@ -6309,6 +6320,18 @@ case "$target_name" in
       if test "$vpmu_set" = "yes" ; then
           echo "CONFIG_VPMU_SET=y" >> $config_target_mak
           echo "CONFIG_VPMU_SET=y" >> $config_host_mak
+          mkdir -p $target_dir/vpmu/libs/libelfin/dwarf
+          mkdir -p $target_dir/vpmu/libs/libelfin/elf
+
+          lib_dwarf_path="vpmu/libs/libelfin/dwarf"
+          symlink $source_path/vpmu/Makefile.libdwarf $target_dir/$lib_dwarf_path/Makefile
+          symlink $source_path/$lib_dwarf_path/dwarf++.hh $target_dir/$lib_dwarf_path/dwarf++.hh
+          symlink $source_path/$lib_dwarf_path/data.hh $target_dir/$lib_dwarf_path/data.hh
+
+          lib_elf_path="vpmu/libs/libelfin/elf"
+          symlink $source_path/vpmu/Makefile.libelf $target_dir/$lib_elf_path/Makefile
+          symlink $source_path/$lib_elf_path/enum-print.py $target_dir/$lib_elf_path/enum-print.py
+          symlink $source_path/$lib_elf_path/data.hh $target_dir/$lib_elf_path/data.hh
       fi
 
       #Add directory for build
