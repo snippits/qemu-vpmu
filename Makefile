@@ -355,7 +355,7 @@ romsubdir-%:
 ALL_SUBDIRS=$(TARGET_DIRS) $(patsubst %,pc-bios/%, $(ROMS))
 
 ifeq ($(CONFIG_VPMU),y)
-	ALL_SUBDIRS+=$(TARGET_DIRS)/vpmu
+	ALL_SUBDIRS+=$(addsuffix /vpmu, $(TARGET_DIRS))
 endif
 
 recurse-all: $(SUBDIR_RULES) $(ROMSUBDIR_RULES)
