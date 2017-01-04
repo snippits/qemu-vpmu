@@ -28,8 +28,16 @@ void
             }
 
 #ifdef TARGET_ARM
-// TODO check this formula and modify this line
-// addr = addr & 0x000 | pid ;
+            // ARM Fast Context Switch Extension (FCSE): VA -> MVA
+            int mmu_idx = cpu_mmu_index(env, false);
+            if (addr < 0x02000000 && mmu_idx != ARMMMUIdx_S2NS
+                && !arm_feature(env, ARM_FEATURE_V8)) {
+                if (mmu_idx == ARMMMUIdx_S1E3) {
+                    addr += env->cp15.fcseidr_s;
+                } else {
+                    addr += env->cp15.fcseidr_ns;
+                }
+            }
 #endif
 
             if (unlikely(VPMU.iomem_access_flag)) {
