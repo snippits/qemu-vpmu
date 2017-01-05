@@ -78,7 +78,7 @@ static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
 {
 #ifdef CONFIG_VPMU_SET
-    uintptr_t  paddr = 0;
+    void *     paddr = NULL;
     char *     buffer;
     static int buffer_size = 0;
     FILE *     fp;
@@ -87,13 +87,13 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
 
 #if 0
-    //This is a test code to read user data in guest virtual address from host
+    // This is a test code to read user data in guest virtual address from host
     if (addr == 100 * 4) {
         ERR_MSG("VA:%lx\n", value);
-        uintptr_t guest_vaddr = vpmu_get_phy_addr_global(VPMU.cpu_arch_state, value);
-        ERR_MSG("PA:%lx\n", guest_vaddr);
-        ERR_MSG("value:%lx\n", *(unsigned long int *)guest_vaddr);
-        return ;
+        void *guest_addr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
+        ERR_MSG("PA:%p\n", (void *)guest_addr);
+        ERR_MSG("value:%lx\n", *(unsigned long int *)guest_addr);
+        return;
     }
 #endif
 
@@ -135,14 +135,14 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             // VPMU's use.
             vpmu_qemu_free_cpu_arch_state(vpmu_cpu_context[0]);
             vpmu_cpu_context[0] = vpmu_qemu_clone_cpu_arch_state(VPMU.cpu_arch_state);
-            paddr               = vpmu_get_phy_addr_global(vpmu_cpu_context[0], value);
+            paddr               = vpmu_tlb_get_host_addr(vpmu_cpu_context[0], value);
             DBG(STR_VPMU "trace process name: %s\n", (char *)paddr);
             et_add_program_to_list((const char *)paddr);
         }
         break;
     case VPMU_MMAP_REMOVE_PROC_NAME:
         if (value != 0) {
-            paddr = vpmu_get_phy_addr_global(VPMU.cpu_arch_state, value);
+            paddr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
             DBG(STR_VPMU "remove traced process: %s\n", (char *)paddr);
             et_remove_program_from_list((const char *)paddr);
         }

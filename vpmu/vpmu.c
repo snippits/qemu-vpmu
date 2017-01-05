@@ -6,14 +6,9 @@
 #include "cpu.h"           // QEMU CPU definitions and macros (CPUArchState)
 #include "hw/sysbus.h"     // SysBusDevice
 #include "exec/exec-all.h" // tlb_fill()
+#include "qom/cpu.h"       // cpu_get_phys_page_attrs_debug(), cpu_has_work(), etc.
 
-// TODO try
-// static bool get_phys_addr(CPUARMState *env, target_ulong address,
-// 8084                           int access_type, ARMMMUIdx mmu_idx,
-// 8085                           hwaddr *phys_ptr, MemTxAttrs *attrs, int *prot,
-// 8086                           target_ulong *page_size, uint32_t *fsr,
-// 8087                           ARMMMUFaultInfo *fi)
-uintptr_t vpmu_get_phy_addr_global(void *env, uintptr_t vaddr)
+void *vpmu_tlb_get_host_addr(void *env, uintptr_t vaddr)
 {
     int           retry            = 0;
     const int     READ_ACCESS_TYPE = 0;
@@ -34,6 +29,7 @@ redo:
     tlb_addr = cpu_env->tlb_table[mmu_idx][index].addr_read;
     if ((vaddr & TARGET_PAGE_MASK)
         == (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
+        // TLB hit
         if (tlb_addr & ~TARGET_PAGE_MASK) {
             ERR_MSG(STR_VPMU "should not access IO currently\n");
         } else {
@@ -42,11 +38,12 @@ redo:
             paddr  = (uintptr_t)(vaddr + addend);
         }
     } else {
+        // TLB miss
         tlb_fill(cpu_state, vaddr, READ_ACCESS_TYPE, mmu_idx, GETPC());
         goto redo;
     }
 
-    return paddr;
+    return (void *)paddr;
 }
 
 size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *cs)
@@ -54,12 +51,13 @@ size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *c
     size_t left_size = size;
 
     while (left_size > 0) {
-        uintptr_t phy_addr = vpmu_get_phy_addr_global(cs, src);
+        void *phy_addr = vpmu_tlb_get_host_addr(cs, src);
 
         if (phy_addr) {
-            size_t valid_len = TARGET_PAGE_SIZE - (phy_addr & ~TARGET_PAGE_MASK);
+            size_t valid_len =
+              TARGET_PAGE_SIZE - ((uintptr_t)phy_addr & ~TARGET_PAGE_MASK);
             if (valid_len > left_size) valid_len = left_size;
-            memcpy(dst, (void *)phy_addr, valid_len);
+            memcpy(dst, phy_addr, valid_len);
             dst = ((uint8_t *)dst) + valid_len;
             src += valid_len;
             left_size -= valid_len;
@@ -127,7 +125,7 @@ void vpmu_qemu_free_cpu_arch_state(void *env)
         free(cpu);
     }
 
-    return ;
+    return;
 }
 
 #endif // CONFING_VPMU_SET
@@ -151,9 +149,9 @@ static void dump_symbol_table(EFD *efd)
 
 void vpmu_dump_elf_symbols(const char *file_path)
 {
-//    EFD *efd = efd_open_elf((char *)file_path);
-//    dump_symbol_table(efd);
-//    efd_close(efd);
+    //    EFD *efd = efd_open_elf((char *)file_path);
+    //    dump_symbol_table(efd);
+    //    efd_close(efd);
 }
 
 uint64_t h_time_difference(struct timespec *t1, struct timespec *t2)
@@ -179,7 +177,7 @@ uint64_t toc(struct timespec *t1, struct timespec *t2)
 
 uint8_t *vpmu_read_ptr_from_guest(void *cs, uint64_t addr, uint64_t offset)
 {
-    return (uint8_t *)vpmu_get_phy_addr_global((void *)cs, (uint64_t)addr) + offset;
+    return (uint8_t *)vpmu_tlb_get_host_addr((void *)cs, (uint64_t)addr) + offset;
 }
 
 uint8_t vpmu_read_uint8_from_guest(void *cs, uint64_t addr, uint64_t offset)
