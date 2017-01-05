@@ -6284,6 +6284,12 @@ TARGET_ABI_DIR=""
 case "$target_name" in
   arm|armeb|aarch64|i386|x86_64)
     if test "$vpmu" = "yes" ; then
+      if test ! -d ${source_path}/vpmu/libs/libelfin; then
+          # Clone submodule if not present
+          cd ${source_path}
+          git submodule update --init vpmu/libs/libelfin
+          cd -
+      fi
       #Create environment setup file
       vpmu_config="$source_path/vpmu/vpmu_config"
       echo "export VPMU_CONFIG=$vpmu_config" > ./setenv.sh
