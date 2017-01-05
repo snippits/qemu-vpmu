@@ -15,6 +15,7 @@ uintptr_t vpmu_get_phy_addr_global(void *ptr, uintptr_t vaddr);
 size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *cs);
 void vpmu_dump_elf_symbols(const char *file_path);
 void *vpmu_clone_qemu_cpu_state(void *cpu_v);
+void vpmu_update_qemu_cpu_state(void *source_cpu_v, void *target_cpu_v);
 
 // Prevent prototype warnings from some compilers
 uint8_t *vpmu_read_ptr_from_guest(void *cs, uint64_t addr, uint64_t offset);

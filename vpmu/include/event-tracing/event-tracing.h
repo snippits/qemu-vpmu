@@ -34,11 +34,13 @@ enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);
 // Implemented in CPP side
 void et_add_program_to_list(const char* name);
 void et_remove_program_from_list(const char* name);
+bool et_find_program_in_list(const char* name);
 
 void et_add_new_process(const char* name, uint64_t pid);
 void et_remove_process(uint64_t pid);
 void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid);
 bool et_find_traced_pid(uint64_t pid);
 bool et_find_traced_process(const char* name);
+void et_set_process_cpu_state(uint64_t pid, void* cs);
 
 #endif // __VPMU_EVENT_TRACING_

@@ -1,4 +1,5 @@
 #include "vpmu/include/vpmu.h"
+#include "vpmu/include/vpmu-device.h"
 #include "vpmu/include/event-tracing/event-tracing.h"
 
 #if defined(TARGET_ARM)
@@ -12,7 +13,7 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     switch (et_find_kernel_event(target_addr)) {
     case ET_KERNEL_FORK: {
         // Linux Kernel: Fork a process
-        // DBG("fork from %lu\n", current_pid);
+        // DBG(STR_VPMU "fork from %lu\n", current_pid);
         break;
     }
     case ET_KERNEL_WAKE_NEW_TASK: {
@@ -35,9 +36,9 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
           (uintptr_t)vpmu_read_uintptr_from_guest(cs, env->regs[0], 0);
         char *filepath = (char *)vpmu_read_ptr_from_guest(cs, name_addr, 0);
 
-        if (et_find_traced_process(filepath)) {
-            // DBG("target_addr == %lx from %lx\n", target_addr, return_addr);
-            // DBG("file: %s (pid=%lu)\n", filepath, current_pid);
+        if (et_find_program_in_list(filepath)) {
+            DBG(STR_VPMU "target_addr == %lx from %lx\n", target_addr, return_addr);
+            DBG(STR_VPMU "file: %s (pid=%lu)\n", filepath, current_pid);
             tic(&(VPMU.start_time));
             VPMU_reset();
             vpmu_simulator_status(&VPMU);
@@ -64,11 +65,16 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         current_pid = vpmu_read_uint32_from_guest(cs, task_ptr, 512);
         // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[2], current_pid);
 
-        // Switching VPMU when current process is traced
-        if (et_find_traced_pid(current_pid))
+        if (et_find_traced_pid(current_pid)) {
+            et_set_process_cpu_state(current_pid, cs);
             VPMU.enabled = true;
-        else
-            VPMU.enabled = false;
+        } else {
+            // Switching VPMU when current process is traced
+            if (vpmu_model_has(VPMU_WHOLE_SYSTEM, VPMU))
+                VPMU.enabled = true;
+            else
+                VPMU.enabled = false;
+        }
 
         break;
     }

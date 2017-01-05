@@ -6,6 +6,9 @@ extern "C" {
 
 EventTracer event_tracer;
 
+ET_Program ET_Program::not_found("Not Found");
+ET_Process ET_Process::not_found("Not Found", 0xFFFFFFFFFFFFFFFF);
+
 void EventTracer::parse_and_set_kernel_symbol(const char* filename)
 {
     int fd = open(filename, O_RDONLY);
@@ -76,14 +79,19 @@ void et_remove_program_from_list(const char* name)
     event_tracer.remove_program(name);
 }
 
+bool et_find_program_in_list(const char* name)
+{
+    return (event_tracer.find_program(name) != ET_Program::not_found);
+}
+
 bool et_find_traced_pid(uint64_t pid)
 {
-    return event_tracer.find_traced_process(pid);
+    return (event_tracer.find_process(pid) != ET_Process::not_found);
 }
 
 bool et_find_traced_process(const char* name)
 {
-    return event_tracer.find_traced_process(name);
+    return (event_tracer.find_process(name) != ET_Process::not_found);
 }
 
 void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)
@@ -117,4 +125,9 @@ void et_remove_process(uint64_t pid)
         VPMU.enabled = 0;
         flag_tracing = 0;
     }*/
+}
+
+void et_set_process_cpu_state(uint64_t pid, void* cs)
+{
+    event_tracer.set_process_cpu_state(pid, cs);
 }

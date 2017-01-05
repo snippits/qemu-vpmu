@@ -41,6 +41,9 @@ static CPUState *vpmu_cpu_context[VPMU_MAX_CPU_CORES];
 
 void vpmu_simulator_status(VPMU_Struct *vpmu)
 {
+    vpmu->timing_model &VPMU_WHOLE_SYSTEM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Whole System Profiling\n");
+
     vpmu->timing_model &VPMU_INSN_COUNT_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
     CONSOLE_LOG("Instruction Simulation\n");
 
@@ -95,21 +98,22 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
 #endif
 
     switch (addr) {
+    case VPMU_MMAP_SET_TIMING_MODEL:
+        VPMU.timing_model = value;
+        break;
     case VPMU_MMAP_ENABLE:
         VPMU_reset();
         VPMU.enabled      = 1;
-        VPMU.timing_model = value;
+        VPMU.timing_model = value | VPMU_WHOLE_SYSTEM;
         vpmu_simulator_status(&VPMU);
 
         tic(&(VPMU.start_time));
         break;
     case VPMU_MMAP_DISABLE:
+        VPMU.enabled = 0;
         VPMU_sync();
         toc(&(VPMU.start_time), &(VPMU.end_time));
 
-        VPMU_dump_result();
-
-        VPMU.enabled = 0;
 #ifdef CONFIG_VPMU_VFP
         // FILE_LOG("Before print_vfp_count \n");
         print_vfp_count();
@@ -117,11 +121,15 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         break;
     case VPMU_MMAP_REPORT:
         VPMU_sync();
+        toc(&(VPMU.start_time), &(VPMU.end_time));
         VPMU_dump_result();
-
+        break;
+    case VPMU_MMAP_RESET:
+        VPMU_reset();
+        tic(&(VPMU.start_time));
         break;
 #ifdef CONFIG_VPMU_SET
-    case VPMU_MMAP_SET_PROC_NAME:
+    case VPMU_MMAP_ADD_PROC_NAME:
         if (value != 0) {
             // Copy the whole CPU context including TLB Table and MMU registers for
             // VPMU's use.
@@ -131,15 +139,20 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             }
             vpmu_cpu_context[0] = vpmu_clone_qemu_cpu_state(VPMU.cs);
             paddr               = vpmu_get_phy_addr_global(vpmu_cpu_context[0], value);
-            DBG(STR_ET "trace process name:%s\n", (char *)paddr);
-            // TODO find a way to remove/clear the process name
+            DBG(STR_VPMU "trace process name: %s\n", (char *)paddr);
             et_add_program_to_list((const char *)paddr);
+        }
+        break;
+    case VPMU_MMAP_REMOVE_PROC_NAME:
+        if (value != 0) {
+            paddr = vpmu_get_phy_addr_global(VPMU.cs, value);
+            DBG(STR_VPMU "remove traced process: %s\n", (char *)paddr);
+            et_remove_program_from_list((const char *)paddr);
         }
         break;
     case VPMU_MMAP_SET_PROC_SIZE:
         buffer_size = value;
         break;
-
     case VPMU_MMAP_SET_PROC_BIN:
         if (buffer_size != 0) {
             buffer = (char *)malloc(buffer_size);
@@ -226,7 +239,7 @@ static void vpmu_dev_reset(DeviceState *dev)
 
 static void vpmu_dev_instance_init(Object *obj)
 {
-    int i;
+    int           i;
     DeviceState * dev    = DEVICE(obj);
     vpmu_state_t *status = OBJECT_CHECK(vpmu_state_t, dev, VPMU_DEVICE_NAME);
     SysBusDevice *sbd    = SYS_BUS_DEVICE(obj);

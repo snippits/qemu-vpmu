@@ -7,6 +7,12 @@
 #include "hw/sysbus.h"     // SysBusDevice
 #include "exec/exec-all.h" // tlb_fill()
 
+// TODO try
+// static bool get_phys_addr(CPUARMState *env, target_ulong address,
+// 8084                           int access_type, ARMMMUIdx mmu_idx,
+// 8085                           hwaddr *phys_ptr, MemTxAttrs *attrs, int *prot,
+// 8086                           target_ulong *page_size, uint32_t *fsr,
+// 8087                           ARMMMUFaultInfo *fi)
 uintptr_t vpmu_get_phy_addr_global(void *ptr, uintptr_t vaddr)
 {
     int           retry            = 0;
@@ -68,6 +74,22 @@ size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *c
 }
 
 #ifdef CONFIG_VPMU_SET
+// TODO Need to find better way to allocate
+// TODO Need to free
+void vpmu_update_qemu_cpu_state(void *source_cpu_v, void *target_cpu_v)
+{
+    CPUState *s_cpu = (CPUState *)source_cpu_v;
+    CPUState *t_cpu = (CPUState *)target_cpu_v;
+#if defined(TARGET_ARM)
+    memcpy(t_cpu, ARM_CPU(s_cpu), sizeof(ARMCPU));
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    memcpy(t_cpu, X86_CPU(s_cpu), sizeof(X86CPU));
+#else
+#error "VPMU does not support this architecture!"
+#endif
+    memcpy(t_cpu->env_ptr, s_cpu->env_ptr, sizeof(CPUArchState));
+}
+
 void *vpmu_clone_qemu_cpu_state(void *cpu_v)
 {
     CPUState *cpu = (CPUState *)cpu_v;
@@ -163,7 +185,7 @@ uintptr_t vpmu_read_uintptr_from_guest(void *cs, uint64_t addr, uint64_t offset)
 #if defined(TARGET_LONG_BITS)
 #if (TARGET_LONG_BITS == 32)
     return (uintptr_t)vpmu_read_uint32_from_guest(cs, addr, offset);
-#elif defined(TARGET_LONG_BITS == 64)
+#elif (TARGET_LONG_BITS == 64)
     return (uintptr_t)vpmu_read_uint64_from_guest(cs, addr, offset);
 #endif
 #else
