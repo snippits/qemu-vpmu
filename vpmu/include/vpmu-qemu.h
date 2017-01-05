@@ -32,7 +32,7 @@ typedef struct VPMU_Struct {
 
     // TODO Is there a better way for multi-core execution env?
     // Should be set for vpmu device only.
-    void *cs; // This is for identifying MMU table
+    void *cpu_arch_state; // This is for identifying MMU table
 
     struct {
         uint64_t total_tb_visit_count;

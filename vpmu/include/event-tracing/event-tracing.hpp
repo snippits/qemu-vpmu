@@ -65,8 +65,7 @@ public:
     }
     ~ET_Process()
     {
-        // TODO this is not free yet
-        if (cpu_state != nullptr) free(cpu_state);
+        vpmu_qemu_free_cpu_arch_state(cpu_state);
     }
 
     inline bool operator==(const ET_Process& rhs) { return (this == &rhs); }
@@ -84,9 +83,9 @@ public:
     inline void set_cpu_state(void* cs)
     {
         if (cpu_state == nullptr) {
-            cpu_state = vpmu_clone_qemu_cpu_state(cs);
+            cpu_state = vpmu_qemu_clone_cpu_arch_state(cs);
         } else {
-            vpmu_update_qemu_cpu_state(cs, cpu_state);
+            vpmu_qemu_update_cpu_arch_state(cs, cpu_state);
         }
     }
 

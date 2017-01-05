@@ -13,13 +13,13 @@
 // 8085                           hwaddr *phys_ptr, MemTxAttrs *attrs, int *prot,
 // 8086                           target_ulong *page_size, uint32_t *fsr,
 // 8087                           ARMMMUFaultInfo *fi)
-uintptr_t vpmu_get_phy_addr_global(void *ptr, uintptr_t vaddr)
+uintptr_t vpmu_get_phy_addr_global(void *env, uintptr_t vaddr)
 {
     int           retry            = 0;
     const int     READ_ACCESS_TYPE = 0;
     uintptr_t     paddr            = 0;
-    CPUState *    cpu_state        = (CPUState *)ptr;
-    CPUArchState *cpu_env          = (CPUArchState *)cpu_state->env_ptr;
+    CPUArchState *cpu_env          = (CPUArchState *)env;
+    CPUState *    cpu_state        = CPU(ENV_GET_CPU(env));
     int           mmu_idx          = cpu_mmu_index(cpu_env, false);
     int           index;
     target_ulong  tlb_addr;
@@ -76,10 +76,13 @@ size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *c
 #ifdef CONFIG_VPMU_SET
 // TODO Need to find better way to allocate
 // TODO Need to free
-void vpmu_update_qemu_cpu_state(void *source_cpu_v, void *target_cpu_v)
+void vpmu_qemu_update_cpu_arch_state(void *source_env, void *target_env)
 {
-    CPUState *s_cpu = (CPUState *)source_cpu_v;
-    CPUState *t_cpu = (CPUState *)target_cpu_v;
+    // TODO Is this enough? Do we need to copy all cpu state?
+    memcpy(target_env, source_env, sizeof(CPUArchState));
+#if 0
+    CPUState *s_cpu = CPU(ENV_GET_CPU(source_env));
+    CPUState *t_cpu = CPU(ENV_GET_CPU(target_env));
 #if defined(TARGET_ARM)
     memcpy(t_cpu, ARM_CPU(s_cpu), sizeof(ARMCPU));
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
@@ -87,12 +90,16 @@ void vpmu_update_qemu_cpu_state(void *source_cpu_v, void *target_cpu_v)
 #else
 #error "VPMU does not support this architecture!"
 #endif
-    memcpy(t_cpu->env_ptr, s_cpu->env_ptr, sizeof(CPUArchState));
+    // QEMU sometimes use this pointer to find the child object
+    // We need to overwrite this pointer to pointing to copied object
+    t_cpu->env_ptr = target_env;
+#endif
 }
 
-void *vpmu_clone_qemu_cpu_state(void *cpu_v)
+void *vpmu_qemu_clone_cpu_arch_state(void *env)
 {
-    CPUState *cpu = (CPUState *)cpu_v;
+    uintptr_t offset = 0;
+    CPUState *cpu    = CPU(ENV_GET_CPU(env));
 #if defined(TARGET_ARM)
     CPUState *cpu_state_ptr = (CPUState *)malloc(sizeof(ARMCPU));
     memcpy(cpu_state_ptr, ARM_CPU(cpu), sizeof(ARMCPU));
@@ -102,13 +109,28 @@ void *vpmu_clone_qemu_cpu_state(void *cpu_v)
 #else
 #error "VPMU does not support this architecture!"
 #endif
-    CPUArchState *cpu_arch_state_ptr = (CPUArchState *)malloc(sizeof(CPUArchState));
-    memcpy(cpu_arch_state_ptr, cpu->env_ptr, sizeof(CPUArchState));
 
-    cpu_state_ptr->env_ptr = cpu_arch_state_ptr;
-    return cpu_state_ptr;
+    // This is the offset of CPUArchState - ArchCPU
+    offset = (uintptr_t)env - (uintptr_t)cpu;
+    // QEMU sometimes use this pointer to find the child object
+    // We need to overwrite this pointer to pointing to copied object
+    cpu_state_ptr->env_ptr = (void *)((uintptr_t)cpu_state_ptr + offset);
+
+    return cpu_state_ptr->env_ptr;
 }
-#endif
+
+void vpmu_qemu_free_cpu_arch_state(void *env)
+{
+    CPUState *cpu = CPU(ENV_GET_CPU(env));
+
+    if (env != NULL) {
+        free(cpu);
+    }
+
+    return ;
+}
+
+#endif // CONFING_VPMU_SET
 
 #if 0
 static void dump_symbol_table(EFD *efd)

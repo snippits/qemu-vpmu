@@ -37,7 +37,7 @@ static const VMStateDescription vpmu_vmstate = {
                      VMSTATE_END_OF_LIST()}};
 
 // Saving QEMU's context for TLB and MMU use. (copy data from/to guest)
-static CPUState *vpmu_cpu_context[VPMU_MAX_CPU_CORES];
+static CPUArchState *vpmu_cpu_context[VPMU_MAX_CPU_CORES];
 
 void vpmu_simulator_status(VPMU_Struct *vpmu)
 {
@@ -90,7 +90,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     //This is a test code to read user data in guest virtual address from host
     if (addr == 100 * 4) {
         ERR_MSG("VA:%lx\n", value);
-        uintptr_t guest_vaddr = vpmu_get_phy_addr_global(VPMU.cs, value);
+        uintptr_t guest_vaddr = vpmu_get_phy_addr_global(VPMU.cpu_arch_state, value);
         ERR_MSG("PA:%lx\n", guest_vaddr);
         ERR_MSG("value:%lx\n", *(unsigned long int *)guest_vaddr);
         return ;
@@ -133,11 +133,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         if (value != 0) {
             // Copy the whole CPU context including TLB Table and MMU registers for
             // VPMU's use.
-            if (vpmu_cpu_context[0] != NULL) {
-                free(vpmu_cpu_context[0]->env_ptr);
-                free(vpmu_cpu_context[0]);
-            }
-            vpmu_cpu_context[0] = vpmu_clone_qemu_cpu_state(VPMU.cs);
+            vpmu_qemu_free_cpu_arch_state(vpmu_cpu_context[0]);
+            vpmu_cpu_context[0] = vpmu_qemu_clone_cpu_arch_state(VPMU.cpu_arch_state);
             paddr               = vpmu_get_phy_addr_global(vpmu_cpu_context[0], value);
             DBG(STR_VPMU "trace process name: %s\n", (char *)paddr);
             et_add_program_to_list((const char *)paddr);
@@ -145,7 +142,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         break;
     case VPMU_MMAP_REMOVE_PROC_NAME:
         if (value != 0) {
-            paddr = vpmu_get_phy_addr_global(VPMU.cs, value);
+            paddr = vpmu_get_phy_addr_global(VPMU.cpu_arch_state, value);
             DBG(STR_VPMU "remove traced process: %s\n", (char *)paddr);
             et_remove_program_from_list((const char *)paddr);
         }
@@ -160,7 +157,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
                 ERR_MSG("Can not allocate memory\n");
                 exit(EXIT_FAILURE);
             }
-            vpmu_copy_from_guest(buffer, value, buffer_size, VPMU.cs);
+            vpmu_copy_from_guest(buffer, value, buffer_size, VPMU.cpu_arch_state);
             fp = fopen("/tmp/vpmu-traced-bin", "wb");
             if (fp != NULL) {
                 fwrite(buffer, buffer_size, 1, fp);
