@@ -85,7 +85,8 @@ public:
         if (cpu_state == nullptr) {
             cpu_state = vpmu_qemu_clone_cpu_arch_state(cs);
         } else {
-            vpmu_qemu_update_cpu_arch_state(cs, cpu_state);
+            // TODO Do we need to update this? It's heavy (about 100 KB)
+            // vpmu_qemu_update_cpu_arch_state(cs, cpu_state);
         }
     }
 
