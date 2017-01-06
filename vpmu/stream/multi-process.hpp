@@ -26,10 +26,7 @@ public:
         num_trace_buffer_elems = num_elems;
     }
 
-    ~VPMUStreamMultiProcess()
-    {
-        destroy();
-    }
+    ~VPMUStreamMultiProcess() { destroy(); }
 
     void build() override
     {
@@ -261,7 +258,8 @@ private:
 
     void fork_zombie_killer()
     {
-        pid_t pid = fork();
+        pid_t parent_pid = getpid();
+        pid_t pid        = fork();
 
         if (pid) {
             // Parent
@@ -276,19 +274,29 @@ private:
                 }
             });
         } else {
-            uint64_t last_heart_beat = 0;
+            volatile uint64_t last_heart_beat     = 0;
+            bool              print_gdb_once_flag = false;
 
             vpmu::utils::name_process("zombie-killer");
-            // TODO finish the heartbeat signals
             while (true) {
                 usleep(500 * 1000); // 0.5 second
                 if (*heart_beat == last_heart_beat) {
-                    log_fatal("QEMU stops beating... kill all zombies!!\n");
-                    this->destroy();
-                    log("Destructed\n");
-                    // Exit without calling unnecessary destructor of global variables.
-                    // This prevents double-free shared resources.
-                    abort();
+                    if (kill(parent_pid, 0)) {
+                        if (errno == ESRCH) {
+                            log_fatal("QEMU stops beating... kill all zombies!!\n");
+                            this->destroy();
+                            log("Destructed\n");
+                            // Exit without calling unnecessary destructor of global
+                            // variables.
+                            // This prevents double-free shared resources.
+                            abort();
+                        }
+                    } else {
+                        if (print_gdb_once_flag == false)
+                            log_debug("QEMU stops beating... but still exist. "
+                                      "Consider it as stopped by ptrace (gdb).\n");
+                        print_gdb_once_flag = true;
+                    }
                 }
                 last_heart_beat = *heart_beat;
             }
