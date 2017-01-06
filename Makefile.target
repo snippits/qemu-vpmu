@@ -206,10 +206,8 @@ all-obj-$(CONFIG_VPMU) += vpmu/libvpmu_$(TARGET_NAME).a $(VPMU_EXTERNAL_LIBS)
 LIBS += -lboost_system -lboost_thread
 VPMU_MAKE_ARG=TARGET_NAME=$(TARGET_NAME)
 
-ifeq ($(CONFIG_VPMU_CLANG),y)
-VPMU_MAKE_ARG+= CC=clang CXX=clang++
-LINKPROG=clang++
-endif
+VPMU_MAKE_ARG+= CC=$(VPMU_CC) CXX=$(VPMU_CXX)
+LINKPROG=$(VPMU_CXX)
 
 vpmu/libvpmu_$(TARGET_NAME).a	:
 	$(call quiet-command,$(MAKE) $(VPMU_MAKE_ARG) -C ./vpmu libvpmu_$(TARGET_NAME).a)

@@ -260,8 +260,16 @@ libs_qga=""
 debug_info="yes"
 stack_protector=""
 #CONFIG_VPMU
+vpmu_cxx=clang++
+vpmu_cc=clang
+vpmu_use_clang="yes";
+vpmu_clang_found=$(command -v clang++ 2> /dev/null)
+if test "$vpmu_clang_found" = ""; then # Not found
+    vpmu_clang_found="no";
+else
+    vpmu_clang_found="yes";
+fi
 vpmu="no"
-vpmu_use_clang="yes"
 vpmu_debug="no"
 vpmu_cpu_fence="no"
 vpmu_vfp="no"
@@ -1573,11 +1581,11 @@ disabled with --disable-FEATURE, default is enabled if available:
 Optional VPMU(CONFIG_VPMU) features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
   vpmu            set to enable VPMU (default is disable)
-  vpmu-clang      set to use clang++ for compiling VPMU (default is enable)
   vpmu-set        set to enable Smart Event Tracking (default is disable)
   vpmu-debug      enable debug message
   vpmu-mem-fence  force CPU memory order on ring buffer(non-x86 platform needed)
   vpmu-vfp        enable counter for virtual floating point
+  vpmu-clang      set to use clang++ for compiling VPMU (default is enable)
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -5453,11 +5461,44 @@ echo "VxHS block device $vxhs"
 
 #CONFIG_VPMU
 echo "VPMU              $vpmu"
-echo "VPMU Use clang++  $vpmu_use_clang"
 echo "VPMU SET          $vpmu_set"
 echo "VPMU debug        $vpmu_debug"
 echo "VPMU mem fence    $vpmu_cpu_fence"
 echo "VPMU-VFP          $vpmu_vfp"
+echo "VPMU Use clang++  $vpmu_use_clang"
+
+temp_vpmu_cxx_without_version=$(basename $cxx | awk -F"-" '{ print $1 }')
+temp_vpmu_cc_without_version=$(basename $cc | awk -F"-" '{ print $1 }')
+# Override to user defined cc, cxx
+if test "$temp_vpmu_cxx_without_version" = "clang++"; then
+    if test "$temp_vpmu_cc_without_version" = "clang"; then
+        vpmu_cxx=$cxx
+        vpmu_cc=$cc
+        vpmu_clang_found="yes"
+    fi
+fi
+# Set to default cc, cxx if vpmu_use_clang is disabled
+if test "$vpmu_use_clang" = "no" ; then
+    vpmu_cxx=$cxx
+    vpmu_cc=$cc
+fi
+
+echo "  Compiler:"
+echo "    VPMU: $vpmu_cc, $vpmu_cxx"
+echo "    QEMU: $cc, $cxx"
+
+# Prompt messages to user if clang is not found or specified
+if test "$vpmu_use_clang" = "yes" ; then
+    if test "$vpmu_clang_found" = "no" ; then
+        # Use clang is enabled, but not found and not specified by user
+        echo -e "\033[1;31m" \
+            "clang, clang++ is not found in \$PATH. Clang provides much better optimizations in some cases.\n" \
+            "  We strongly suggest to use clang for compiling VPMU module for the best performance!\n" \
+            "According to our experiments, the clang compiler optimizes better in some cases.\n" \
+            "Use \"--disable-vpmu-clang\" to disable this feature." \
+            "\033[0;00m\n"
+    fi
+fi
 #endif CONFIG_VPMU
 
 if test "$sdl_too_old" = "yes"; then
@@ -6290,20 +6331,14 @@ case "$target_name" in
           git submodule update --init vpmu/libs/libelfin
           cd -
       fi
-      #Create environment setup file
-      vpmu_config="$source_path/vpmu/vpmu_config"
-      echo "export VPMU_CONFIG=$vpmu_config" > ./setenv.sh
-      echo "export VPMU_JSON=$vpmu_config/def_config" >> ./setenv.sh
-      chmod +x ./setenv.sh
       #Add CONFIG
       #  This is for building qemu
       echo "CONFIG_VPMU=y" >> $config_target_mak
       #  This is for build-system itself
       echo "CONFIG_VPMU=y" >> $config_host_mak
 
-      if test "$vpmu_use_clang" = "yes" ; then
-          echo "CONFIG_VPMU_CLANG=y" >> $config_host_mak
-      fi
+      echo "VPMU_CC=$vpmu_cc" >> $config_host_mak
+      echo "VPMU_CXX=$vpmu_cxx" >> $config_host_mak
 
       if test "$qemu_version" = "0.15.1" ; then
           echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_target_mak
