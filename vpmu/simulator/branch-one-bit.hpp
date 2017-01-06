@@ -72,7 +72,7 @@ public:
             one_bit_branch_predictor(&ref);
             break;
         default:
-            log_fatal("Unexpected packet");
+            LOG_FATAL("Unexpected packet");
         }
     }
 

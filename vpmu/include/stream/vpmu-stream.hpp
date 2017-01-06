@@ -17,18 +17,18 @@ public:
 
     virtual void set_default_stream_impl(void)
     {
-        log_fatal("set_default_stream_impl is not implemented");
+        LOG_FATAL("set_default_stream_impl is not implemented");
     }
-    virtual void bind(nlohmann::json) { log_fatal("bind is not implemented"); }
-    virtual void build() { log_fatal("build is not implemented"); }
-    virtual void destroy(void) { log_fatal("destroy is not implemented"); }
-    virtual void reset(void) { log_fatal("reset is not implemented"); }
-    virtual void sync(void) { log_fatal("sync is not implemented"); }
+    virtual void bind(nlohmann::json) { LOG_FATAL("bind is not implemented"); }
+    virtual void build() { LOG_FATAL("build is not implemented"); }
+    virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
+    virtual void reset(void) { LOG_FATAL("reset is not implemented"); }
+    virtual void sync(void) { LOG_FATAL("sync is not implemented"); }
     virtual void sync_none_blocking(void)
     {
-        log_fatal("sync_none_blocking is not implemented");
+        LOG_FATAL("sync_none_blocking is not implemented");
     }
-    virtual void dump(void) { log_fatal("dump is not implemented"); }
+    virtual void dump(void) { LOG_FATAL("dump is not implemented"); }
 };
 
 template <typename T>
@@ -59,7 +59,7 @@ public:
     {
         // std::cout << configs.dump();
         if (configs.size() < 1) {
-            log_fatal("There is no content!");
+            LOG_FATAL("There is no content!");
         }
         target_configs = configs;
     }
@@ -166,7 +166,7 @@ public:
 
     void set_default_stream_impl(void) override
     {
-        log_fatal("set_stream_impl is not implemented");
+        LOG_FATAL("set_stream_impl is not implemented");
     }
 
     // Getter functions for C side to use.
@@ -211,7 +211,7 @@ private:
 
     virtual Sim_ptr create_sim(std::string sim_name)
     {
-        log_fatal("create_sim is not defined");
+        LOG_FATAL("create_sim is not defined");
         return nullptr;
     };
 };

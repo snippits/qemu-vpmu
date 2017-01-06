@@ -33,13 +33,13 @@ public:
 
     // This is where to release/free/deallocate resources holded by simulator
     // It's designed for making programer being aware of releasing resource
-    virtual void destroy() { log_fatal("destroy function is not implemented!!"); }
+    virtual void destroy() { LOG_FATAL("destroy function is not implemented!!"); }
 
     // To avoid unnecessary (virtual) function calls,
     // each simulator has to implement its packet processor
     virtual inline void packet_processor(int id, typename T::Reference &ref, T &t)
     {
-        log_fatal("packet_processor function is not implemented!!");
+        LOG_FATAL("packet_processor function is not implemented!!");
     }
 
     virtual inline void hot_packet_processor(int id, typename T::Reference &ref, T &t)
@@ -53,7 +53,7 @@ public:
     // This is used in instruction model only!
     virtual VPMUArchTranslate &get_translator_handle(void)
     {
-        log_fatal("get_translator function is not implemented!!");
+        LOG_FATAL("get_translator function is not implemented!!");
         return dummy_null_translator;
     }
 

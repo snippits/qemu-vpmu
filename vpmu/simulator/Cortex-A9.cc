@@ -2952,7 +2952,7 @@ void CPU_CortexA9::packet_processor(int id, VPMU_Insn::Reference& ref, VPMU_Insn
         accumulate(ref, insn.data);
         break;
     default:
-        log_fatal("Unexpected packet");
+        LOG_FATAL("Unexpected packet");
     }
 
 #undef CONSOLE_TME

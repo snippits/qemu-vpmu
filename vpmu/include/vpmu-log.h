@@ -20,7 +20,7 @@
     do {                                                                                 \
         fprintf(stderr,                                                                  \
                 BASH_COLOR_RED "ERROR" BASH_COLOR_NONE "(" BASH_COLOR_PURPLE             \
-                               "%s: " BASH_COLOR_GREEN "%d" BASH_COLOR_NONE ") : ",      \
+                               "%s:" BASH_COLOR_GREEN "%d" BASH_COLOR_NONE ") : ",      \
                 __FILENAME__,                                                            \
                 __LINE__);                                                               \
         fprintf(stderr, str, ##__VA_ARGS__);                                             \

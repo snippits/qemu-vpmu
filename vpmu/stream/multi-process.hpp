@@ -173,7 +173,7 @@ public:
 
         // Wait all forked process to be initialized
         if (this->timed_wait_sync_flag(5000) == false) {
-            log_fatal("Some component timing simulators might not be alive!");
+            LOG_FATAL("Some component timing simulators might not be alive!");
             // some simulators are not responding
             // You know, I'm not always going to be around to help you - Charlie Brown
             ERR_MSG(
@@ -283,7 +283,7 @@ private:
                 if (*heart_beat == last_heart_beat) {
                     if (kill(parent_pid, 0)) {
                         if (errno == ESRCH) {
-                            log_fatal("QEMU stops beating... kill all zombies!!\n");
+                            LOG_FATAL("QEMU stops beating... kill all zombies!!\n");
                             this->destroy();
                             log("Destructed\n");
                             // Exit without calling unnecessary destructor of global

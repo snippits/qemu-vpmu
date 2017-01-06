@@ -6,6 +6,8 @@ extern "C" {
 #include <string>   // std::string
 #include <iostream> // Basic I/O related C++ header
 
+#define LOG_FATAL(...) log_fatal(__FILENAME__, __LINE__, ##__VA_ARGS__);
+
 class VPMULog
 {
 public:
@@ -72,6 +74,29 @@ protected:
                  LOG_PREFIX_FORMAT "%s" BASH_COLOR_RED "FATAL: " BASH_COLOR_NONE,
                  name.c_str(),
                  spaces.c_str());
+        // Use the magic of standard function
+        va_list arg;
+        va_start(arg, fmt);
+        vsnprintf(o_str + strlen(o_str), sizeof(o_str) - strlen(o_str), fmt, arg);
+        va_end(arg);
+        // Final output
+        CONSOLE_LOG("%s\n", o_str);
+        fflush(stderr);
+    }
+
+    void log_fatal(const char *file_name, const int line_num, const char *fmt, ...)
+    {
+        // Print the prefix of log
+        snprintf(o_str,
+                 sizeof(o_str),
+                 LOG_PREFIX_FORMAT "%s" \
+                 BASH_COLOR_RED "FATAL" BASH_COLOR_NONE "(" \
+                 BASH_COLOR_PURPLE "%s:" BASH_COLOR_GREEN "%d" BASH_COLOR_NONE "): " \
+                 BASH_COLOR_NONE, \
+                 name.c_str(),
+                 spaces.c_str(),
+                 file_name,
+                 line_num);
         // Use the magic of standard function
         va_list arg;
         va_start(arg, fmt);

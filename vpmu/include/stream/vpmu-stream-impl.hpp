@@ -43,16 +43,16 @@ public:
     //
 
     // This is for initializing common resources for workers
-    virtual void build() { log_fatal("build is not implemented"); }
+    virtual void build() { LOG_FATAL("build is not implemented"); }
     // Initialize resources for individual workers and execute them in parallel.
-    virtual void run(std::vector<Sim_ptr>& jobs) { log_fatal("run is not implemented"); }
-    virtual void destroy(void) { log_fatal("destroy is not implemented"); }
+    virtual void run(std::vector<Sim_ptr>& jobs) { LOG_FATAL("run is not implemented"); }
+    virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
     virtual void send(Reference* local_buffer, uint32_t num_refs, uint32_t total_size)
     {
-        log_fatal("send is not implemented");
+        LOG_FATAL("send is not implemented");
     }
 
-    virtual void send(Reference& ref) { log_fatal("send is not implemented"); }
+    virtual void send(Reference& ref) { LOG_FATAL("send is not implemented"); }
 
     //
     // VPMU stream protocol implementation
@@ -172,13 +172,13 @@ private:
     bool pointer_safety_check(int n)
     {
         if (n > num_workers) {
-            log_fatal("request index %d is grater than total number of workers %d",
+            LOG_FATAL("request index %d is grater than total number of workers %d",
                       n,
                       num_workers);
             return false;
         }
         if (stream_comm == nullptr) {
-            log_fatal("stream_comm is nullptr\n");
+            LOG_FATAL("stream_comm is nullptr\n");
             return false;
         }
         return true;

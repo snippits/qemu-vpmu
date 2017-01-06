@@ -132,7 +132,7 @@ public:
 
         // Wait all forked process to be initialized
         if (this->timed_wait_sync_flag(5000) == false) {
-            log_fatal("Some component timing simulators might not be alive!");
+            LOG_FATAL("Some component timing simulators might not be alive!");
         }
     }
 

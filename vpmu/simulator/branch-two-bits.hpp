@@ -72,7 +72,7 @@ public:
             two_bits_branch_predictor(&ref);
             break;
         default:
-            log_fatal("Unexpected packet");
+            LOG_FATAL("Unexpected packet");
         }
     }
 
@@ -129,7 +129,7 @@ private:
             }
             break;
         default:
-            log_fatal("predictor[core] error\n");
+            LOG_FATAL("predictor[core] error\n");
         }
     }
 };

@@ -13,7 +13,7 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename)
 {
     int fd = open(filename, O_RDONLY);
     if (fd < 0) {
-        log_fatal("Kernel File %s not found!", filename);
+        LOG_FATAL("Kernel File %s not found!", filename);
         return;
     }
 
@@ -63,15 +63,15 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename)
         }
 
         if (kernel.find_vaddr(ET_KERNEL_FORK) == 0)
-            log_fatal("Kernel event \"%s\" was not found!", "do_fork");
+            LOG_FATAL("Kernel event \"%s\" was not found!", "do_fork");
         if (kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) == 0)
-            log_fatal("Kernel event \"%s\" was not found!", "wake_up_new_task");
+            LOG_FATAL("Kernel event \"%s\" was not found!", "wake_up_new_task");
         if (kernel.find_vaddr(ET_KERNEL_EXIT) == 0)
-            log_fatal("Kernel event \"%s\" was not found!", "do_exit");
+            LOG_FATAL("Kernel event \"%s\" was not found!", "do_exit");
         if (kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH) == 0)
-            log_fatal("Kernel event \"%s\" was not found!", "__switch_to");
+            LOG_FATAL("Kernel event \"%s\" was not found!", "__switch_to");
         if (kernel.find_vaddr(ET_KERNEL_EXECV) == 0)
-            log_fatal("Kernel event \"%s\" was not found!", "do_execve");
+            LOG_FATAL("Kernel event \"%s\" was not found!", "do_execve");
     }
 }
 
