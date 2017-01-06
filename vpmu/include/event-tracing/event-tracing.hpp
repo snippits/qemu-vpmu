@@ -120,6 +120,14 @@ public:
         return ET_KERNEL_NONE;
     }
 
+    uint64_t find_vaddr(ET_KERNEL_EVENT_TYPE event)
+    {
+        if (event < ET_KERNEL_EVENT_COUNT)
+            return kernel_event_table[event];
+        else
+            return 0;
+    }
+
     void set_event_address(ET_KERNEL_EVENT_TYPE event, uint64_t address)
     {
         kernel_event_table[event] = address;
