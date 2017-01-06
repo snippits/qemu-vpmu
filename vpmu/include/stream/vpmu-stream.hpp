@@ -66,9 +66,10 @@ public:
 
     void build() override
     {
-        // Destroy all stuff from last build
-        destroy();
         log_debug("Initializing");
+        // Destroy worker jobs from last build
+        jobs.clear(); // Clear arrays and call destructors
+        local_buffer_index = 0;
 
         // Get the default implementation of stream interface.
         if (impl == nullptr) {
