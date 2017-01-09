@@ -11,11 +11,10 @@ VPMU_EXTERNAL_LIB_DIRS=
 
 # Target dependent files and QEMU dependent files
 VPATH+=:$(SRC_PATH)/vpmu/qemu
-all-obj-$(CONFIG_VPMU) += vpmu-device.o vpmu.o event-tracing-qemu.o
+all-obj-$(CONFIG_VPMU) += vpmu-device.o vpmu.o
 
 # Please add your VPMU source code here
 VPMU_OBJS=vpmu-core.o vpmu-insn.o vpmu-branch.o vpmu-cache.o vpmu-utils.o
-VPMU_OBJS+=event-tracing.o
 VPMU_OBJS+=ref.o misc.o
 #VPMU_SRCS=vpmu-oprofile.c vpmu-print.c vpmu-vtd.c vpmu-core.c vpmu-profile.c
 #VPMU_SRCS+=vpmu-vpd.c vpmu-branch.c vpmu-modelsel.c thpool.c
@@ -31,6 +30,8 @@ VPMU_OBJS+=vpmu-i386-insn.o
 endif
 
 ifeq ($(CONFIG_VPMU_SET),y)
+all-obj-$(CONFIG_VPMU) += event-tracing-qemu.o
+VPMU_OBJS+=event-tracing.o
 VPMU_EXTERNAL_LIBS+=vpmu/libs/libelfin/elf/libelf++.a
 VPMU_EXTERNAL_LIBS+=vpmu/libs/libelfin/dwarf/libdwarf++.a
 VPMU_EXTERNAL_LIB_DIRS+=vpmu/libs/libelfin/elf
