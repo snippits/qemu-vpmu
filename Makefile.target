@@ -197,8 +197,8 @@ COMMON_LDADDS = ../libqemuutil.a ../libqemustub.a
 
 ifeq ($(CONFIG_VPMU),y)
 include vpmu/Makefile.objs
-# Ensure the dependency of vpmu-device.o here...
--include vpmu-device.d
+# Ensure the dependency of all vpmu object files, this is the easiest way.
+-include $(wildcard *.d)
 
 all-obj-$(CONFIG_VPMU) += vpmu/libvpmu_$(TARGET_NAME).a $(VPMU_EXTERNAL_LIBS)
 # This phony will force QEMU to call make vpmu for correctness!!!!!
