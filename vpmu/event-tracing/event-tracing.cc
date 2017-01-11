@@ -47,6 +47,8 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename)
                     kernel.set_event_address(ET_KERNEL_WAKE_NEW_TASK, d.value);
                 } else if (sym.get_name() == "do_fork") {
                     kernel.set_event_address(ET_KERNEL_FORK, d.value);
+                } else if (sym.get_name() == "mmap_region") {
+                    kernel.set_event_address(ET_KERNEL_MMAP, d.value);
                 } else {
                     print_content_flag = false;
                 }
@@ -62,6 +64,8 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename)
             }
         }
 
+        if (kernel.find_vaddr(ET_KERNEL_MMAP) == 0)
+            LOG_FATAL("Kernel event \"%s\" was not found!", "mmap_region");
         if (kernel.find_vaddr(ET_KERNEL_FORK) == 0)
             LOG_FATAL("Kernel event \"%s\" was not found!", "do_fork");
         if (kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) == 0)
@@ -141,4 +145,8 @@ void et_remove_process(uint64_t pid)
 void et_set_process_cpu_state(uint64_t pid, void* cs)
 {
     event_tracer.set_process_cpu_state(pid, cs);
+}
+
+void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mode)
+{
 }

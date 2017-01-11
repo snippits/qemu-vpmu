@@ -5,6 +5,7 @@
 #include "../vpmu-common.h" // Common headers and macros
 
 enum ET_KERNEL_EVENT_TYPE {
+    ET_KERNEL_MMAP,
     ET_KERNEL_FORK,
     ET_KERNEL_WAKE_NEW_TASK,
     ET_KERNEL_EXECV,
@@ -42,5 +43,6 @@ void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid);
 bool et_find_traced_pid(uint64_t pid);
 bool et_find_traced_process(const char* name);
 void et_set_process_cpu_state(uint64_t pid, void* cs);
+void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mode);
 
 #endif // __VPMU_EVENT_TRACING_
