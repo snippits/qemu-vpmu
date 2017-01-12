@@ -126,7 +126,7 @@ public:
                 stream_comm = Stream_Layout<T>::get_stream_comm(buffer);
                 // Initialize (build) the target simulation with its configuration
                 sim->set_platform_info(*platform_info);
-                sim->build(stream_comm[id]);
+                sim->build(stream_comm[id].model);
                 // Initialize mutex to one, and set to process-shared
                 sem_init(&stream_comm[id].job_semaphore, true, 0);
                 // Set synced_flag to tell master it's done

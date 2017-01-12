@@ -6,6 +6,7 @@ extern "C" {
 
 EventTracer event_tracer;
 
+// Static variables of classes returned when find fails
 ET_Program ET_Program::not_found("Not Found");
 ET_Process ET_Process::not_found("Not Found", 0xFFFFFFFFFFFFFFFF);
 

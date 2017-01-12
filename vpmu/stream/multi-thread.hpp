@@ -88,7 +88,7 @@ public:
                   vpmu::utils::name_thread(this->get_name() + std::to_string(id));
                   // Initialize (build) the target simulation with its configuration
                   sim->set_platform_info(*platform_info);
-                  sim->build(stream_comm[id]);
+                  sim->build(stream_comm[id].model);
                   // Only be cancelable at cancellation points, ex: sem_wait
                   pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
                   // Set synced_flag to tell master it's done

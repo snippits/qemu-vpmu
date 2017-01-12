@@ -75,7 +75,7 @@ public:
         // Initialize (build) the target simulation with its configuration
         for (int id = 0; id < works.size(); id++) {
             works[id]->set_platform_info(*platform_info);
-            works[id]->build(stream_comm[id]);
+            works[id]->build(stream_comm[id].model);
         }
 
         // Create a thread with lambda capturing local variable by reference

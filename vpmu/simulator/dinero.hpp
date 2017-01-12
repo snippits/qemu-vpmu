@@ -401,7 +401,7 @@ public:
         }
     }
 
-    void build(VPMU_Cache &cache) override
+    void build(VPMU_Cache::Model &model) override
     {
         log_debug("Initializing");
 
@@ -422,7 +422,7 @@ public:
         d4_cache[d4_num_caches].core  = 0;
         d4_num_caches++;
         recursively_parse_json(json_config["topology"], &d4_cache[0], d4_levels);
-        sync_back_config_to_vpmu(cache.model, json_config);
+        sync_back_config_to_vpmu(model, json_config);
 
         // Reset the configurations depending on json contents.
         // Ex: some configuration might miss GPU topology while num_gpu_core are set

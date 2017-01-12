@@ -2890,16 +2890,16 @@ int CPU_CortexA9::Translation::_get_insn_ticks_thumb(uint32_t insn)
         return 0;
 }
 
-void CPU_CortexA9::build(VPMU_Insn& insn)
+void CPU_CortexA9::build(VPMU_Insn::Model& model)
 {
     log_debug("Initializing");
 
     log_debug(json_config.dump().c_str());
 
     auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
-    strncpy(insn.model.name, model_name.c_str(), sizeof(insn.model.name));
-    insn.model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
-    insn.model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
+    strncpy(model.name, model_name.c_str(), sizeof(model.name));
+    model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
+    model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
 
     translator.build(json_config);
     log_debug("Initialized");
