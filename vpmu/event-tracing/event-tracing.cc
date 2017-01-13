@@ -6,10 +6,6 @@ extern "C" {
 
 EventTracer event_tracer;
 
-// Static variables of classes returned when find fails
-ET_Program ET_Program::not_found("Not Found");
-ET_Process ET_Process::not_found("Not Found", 0xFFFFFFFFFFFFFFFF);
-
 void EventTracer::parse_and_set_kernel_symbol(const char* filename)
 {
     int fd = open(filename, O_RDONLY);
@@ -97,17 +93,17 @@ void et_remove_program_from_list(const char* name)
 
 bool et_find_program_in_list(const char* name)
 {
-    return (event_tracer.find_program(name) != ET_Program::not_found);
+    return (event_tracer.find_program(name) != nullptr);
 }
 
 bool et_find_traced_pid(uint64_t pid)
 {
-    return (event_tracer.find_process(pid) != ET_Process::not_found);
+    return (event_tracer.find_process(pid) != nullptr);
 }
 
 bool et_find_traced_process(const char* name)
 {
-    return (event_tracer.find_process(name) != ET_Process::not_found);
+    return (event_tracer.find_process(name) != nullptr);
 }
 
 void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)

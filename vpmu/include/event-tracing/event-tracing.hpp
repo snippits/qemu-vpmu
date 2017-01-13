@@ -20,7 +20,7 @@ extern "C" {
 class ET_Program
 {
 public:
-    ET_Program(std::string&& new_name) { name = new_name; }
+    ET_Program(std::string new_name) { name = new_name; }
     ~ET_Program() {}
 
     inline bool operator==(const ET_Program& rhs) { return (this == &rhs); }
@@ -40,8 +40,6 @@ public:
 public:
     // Used too often, make it public for speed and convenience.
     std::string name;
-    // The not found instance for find and iterator
-    static ET_Program not_found;
     // The timing model bind to this program
     uint64_t timing_model;
     // The function address table
@@ -51,22 +49,19 @@ public:
 class ET_Process
 {
 public:
-    ET_Process(ET_Program& program, uint64_t new_pid)
+    ET_Process(std::shared_ptr<ET_Program>& program, uint64_t new_pid)
     {
-        process_name = program.name;
+        process_name = program->name;
         pid          = new_pid;
         binary_list.push_back(program);
-        timing_model = program.timing_model;
+        timing_model = program->timing_model;
     }
-    ET_Process(std::string&& new_name, uint64_t new_pid)
+    ET_Process(std::string new_name, uint64_t new_pid)
     {
         process_name = new_name;
         pid          = new_pid;
     }
-    ~ET_Process()
-    {
-        vpmu_qemu_free_cpu_arch_state(cpu_state);
-    }
+    ~ET_Process() { vpmu_qemu_free_cpu_arch_state(cpu_state); }
 
     inline bool operator==(const ET_Process& rhs) { return (this == &rhs); }
     inline bool operator!=(const ET_Process& rhs) { return !(this == &rhs); }
@@ -95,22 +90,19 @@ public:
     std::string process_name;
     // The root pid
     uint64_t pid = 0;
-    // The not found instance for find and iterator
-    static ET_Process not_found;
     // The timing model bind to this program
     uint64_t timing_model = 0;
 
 private:
-    std::vector<ET_Program> binary_list;
-    std::vector<uint64_t>   children_pid;
-    void*                   cpu_state = nullptr; // CPUState *
+    std::vector<std::shared_ptr<ET_Program>> binary_list;
+    std::vector<uint64_t>                    children_pid;
+    void*                                    cpu_state = nullptr; // CPUState *
 };
 
 class ET_Kernel : public ET_Program
 {
 public:
     ET_Kernel() : ET_Program("kernel") {}
-    ~ET_Kernel() {}
 
     ET_KERNEL_EVENT_TYPE find_event(uint64_t vaddr)
     {
@@ -141,41 +133,42 @@ class EventTracer : VPMULog
 {
 public:
     EventTracer() : VPMULog("ET") {}
-    ~EventTracer() {}
     EventTracer(const char* module_name) : VPMULog(module_name) {}
     EventTracer(std::string module_name) : VPMULog(module_name) {}
     // EventTracer is neither copyable nor movable.
     EventTracer(const EventTracer&) = delete;
     EventTracer& operator=(const EventTracer&) = delete;
 
-    inline void add_program(std::string&& name)
+    inline void add_program(std::string name)
     {
-        program_list.push_back(ET_Program(std::forward<std::string>(name)));
+        program_list.push_back(std::make_shared<ET_Program>(name));
     }
 
     inline void remove_program(std::string name)
     {
         // The STL way cost a little more time than hand coding, but it's much more SAFE!
-        program_list.erase(
-          std::remove_if(program_list.begin(),
-                         program_list.end(),
-                         [&](ET_Program& p) { return p.compare_name(name); }),
-          program_list.end());
+        program_list.erase(std::remove_if(program_list.begin(),
+                                          program_list.end(),
+                                          [&](std::shared_ptr<ET_Program>& p) {
+                                              return p->compare_name(name);
+                                          }),
+                           program_list.end());
     }
 
     inline void add_new_process(const char* path, uint64_t pid)
     {
-        auto& program = find_program(path);
-        // Push the program info into the list even it's not found
-        processes.push_back({program, pid});
+        auto program = find_program(path);
+        // Push the program info into the list
+        if (program != nullptr)
+            processes.push_back(std::make_shared<ET_Process>(program, pid));
         return;
     }
 
-    ET_Program& find_program(const char* path)
+    std::shared_ptr<ET_Program> find_program(const char* path)
     {
         // Match full path first
         for (auto& p : program_list) {
-            if (p.compare_name(path)) return p;
+            if (p->compare_name(path)) return p;
         }
         const char* name = nullptr;
         for (int i = 0; path[i] != '\0'; i++) {
@@ -186,9 +179,9 @@ public:
         if (name == nullptr) name = path;
         // Match program name
         for (auto& p : program_list) {
-            if (p.compare_name(name)) return p;
+            if (p->compare_name(name)) return p;
         }
-        return ET_Program::not_found;
+        return nullptr;
     }
 
     // TODO find child, remove child pid.
@@ -196,25 +189,26 @@ public:
     inline void remove_process(uint64_t pid)
     {
         // The STL way cost a little more time than hand coding, but it's much more SAFE!
-        processes.erase(std::remove_if(processes.begin(),
-                                       processes.end(),
-                                       [&](ET_Process& p) { return p.pid == pid; }),
-                        processes.end());
+        processes.erase(
+          std::remove_if(processes.begin(),
+                         processes.end(),
+                         [&](std::shared_ptr<ET_Process>& p) { return p->pid == pid; }),
+          processes.end());
     }
 
-    inline ET_Process& find_process(uint64_t pid)
+    inline std::shared_ptr<ET_Process> find_process(uint64_t pid)
     {
         for (auto& p : processes) {
-            if (p.pid == pid) return p;
+            if (p->pid == pid) return p;
         }
-        return ET_Process::not_found;
+        return nullptr;
     }
 
-    inline ET_Process& find_process(const char* path)
+    inline std::shared_ptr<ET_Process> find_process(const char* path)
     {
         // Match full path first
         for (auto& p : processes) {
-            if (p.compare_name(path)) return p;
+            if (p->compare_name(path)) return p;
         }
         const char* name = nullptr;
         for (int i = 0; path[i] != '\0'; i++) {
@@ -225,24 +219,24 @@ public:
         if (name == nullptr) name = path;
         // Match program name
         for (auto& p : processes) {
-            if (p.compare_name(name)) return p;
+            if (p->compare_name(name)) return p;
         }
-        return ET_Process::not_found;
+        return nullptr;
     }
 
     inline void attach_to_parent(uint64_t parent_pid, uint64_t child_pid)
     {
         for (auto& p : processes) {
-            if (p.pid == parent_pid) {
-                p.attach_child_pid(child_pid);
+            if (p->pid == parent_pid) {
+                p->attach_child_pid(child_pid);
             }
         }
     }
 
     void set_process_cpu_state(uint64_t pid, void* cs)
     {
-        auto& process = find_process(pid);
-        process.set_cpu_state(cs);
+        auto process = find_process(pid);
+        if (process != nullptr) process->set_cpu_state(cs);
     }
 
     ET_Kernel& get_kernel(void) { return kernel; }
@@ -250,9 +244,9 @@ public:
     void parse_and_set_kernel_symbol(const char* filename);
 
 private:
-    ET_Kernel               kernel;
-    std::vector<ET_Process> processes;
-    std::vector<ET_Program> program_list;
+    ET_Kernel                                kernel;
+    std::vector<std::shared_ptr<ET_Process>> processes;
+    std::vector<std::shared_ptr<ET_Program>> program_list;
 };
 
 extern EventTracer event_tracer;
