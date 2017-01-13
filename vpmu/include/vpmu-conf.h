@@ -2,6 +2,7 @@
 #define __VPMU_CONF_H_
 
 #define VPMU_MAX_CPU_CORES 64
+#define VPMU_MAX_NUM_WORKERS 16
 
 #define LINUX_NAMELEN 16
 

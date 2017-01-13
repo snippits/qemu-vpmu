@@ -560,11 +560,8 @@ public:
         return;
 
     fallback:
-        // Remove states
-        VPMU_Cache::Reference p_ref = ref;
-        p_ref.type                  = p_ref.type & 0xF0FF;
-
-        packet_processor(id, p_ref, data);
+        // Pass it to the default packet_processor and remove states.
+        packet_processor(id, packet_bypass(ref), data);
     }
 
     bool data_possibly_hit(uint64_t addr, uint32_t rw, VPMU_Cache::Model &model)

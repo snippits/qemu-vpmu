@@ -72,6 +72,7 @@ public:
     /// When synchronizing data, the implementation needs to write data to __t.data__.
     /// @param[in] id The identity number to this simulator. Started from 0.
     /// @param[in] ref The input packet, it could be either control/data packet.
+    /// The state bits of ref are and should be zeros.
     /// @param[out] data The variable for synchronizing data back to VPMU.
     /// @see Branch_One_Bit::packet_processor()
     virtual inline void
@@ -80,14 +81,39 @@ public:
         LOG_FATAL("packet_processor function is not implemented!!");
     }
 
-    /// @brief To be removed
+    /// @brief The main function of each timing simulator for processing hot traces.
+    /// @details
+    /// Default behavior: Remove state bits of packets and pass it to packet_processor().
+    /// This is an extention function of packet_processor() for accelerating simulation.
+    /// When a packet is a hot packet, it means that it's from a frequently accessed BB.
+    /// The implementation of simulator can override the default behavior and do some
+    /// magic arithmetic way to accumulate the cycles and counters.
+    /// The implementation of simulator can also fallback to packet_processor() after
+    /// removing the states of packet by calling packet_bypass().
+    /// @param[in] id The identity number to this simulator. Started from 0.
+    /// @param[in] ref The input hot packet, it could be either control/data packet.
+    /// The state bits of ref are set and should be checked.
+    /// @param[out] data The variable for synchronizing data back to VPMU.
+    /// @see Cache_Dinero::hot_packet_processor()
     virtual inline void
     hot_packet_processor(int id, const typename T::Reference &ref, typename T::Data &data)
     {
-        typename T::Reference p_ref = ref;
+        this->packet_processor(id, packet_bypass(ref), data);
+    }
+
+    /// @brief Clone the packet and remove the state bits of the packet.
+    /// @details This function is usually used in hot_packet_processor() for
+    /// passing input reference to the packet_processor() without any issue.
+    /// @param[in] id The identity number to this simulator. Started from 0.
+    /// @param[in] ref The input hot packet, it could be either control/data packet.
+    /// @param[out] data The variable for synchronizing data back to VPMU.
+    /// @see Cache_Dinero::hot_packet_processor()
+    inline typename T::Reference packet_bypass(const typename T::Reference &ref)
+    {
+        typename T::Reference cloned_ref = ref;
         // Remove states
-        p_ref.type = p_ref.type & 0xF0FF;
-        this->packet_processor(id, p_ref, data);
+        cloned_ref.type = cloned_ref.type & ~VPMU_PACKET_STATES_MASK;
+        return cloned_ref;
     }
 
     /// @brief Return the translator handle for aquiring timing of instructions.
