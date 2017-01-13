@@ -71,7 +71,9 @@ public: // VPMUSimulator
 
     void destroy() override { ; } // Nothing to do
     void build(VPMU_Insn::Model& model) override;
-    void packet_processor(int id, VPMU_Insn::Reference& ref, VPMU_Insn& inst) override;
+    void packet_processor(int                         id,
+                          const VPMU_Insn::Reference& ref,
+                          VPMU_Insn::Data&            data) override;
 
 private:
 #ifdef CONFIG_VPMU_DEBUG_MSG
@@ -84,7 +86,7 @@ private:
     // The instance of Translator called from QEMU when doing binary translation
     Translation translator;
 
-    void accumulate(VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data);
+    void accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data);
 
     uint64_t vpmu_total_insn_count(VPMU_Insn::Data& insn_data)
     {

@@ -144,22 +144,20 @@ public:
                           sizeof(Reference), // Size of each elements
                           num_refs);         //#elements read successfully
 
-                        // sim->packet_processor_speed(id, local_buffer, num_refs,
-                        // stream_comm[id], token);
                         // Do simulation
                         for (int i = 0; i < num_refs; i++) {
                             if (unlikely(local_buffer[i].type == VPMU_PACKET_DUMP_INFO)) {
                                 this->wait_token(id);
                                 sim->packet_processor(
-                                  id, local_buffer[i], stream_comm[id]);
+                                  id, local_buffer[i], stream_comm[id].data);
                                 this->pass_token(id);
                             } else {
                                 if (local_buffer[i].type & VPMU_PACKET_HOT) {
                                     sim->hot_packet_processor(
-                                      id, local_buffer[i], stream_comm[id]);
+                                      id, local_buffer[i], stream_comm[id].data);
                                 } else {
                                     sim->packet_processor(
-                                      id, local_buffer[i], stream_comm[id]);
+                                      id, local_buffer[i], stream_comm[id].data);
                                 }
                             }
                         }

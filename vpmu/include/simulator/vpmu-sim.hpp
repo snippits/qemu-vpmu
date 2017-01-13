@@ -72,20 +72,22 @@ public:
     /// When synchronizing data, the implementation needs to write data to __t.data__.
     /// @param[in] id The identity number to this simulator. Started from 0.
     /// @param[in] ref The input packet, it could be either control/data packet.
-    /// @param[inout] t The class that contains model, data, etc.
+    /// @param[out] data The variable for synchronizing data back to VPMU.
     /// @see Branch_One_Bit::packet_processor()
-    virtual inline void packet_processor(int id, typename T::Reference &ref, T &t)
+    virtual inline void
+    packet_processor(int id, const typename T::Reference &ref, typename T::Data &data)
     {
         LOG_FATAL("packet_processor function is not implemented!!");
     }
 
     /// @brief To be removed
-    virtual inline void hot_packet_processor(int id, typename T::Reference &ref, T &t)
+    virtual inline void
+    hot_packet_processor(int id, const typename T::Reference &ref, typename T::Data &data)
     {
         typename T::Reference p_ref = ref;
         // Remove states
         p_ref.type = p_ref.type & 0xF0FF;
-        this->packet_processor(id, p_ref, t);
+        this->packet_processor(id, p_ref, data);
     }
 
     /// @brief Return the translator handle for aquiring timing of instructions.

@@ -18,10 +18,7 @@ public:
         num_trace_buffer_elems = num_elems;
     }
 
-    ~VPMUStreamMultiThread()
-    {
-        destroy();
-    }
+    ~VPMUStreamMultiThread() { destroy(); }
 
     void build() override
     {
@@ -112,15 +109,15 @@ public:
                                            == VPMU_PACKET_DUMP_INFO)) {
                                   this->wait_token(id);
                                   sim->packet_processor(
-                                    id, local_buffer[i], stream_comm[id]);
+                                    id, local_buffer[i], stream_comm[id].data);
                                   this->pass_token(id);
                               } else {
                                   if (local_buffer[i].type & VPMU_PACKET_HOT) {
                                       sim->hot_packet_processor(
-                                        id, local_buffer[i], stream_comm[id]);
+                                        id, local_buffer[i], stream_comm[id].data);
                                   } else {
                                       sim->packet_processor(
-                                        id, local_buffer[i], stream_comm[id]);
+                                        id, local_buffer[i], stream_comm[id].data);
                                   }
                               }
                           }

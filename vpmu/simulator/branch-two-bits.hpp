@@ -23,8 +23,9 @@ public:
         log_debug("Initialized");
     }
 
-    void
-    packet_processor(int id, VPMU_Branch::Reference& ref, VPMU_Branch& branch) override
+    void packet_processor(int                           id,
+                          const VPMU_Branch::Reference& ref,
+                          VPMU_Branch::Data&            data) override
     {
 #ifdef CONFIG_VPMU_DEBUG_MSG
         debug_packet_num_cnt++;
@@ -38,7 +39,7 @@ public:
         // The implementation depends on your own packet type and writing style
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
-            branch.data = counters;
+            data = counters;
             break;
         case VPMU_PACKET_DUMP_INFO:
             int i;
@@ -69,7 +70,7 @@ public:
             counters = {}; // Zero initializer
             break;
         case VPMU_PACKET_DATA:
-            two_bits_branch_predictor(&ref);
+            two_bits_branch_predictor(ref);
             break;
         default:
             LOG_FATAL("Unexpected packet");
@@ -87,10 +88,10 @@ private:
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
 
-    void two_bits_branch_predictor(VPMU_Branch::Reference* ref)
+    void two_bits_branch_predictor(const VPMU_Branch::Reference& ref)
     {
-        int taken = ref->taken;
-        int core  = ref->core;
+        int taken = ref.taken;
+        int core  = ref.core;
 
         switch (predictor[core]) {
         /* predict not taken */

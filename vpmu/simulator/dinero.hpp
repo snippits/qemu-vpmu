@@ -433,12 +433,14 @@ public:
             ERR_MSG("Something wrong with dinero cache\n");
             exit(1);
         }
+        cache_model = model;
 
         log_debug("Initialized");
     }
 
-    inline void
-    packet_processor(int id, VPMU_Cache::Reference &ref, VPMU_Cache &cache) override
+    inline void packet_processor(int                          id,
+                                 const VPMU_Cache::Reference &ref,
+                                 VPMU_Cache::Data &           data) override
     {
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
@@ -475,14 +477,14 @@ public:
         // The implementation depends on your own packet type and writing style
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
-            sync_cache_data(cache.data, cache.model);
+            sync_cache_data(data, cache_model);
             break;
         case VPMU_PACKET_SYNC_DATA:
             // Sync only ensure the data in the array is up to date to and not ahead of
             // the time packet processor receive the sync packet.
             // Slave can stealthily do simulations as long as it does not have a pending
             // sync job.
-            sync_cache_data(cache.data, cache.model);
+            sync_cache_data(data, cache_model);
             // pkg->sync_counter++;  // Increase the timestamp of counter
             // pkg->synced_flag = 1; // Set up the flag
             break;
@@ -490,6 +492,7 @@ public:
             dump_info(id);
             break;
         case VPMU_PACKET_RESET:
+            memset(&data, 0, sizeof(VPMU_Cache::Data));
             for (i = 0; i < MAX_D4_CACHES; i++)
                 if (d4_cache[i].cache) reset_single_d4_cache(d4_cache[i].cache);
             break;
@@ -507,8 +510,9 @@ public:
         }
     }
 
-    inline void
-    hot_packet_processor(int id, VPMU_Cache::Reference &ref, VPMU_Cache &cache) override
+    inline void hot_packet_processor(int                          id,
+                                     const VPMU_Cache::Reference &ref,
+                                     VPMU_Cache::Data &           data) override
     {
         int      index = 0;
         uint16_t type  = ref.type & 0xF0FF; // Remove states
@@ -526,8 +530,8 @@ public:
         if (unlikely(num_cores[ref.processor] == 0)) return;
 
         int e_block = ((ref.addr + ref.size) - 1)
-                      >> cache.model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
-        int s_block = ref.addr >> cache.model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
+                      >> cache_model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
+        int s_block = ref.addr >> cache_model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
         int num_of_cacheblks = e_block - s_block + 1;
         switch (type) {
         case CACHE_PACKET_INSN:
@@ -538,7 +542,7 @@ public:
             break;
         case CACHE_PACKET_READ:
         case CACHE_PACKET_WRITE:
-            if (data_possibly_hit(ref.addr, type, cache.model)) {
+            if (data_possibly_hit(ref.addr, type, cache_model)) {
                 if (type == CACHE_PACKET_READ)
                     d4_cache_leaf[index]->fetch[D4XREAD]++;
                 else
@@ -560,7 +564,7 @@ public:
         VPMU_Cache::Reference p_ref = ref;
         p_ref.type                  = p_ref.type & 0xF0FF;
 
-        packet_processor(id, p_ref, cache);
+        packet_processor(id, p_ref, data);
     }
 
     bool data_possibly_hit(uint64_t addr, uint32_t rw, VPMU_Cache::Model &model)
@@ -593,6 +597,7 @@ private:
 #endif
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
+    VPMU_Cache::Model cache_model;
 
     d4cache *       d4_cache_leaf[MAX_D4_CACHES]  = {0};
     D4_CACHE_CONFIG d4_cache[MAX_D4_CACHES]       = {{0}};

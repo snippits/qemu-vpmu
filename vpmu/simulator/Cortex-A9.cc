@@ -2496,7 +2496,7 @@ int CPU_CortexA9::Translation::_get_insn_ticks(uint32_t insn)
             == 0x00000090) /* Multiplies, extra load/store, Table 3-2 */
         // extract out all (5-8 bit)= 1001  temp_note by  ppb
         {
-            // TODO: Add support for multiplier operand content penalties in the translator
+            // TODO: Add support for multiplier operand content penalty in the translator
 
             // haven't done : ARM DDI 0222B p.8-20 SMULxy, SMLAxy, SMULWy, SMLAWy  by ppb
             if ((insn & 0x0fc000f0) == 0x00000090) /* 3-2: Multiply (accumulate) */
@@ -2905,7 +2905,9 @@ void CPU_CortexA9::build(VPMU_Insn::Model& model)
     log_debug("Initialized");
 }
 
-void CPU_CortexA9::packet_processor(int id, VPMU_Insn::Reference& ref, VPMU_Insn& insn)
+void CPU_CortexA9::packet_processor(int                         id,
+                                    const VPMU_Insn::Reference& ref,
+                                    VPMU_Insn::Data&            data)
 {
 #define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
 #define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
@@ -2921,35 +2923,34 @@ void CPU_CortexA9::packet_processor(int id, VPMU_Insn::Reference& ref, VPMU_Insn
     // The implementation depends on your own packet type and writing style
     switch (ref.type) {
     case VPMU_PACKET_BARRIER:
-        insn.data.insn_cnt[0] = vpmu_total_insn_count(insn.data);
-        insn.data.cycles[0]   = cycles[0];
+        data.insn_cnt[0] = vpmu_total_insn_count(data);
+        data.cycles[0]   = cycles[0];
         break;
     case VPMU_PACKET_DUMP_INFO:
         CONSOLE_LOG("  [%d] type : Cortex A9\n", id);
-        CONSOLE_U64(" Total instruction count       :", vpmu_total_insn_count(insn.data));
-        CONSOLE_U64("  ->User mode insn count       :", insn.data.user.total_insn);
-        CONSOLE_U64("  ->Supervisor mode insn count :", insn.data.system.total_insn);
-        CONSOLE_U64("  ->IRQ mode insn count        :", insn.data.interrupt.total_insn);
-        CONSOLE_U64("  ->Other mode insn count      :", insn.data.rest.total_insn);
-        CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(insn.data));
-        CONSOLE_U64("  ->User mode load count       :", insn.data.user.load);
-        CONSOLE_U64("  ->Supervisor mode load count :", insn.data.system.load);
-        CONSOLE_U64("  ->IRQ mode load count        :", insn.data.interrupt.load);
-        CONSOLE_U64("  ->Other mode load count      :", insn.data.rest.load);
-        CONSOLE_U64(" Total store instruction count :",
-                    vpmu_total_store_count(insn.data));
-        CONSOLE_U64("  ->User mode store count      :", insn.data.user.store);
-        CONSOLE_U64("  ->Supervisor mode store count:", insn.data.system.store);
-        CONSOLE_U64("  ->IRQ mode store count       :", insn.data.interrupt.store);
-        CONSOLE_U64("  ->Other mode store count     :", insn.data.rest.store);
+        CONSOLE_U64(" Total instruction count       :", vpmu_total_insn_count(data));
+        CONSOLE_U64("  ->User mode insn count       :", data.user.total_insn);
+        CONSOLE_U64("  ->Supervisor mode insn count :", data.system.total_insn);
+        CONSOLE_U64("  ->IRQ mode insn count        :", data.interrupt.total_insn);
+        CONSOLE_U64("  ->Other mode insn count      :", data.rest.total_insn);
+        CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(data));
+        CONSOLE_U64("  ->User mode load count       :", data.user.load);
+        CONSOLE_U64("  ->Supervisor mode load count :", data.system.load);
+        CONSOLE_U64("  ->IRQ mode load count        :", data.interrupt.load);
+        CONSOLE_U64("  ->Other mode load count      :", data.rest.load);
+        CONSOLE_U64(" Total store instruction count :", vpmu_total_store_count(data));
+        CONSOLE_U64("  ->User mode store count      :", data.user.store);
+        CONSOLE_U64("  ->Supervisor mode store count:", data.system.store);
+        CONSOLE_U64("  ->IRQ mode store count       :", data.interrupt.store);
+        CONSOLE_U64("  ->Other mode store count     :", data.rest.store);
 
         break;
     case VPMU_PACKET_RESET:
         memset(cycles, 0, sizeof(cycles));
-        memset(&insn.data, 0, sizeof(VPMU_Insn::Data));
+        memset(&data, 0, sizeof(VPMU_Insn::Data));
         break;
     case VPMU_PACKET_DATA:
-        accumulate(ref, insn.data);
+        accumulate(ref, data);
         break;
     default:
         LOG_FATAL("Unexpected packet");
@@ -2959,7 +2960,7 @@ void CPU_CortexA9::packet_processor(int id, VPMU_Insn::Reference& ref, VPMU_Insn
 #undef CONSOLE_U64
 }
 
-void CPU_CortexA9::accumulate(VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data)
+void CPU_CortexA9::accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data)
 {
     VPMU_Insn::Insn_Data_Cell* cell = NULL;
     // Defining the types (struct) for communication
