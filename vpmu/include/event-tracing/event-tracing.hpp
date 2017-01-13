@@ -15,7 +15,6 @@ extern "C" {
 #include <algorithm>    // std::remove_if
 #include "vpmu-log.hpp" // Log system
 
-// TODO Make child forked child traced and could be found!!!!!!!!!!
 // TODO VPMU timing model switch
 class ET_Program
 {
@@ -44,22 +43,34 @@ public:
     uint64_t timing_model;
     // The function address table
     std::map<std::string, uint64_t> sym_table;
+    // Lists of shared pointer objects of dependent libraries
+    std::vector<std::shared_ptr<ET_Program>> library_list;
 };
 
 class ET_Process
 {
 public:
+    // This program should be the main program
     ET_Process(std::shared_ptr<ET_Program>& program, uint64_t new_pid)
     {
-        process_name = program->name;
-        pid          = new_pid;
+        name = program->name;
+        pid  = new_pid;
         binary_list.push_back(program);
-        timing_model = program->timing_model;
+        timing_model   = program->timing_model;
+        is_top_process = true;
     }
     ET_Process(std::string new_name, uint64_t new_pid)
     {
-        process_name = new_name;
+        name           = new_name;
+        pid            = new_pid;
+        is_top_process = true;
+    }
+    ET_Process(ET_Process* target_process, uint64_t new_pid)
+    {
+        name         = target_process->name;
         pid          = new_pid;
+        binary_list  = target_process->binary_list;
+        timing_model = target_process->timing_model;
     }
     ~ET_Process() { vpmu_qemu_free_cpu_arch_state(cpu_state); }
 
@@ -68,11 +79,14 @@ public:
 
     bool compare_name(std::string full_path)
     {
-        std::size_t found = full_path.find(process_name);
+        std::size_t found = full_path.find(name);
         return (found != std::string::npos);
     }
 
-    void attach_child_pid(uint64_t child_pid) { children_pid.push_back(child_pid); }
+    void attach_child_pid(uint64_t child_pid)
+    {
+        child_list.push_back(std::make_shared<ET_Process>(this, child_pid));
+    }
 
     // CPUState *
     inline void set_cpu_state(void* cs)
@@ -85,18 +99,31 @@ public:
         }
     }
 
+    void push_binary(std::shared_ptr<ET_Program>& program)
+    {
+        if (program != nullptr) binary_list.push_back(program);
+    }
+
+    void push_child_process(std::shared_ptr<ET_Process>& process)
+    {
+        if (process != nullptr) child_list.push_back(process);
+    }
+
 public:
+    // Used to identify the top process parent
+    bool is_top_process;
     // Used too often, make it public for speed and convenience.
-    std::string process_name;
+    std::string name;
     // The root pid
     uint64_t pid = 0;
     // The timing model bind to this program
     uint64_t timing_model = 0;
+    // Lists of shared pointer objects
+    std::vector<std::shared_ptr<ET_Program>> binary_list;
+    std::vector<std::shared_ptr<ET_Process>> child_list;
 
 private:
-    std::vector<std::shared_ptr<ET_Program>> binary_list;
-    std::vector<uint64_t>                    children_pid;
-    void*                                    cpu_state = nullptr; // CPUState *
+    void* cpu_state = nullptr; // CPUState *
 };
 
 class ET_Kernel : public ET_Program
@@ -141,11 +168,15 @@ public:
 
     inline void add_program(std::string name)
     {
+        log_debug("Add new binary %s", name.c_str());
         program_list.push_back(std::make_shared<ET_Program>(name));
+        debug_dump_program_map();
     }
 
     inline void remove_program(std::string name)
     {
+        if (program_list.size() == 0) return;
+        log_debug("Try remove program %s", name.c_str());
         // The STL way cost a little more time than hand coding, but it's much more SAFE!
         program_list.erase(std::remove_if(program_list.begin(),
                                           program_list.end(),
@@ -153,14 +184,19 @@ public:
                                               return p->compare_name(name);
                                           }),
                            program_list.end());
+        debug_dump_program_map();
     }
 
     inline void add_new_process(const char* path, uint64_t pid)
     {
         auto program = find_program(path);
         // Push the program info into the list
-        if (program != nullptr)
-            processes.push_back(std::make_shared<ET_Process>(program, pid));
+        if (program != nullptr) {
+            log_debug("Start new process %s, pid:%5" PRIu64, path, pid);
+            auto&& process      = std::make_shared<ET_Process>(program, pid);
+            process_id_map[pid] = process;
+            debug_dump_process_map();
+        }
         return;
     }
 
@@ -184,21 +220,18 @@ public:
         return nullptr;
     }
 
-    // TODO find child, remove child pid.
-    // And... only remove parent process when all child processes are leaved
     inline void remove_process(uint64_t pid)
     {
-        // The STL way cost a little more time than hand coding, but it's much more SAFE!
-        processes.erase(
-          std::remove_if(processes.begin(),
-                         processes.end(),
-                         [&](std::shared_ptr<ET_Process>& p) { return p->pid == pid; }),
-          processes.end());
+        if (process_id_map.size() == 0) return;
+        log_debug("Try remove process %5" PRIu64, pid);
+        process_id_map.erase(pid);
+        debug_dump_process_map();
     }
 
     inline std::shared_ptr<ET_Process> find_process(uint64_t pid)
     {
-        for (auto& p : processes) {
+        for (auto& p_pair : process_id_map) {
+            auto& p = p_pair.second;
             if (p->pid == pid) return p;
         }
         return nullptr;
@@ -207,7 +240,8 @@ public:
     inline std::shared_ptr<ET_Process> find_process(const char* path)
     {
         // Match full path first
-        for (auto& p : processes) {
+        for (auto& p_pair : process_id_map) {
+            auto& p = p_pair.second;
             if (p->compare_name(path)) return p;
         }
         const char* name = nullptr;
@@ -218,7 +252,8 @@ public:
         }
         if (name == nullptr) name = path;
         // Match program name
-        for (auto& p : processes) {
+        for (auto& p_pair : process_id_map) {
+            auto& p = p_pair.second;
             if (p->compare_name(name)) return p;
         }
         return nullptr;
@@ -226,11 +261,13 @@ public:
 
     inline void attach_to_parent(uint64_t parent_pid, uint64_t child_pid)
     {
-        for (auto& p : processes) {
-            if (p->pid == parent_pid) {
-                p->attach_child_pid(child_pid);
+        log_debug("Attach process %5" PRIu64 " to %5" PRIu64, child_pid, parent_pid);
+        for (auto& p : process_id_map) {
+            if (p.first == parent_pid) {
+                p.second->attach_child_pid(child_pid);
             }
         }
+        debug_dump_process_map();
     }
 
     void set_process_cpu_state(uint64_t pid, void* cs)
@@ -243,9 +280,86 @@ public:
 
     void parse_and_set_kernel_symbol(const char* filename);
 
+    void debug_dump_process_map(void)
+    {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        log_debug("Printing all traced processes with its information "
+                  "(first level of children only)");
+        for (auto& p_pair : process_id_map) {
+            auto& p = p_pair.second;
+            if (p_pair.first != p->pid)
+                log_fatal("PID not match!! map(%p) != p(%p)", p_pair.first, p->pid);
+            log_debug("    pid:%5" PRIu64 ", Pointer %p Name:%s",
+                      p->pid,
+                      p.get(),
+                      p->name.c_str());
+            debug_dump_child_list(*p);
+            log_debug("    Binaries loaded into this process");
+            debug_dump_binary_list(*p);
+            log_debug("    ==============================================");
+        }
+#endif
+    }
+
+    void debug_dump_program_map(void)
+    {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        log_debug("Printing all traced program with its information"
+                  "(first level of dependent libraries only)");
+        for (auto& program : program_list) {
+            log_debug("    Pointer %p, Name:%s, size of sym_table:%d"
+                      ", num libraries loaded:%d",
+                      program.get(),
+                      program->name.c_str(),
+                      program->sym_table.size(),
+                      program->library_list.size());
+            debug_dump_library_list(*program);
+            log_debug("    ============================================");
+        }
+#endif
+    }
+
+    void debug_dump_child_list(const ET_Process& process)
+    {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        for (auto& child : process.child_list) {
+            log_debug("        pid:%5" PRIu64 ", Pointer %p, Name:%s",
+                      child->pid,
+                      child.get(),
+                      child->name.c_str());
+        }
+#endif
+    }
+
+    void debug_dump_binary_list(const ET_Process& process)
+    {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        for (auto& binary : process.binary_list) {
+            log_debug("        Pointer %p, Name:%s, size of sym_table:%d"
+                      ", num libraries loaded:%d",
+                      binary.get(),
+                      binary->name.c_str(),
+                      binary->sym_table.size(),
+                      binary->library_list.size());
+        }
+#endif
+    }
+
+    void debug_dump_library_list(const ET_Program& program)
+    {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        for (auto& binary : program.library_list) {
+            log_debug("        Pointer %p, Name:%s, size of sym_table:%d",
+                      binary.get(),
+                      binary->name.c_str(),
+                      binary->sym_table.size());
+        }
+#endif
+    }
+
 private:
-    ET_Kernel                                kernel;
-    std::vector<std::shared_ptr<ET_Process>> processes;
+    ET_Kernel kernel;
+    std::map<uint64_t, std::shared_ptr<ET_Process>> process_id_map;
     std::vector<std::shared_ptr<ET_Program>> program_list;
 };
 
