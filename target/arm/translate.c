@@ -83,7 +83,8 @@ static const char *regnames[] =
 #include "../vpmu/include/arch/arm/vpmu-arm-translate.h" // timing functions
 static uint32_t *pc = NULL;
 // Branch filter, not a branch instruction
-uint8_t vpmu_branch_from_store;
+bool vpmu_branch_from_store = false;
+bool neon_load_store_flag   = false;
 #endif
 
 /* initialize TCG globals.  */
@@ -1089,6 +1090,13 @@ static void gen_aa32_ld_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
     tcg_gen_qemu_ld_i32(val, addr, index, opc);
 
 #ifdef CONFIG_VPMU
+    // TODO FIXME We can either,
+    //    1) Increase the size of TCG buffer for these vector instruction
+    //    2) Generate less helper functions on vector instructions, since it's useless
+    // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
+    // Please refer to vpmu/log_segfault_on_tcg
+    s->tb->extra_tb_info.counters.load++;
+    if (neon_load_store_flag) return;
     int32_t size = 0;
     if (opc == MO_8)
         size = 1;
@@ -1100,7 +1108,6 @@ static void gen_aa32_ld_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
                                   addr,
                                   tcg_const_i32(CACHE_PACKET_READ),
                                   tcg_const_i32(size));
-    s->tb->extra_tb_info.counters.load++;
 #endif
 
     tcg_temp_free(addr);
@@ -1113,6 +1120,13 @@ static void gen_aa32_st_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
     tcg_gen_qemu_st_i32(val, addr, index, opc);
 
 #ifdef CONFIG_VPMU
+    // TODO FIXME We can either,
+    //    1) Increase the size of TCG buffer for these vector instruction
+    //    2) Generate less helper functions on vector instructions, since it's useless
+    // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
+    // Please refer to vpmu/log_segfault_on_tcg
+    s->tb->extra_tb_info.counters.store++;
+    if (neon_load_store_flag) return;
     int32_t size = 0;
     if (opc == MO_8)
         size = 1;
@@ -1124,7 +1138,6 @@ static void gen_aa32_st_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
                                   addr,
                                   tcg_const_i32(CACHE_PACKET_WRITE),
                                   tcg_const_i32(size));
-    s->tb->extra_tb_info.counters.store++;
 #endif
 
     tcg_temp_free(addr);
@@ -1176,11 +1189,17 @@ static void gen_aa32_ld_i64(DisasContext *s, TCGv_i64 val, TCGv_i32 a32,
     gen_aa32_frob64(s, val);
 
 #ifdef CONFIG_VPMU
+    // TODO FIXME We can either,
+    //    1) Increase the size of TCG buffer for these vector instruction
+    //    2) Generate less helper functions on vector instructions, since it's useless
+    // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
+    // Please refer to vpmu/log_segfault_on_tcg
+    s->tb->extra_tb_info.counters.load++;
+    if (neon_load_store_flag) return;
     gen_helper_vpmu_memory_access(cpu_env,
                                   addr,
                                   tcg_const_i32(CACHE_PACKET_READ),
                                   tcg_const_i32(8));
-    s->tb->extra_tb_info.counters.load++;
 #endif
 
     tcg_temp_free(addr);
@@ -1208,11 +1227,17 @@ static void gen_aa32_st_i64(DisasContext *s, TCGv_i64 val, TCGv_i32 a32,
     }
 
 #ifdef CONFIG_VPMU
+    // TODO FIXME We can either,
+    //    1) Increase the size of TCG buffer for these vector instruction
+    //    2) Generate less helper functions on vector instructions, since it's useless
+    // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
+    // Please refer to vpmu/log_segfault_on_tcg
+    s->tb->extra_tb_info.counters.store++;
+    if (neon_load_store_flag) return;
     gen_helper_vpmu_memory_access(cpu_env,
                                   addr,
                                   tcg_const_i32(CACHE_PACKET_WRITE),
                                   tcg_const_i32(8));
-    s->tb->extra_tb_info.counters.store++;
 #endif
 
     tcg_temp_free(addr);
@@ -1578,6 +1603,11 @@ neon_reg_offset (int reg, int n)
 
 static TCGv_i32 neon_load_reg(int reg, int pass)
 {
+#ifdef CONFIG_VPMU
+    // TODO neon ld/st is not sent to VPMU for some reasons.
+    //     see ld/st helper functions
+    neon_load_store_flag = true;
+#endif
     TCGv_i32 tmp = tcg_temp_new_i32();
     tcg_gen_ld_i32(tmp, cpu_env, neon_reg_offset(reg, pass));
     return tmp;
@@ -1585,17 +1615,32 @@ static TCGv_i32 neon_load_reg(int reg, int pass)
 
 static void neon_store_reg(int reg, int pass, TCGv_i32 var)
 {
+#ifdef CONFIG_VPMU
+    // TODO neon ld/st is not sent to VPMU for some reasons.
+    //     see ld/st helper functions
+    neon_load_store_flag = true;
+#endif
     tcg_gen_st_i32(var, cpu_env, neon_reg_offset(reg, pass));
     tcg_temp_free_i32(var);
 }
 
 static inline void neon_load_reg64(TCGv_i64 var, int reg)
 {
+#ifdef CONFIG_VPMU
+    // TODO neon ld/st is not sent to VPMU for some reasons.
+    //     see ld/st helper functions
+    neon_load_store_flag = true;
+#endif
     tcg_gen_ld_i64(var, cpu_env, vfp_reg_offset(1, reg));
 }
 
 static inline void neon_store_reg64(TCGv_i64 var, int reg)
 {
+#ifdef CONFIG_VPMU
+    // TODO neon ld/st is not sent to VPMU for some reasons.
+    //     see ld/st helper functions
+    neon_load_store_flag = true;
+#endif
     tcg_gen_st_i64(var, cpu_env, vfp_reg_offset(1, reg));
 }
 
@@ -4900,6 +4945,11 @@ static int disas_neon_ls_insn(DisasContext *s, uint32_t insn)
 
     if (!s->vfp_enabled)
       return 1;
+
+#ifdef CONFIG_VPMU
+    s->tb->extra_tb_info.counters.neon++;
+#endif
+
     VFP_DREG_D(rd, insn);
     rn = (insn >> 16) & 0xf;
     rm = insn & 0xf;
@@ -12203,7 +12253,8 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     pc = &dc->pc;
     // Reset all values in this structure
     memset(&(tb->extra_tb_info), 0, sizeof(ExtraTBInfo));
-    vpmu_branch_from_store       = false;
+    vpmu_branch_from_store = false;
+    neon_load_store_flag   = false;
     gen_helper_vpmu_accumulate_tb_info(cpu_env,
                                        tcg_const_ptr((uint64_t) & (tb->extra_tb_info)));
 #endif
