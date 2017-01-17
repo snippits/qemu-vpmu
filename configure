@@ -5483,9 +5483,11 @@ if test "$vpmu_use_clang" = "no" ; then
     vpmu_cc=$cc
 fi
 
-echo "  Compiler:"
-echo "    VPMU: $vpmu_cc, $vpmu_cxx"
-echo "    QEMU: $cc, $cxx"
+if test "$vpmu" = "yes" ; then
+    echo "  Compiler:"
+    echo "    VPMU: $vpmu_cc, $vpmu_cxx"
+    echo "    QEMU: $cc, $cxx"
+fi
 
 # Prompt messages to user if clang is not found or specified
 if test "$vpmu_use_clang" = "yes" ; then
