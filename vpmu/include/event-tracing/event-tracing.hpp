@@ -23,29 +23,40 @@ public:
     // expecially when name is assigned as relative path.
     bool compare_name(std::string full_path)
     {
-        std::size_t found = full_path.find(name);
+        std::size_t found = std::string::npos;
+        if (path.size() != 0)
+            found = full_path.find(path);
+        else
+            found = full_path.find(name);
         return (found != std::string::npos);
     }
 
     // Compare only the filename of the name
     bool compare_file_name(std::string file_name)
     {
-        int index = vpmu::utils::get_index_of_file_name(name.c_str());
-        if (index < 0) return false;
-        std::size_t found = file_name.find(name.substr(index));
+        std::size_t found = file_name.find(name);
         return (found != std::string::npos);
+    }
+
+    void set_name_or_path(std::string& new_name)
+    {
+        int index = vpmu::utils::get_index_of_file_name(name.c_str());
+        if (index < 0) return; // Maybe we should throw?
+        name                 = new_name.substr(index);
+        if (index != 0) path = new_name;
     }
 
 public:
     // Used too often, make it public for speed and convenience.
     std::string name;
+    std::string path;
 };
 
 // TODO VPMU timing model switch
 class ET_Program : public ET_Path
 {
 public:
-    ET_Program(std::string new_name) { name = new_name; }
+    ET_Program(std::string new_name) { set_name_or_path(new_name); }
     ~ET_Program() {}
 
     inline bool operator==(const ET_Program& rhs) { return (this == &rhs); }
@@ -71,21 +82,21 @@ public:
     // This program should be the main program
     ET_Process(std::shared_ptr<ET_Program>& program, uint64_t new_pid)
     {
-        name = program->name;
-        pid  = new_pid;
+        set_name_or_path(program->name);
+        pid = new_pid;
         binary_list.push_back(program);
         timing_model   = program->timing_model;
         is_top_process = true;
     }
     ET_Process(std::string new_name, uint64_t new_pid)
     {
-        name           = new_name;
+        set_name_or_path(new_name);
         pid            = new_pid;
         is_top_process = true;
     }
     ET_Process(ET_Process* target_process, uint64_t new_pid)
     {
-        name         = target_process->name;
+        set_name_or_path(target_process->name);
         pid          = new_pid;
         binary_list  = target_process->binary_list;
         timing_model = target_process->timing_model;
