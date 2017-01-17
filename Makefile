@@ -813,8 +813,6 @@ endif
 	$(TRACE_DTRACE) $(TRACE_DTRACE:%=%-timestamp)
 
 ifdef CONFIG_VPMU
-vpmu-doc	:
-	@doxygen ../vpmu/Doxyfile
 
 execute	:	subdir-arm-softmmu
 	@../../qemu_arm_image/runQEMU.sh vexpress

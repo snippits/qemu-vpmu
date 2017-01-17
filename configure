@@ -6321,69 +6321,6 @@ TARGET_ARCH="$target_name"
 TARGET_BASE_ARCH=""
 TARGET_ABI_DIR=""
 
-# CONFIG_VPMU
-case "$target_name" in
-  arm|armeb|aarch64|i386|x86_64)
-    if test "$vpmu" = "yes" ; then
-      if test ! -d ${source_path}/vpmu/libs/libelfin/elf; then
-          # Clone submodule if not present
-          cd ${source_path}
-          git submodule update --init vpmu/libs/libelfin
-          cd -
-      fi
-      #Add CONFIG
-      #  This is for building qemu
-      echo "CONFIG_VPMU=y" >> $config_target_mak
-      #  This is for build-system itself
-      echo "CONFIG_VPMU=y" >> $config_host_mak
-
-      echo "VPMU_CC=$vpmu_cc" >> $config_host_mak
-      echo "VPMU_CXX=$vpmu_cxx" >> $config_host_mak
-
-      if test "$qemu_version" = "0.15.1" ; then
-          echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_target_mak
-          echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_host_mak
-      fi
-      if test "$vpmu_cpu_fence" = "yes" ; then
-          # Set to 1 to prevent CPU reordering(not needed in x86)
-          echo "CONFIG_VPMU_USE_CPU_FENCE=y" >> $config_target_mak
-          echo "CONFIG_VPMU_USE_CPU_FENCE=y" >> $config_host_mak
-      fi
-      if test "$vpmu_debug" = "yes" ; then
-          echo "CONFIG_VPMU_DEBUG_MSG=y" >> $config_target_mak
-          echo "CONFIG_VPMU_DEBUG_MSG=y" >> $config_host_mak
-      fi
-      if test "$vpmu_vfp" = "yes" ; then
-          echo "CONFIG_VPMU_VFP=y" >> $config_target_mak
-          echo "CONFIG_VPMU_VFP=y" >> $config_host_mak
-      fi
-      #CONFIG_VPMU_SET
-      if test "$vpmu_set" = "yes" ; then
-          echo "CONFIG_VPMU_SET=y" >> $config_target_mak
-          echo "CONFIG_VPMU_SET=y" >> $config_host_mak
-          mkdir -p $target_dir/vpmu/libs/libelfin/dwarf
-          mkdir -p $target_dir/vpmu/libs/libelfin/elf
-
-          lib_dwarf_path="vpmu/libs/libelfin/dwarf"
-          symlink $source_path/vpmu/Makefile.libdwarf $target_dir/$lib_dwarf_path/Makefile
-          symlink $source_path/$lib_dwarf_path/dwarf++.hh $target_dir/$lib_dwarf_path/dwarf++.hh
-          symlink $source_path/$lib_dwarf_path/data.hh $target_dir/$lib_dwarf_path/data.hh
-
-          lib_elf_path="vpmu/libs/libelfin/elf"
-          symlink $source_path/vpmu/Makefile.libelf $target_dir/$lib_elf_path/Makefile
-          symlink $source_path/$lib_elf_path/enum-print.py $target_dir/$lib_elf_path/enum-print.py
-          symlink $source_path/$lib_elf_path/data.hh $target_dir/$lib_elf_path/data.hh
-      fi
-
-      #Add directory for build
-      mkdir -p $target_dir/vpmu
-      symlink $source_path/vpmu/Makefile $target_dir/vpmu/Makefile
-      symlink $source_path/vpmu/Makefile.objs $target_dir/vpmu/Makefile.objs
-    fi
-  ;;
-esac
-
-
 case "$target_name" in
   i386)
     gdb_xml_files="i386-32bit.xml i386-32bit-core.xml i386-32bit-sse.xml"
@@ -6680,6 +6617,77 @@ fi
 
 echo "LDFLAGS+=$ldflags" >> $config_target_mak
 echo "QEMU_CFLAGS+=$cflags" >> $config_target_mak
+
+
+# CONFIG_VPMU
+# Setup all the configs and doxyfile AFTER ALL QEMU configurations
+case "$target_name" in
+  arm|armeb|aarch64|i386|x86_64)
+    if test "$vpmu" = "yes" ; then
+      if test ! -d ${source_path}/vpmu/libs/libelfin/elf; then
+          # Clone submodule if not present
+          cd ${source_path}
+          git submodule update --init vpmu/libs/libelfin
+          cd -
+      fi
+      #Add CONFIG
+      #  This is for building qemu
+      echo "CONFIG_VPMU=y" >> $config_target_mak
+      #  This is for build-system itself
+      echo "CONFIG_VPMU=y" >> $config_host_mak
+
+      echo "VPMU_CC=$vpmu_cc" >> $config_host_mak
+      echo "VPMU_CXX=$vpmu_cxx" >> $config_host_mak
+
+      if test "$qemu_version" = "0.15.1" ; then
+          echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_target_mak
+          echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_host_mak
+      fi
+      if test "$vpmu_cpu_fence" = "yes" ; then
+          # Set to 1 to prevent CPU reordering(not needed in x86)
+          echo "CONFIG_VPMU_USE_CPU_FENCE=y" >> $config_target_mak
+          echo "CONFIG_VPMU_USE_CPU_FENCE=y" >> $config_host_mak
+      fi
+      if test "$vpmu_debug" = "yes" ; then
+          echo "CONFIG_VPMU_DEBUG_MSG=y" >> $config_target_mak
+          echo "CONFIG_VPMU_DEBUG_MSG=y" >> $config_host_mak
+      fi
+      if test "$vpmu_vfp" = "yes" ; then
+          echo "CONFIG_VPMU_VFP=y" >> $config_target_mak
+          echo "CONFIG_VPMU_VFP=y" >> $config_host_mak
+      fi
+      #CONFIG_VPMU_SET
+      if test "$vpmu_set" = "yes" ; then
+          echo "CONFIG_VPMU_SET=y" >> $config_target_mak
+          echo "CONFIG_VPMU_SET=y" >> $config_host_mak
+          mkdir -p $target_dir/vpmu/libs/libelfin/dwarf
+          mkdir -p $target_dir/vpmu/libs/libelfin/elf
+
+          lib_dwarf_path="vpmu/libs/libelfin/dwarf"
+          symlink $source_path/vpmu/Makefile.libdwarf $target_dir/$lib_dwarf_path/Makefile
+          symlink $source_path/$lib_dwarf_path/dwarf++.hh $target_dir/$lib_dwarf_path/dwarf++.hh
+          symlink $source_path/$lib_dwarf_path/data.hh $target_dir/$lib_dwarf_path/data.hh
+
+          lib_elf_path="vpmu/libs/libelfin/elf"
+          symlink $source_path/vpmu/Makefile.libelf $target_dir/$lib_elf_path/Makefile
+          symlink $source_path/$lib_elf_path/enum-print.py $target_dir/$lib_elf_path/enum-print.py
+          symlink $source_path/$lib_elf_path/data.hh $target_dir/$lib_elf_path/data.hh
+      fi
+
+      #Add directory for build
+      mkdir -p $target_dir/vpmu
+      symlink $source_path/vpmu/Makefile $target_dir/vpmu/Makefile
+      symlink $source_path/vpmu/Makefile.objs $target_dir/vpmu/Makefile.objs
+
+      #Generate Doxyfile for each target
+      sed "s/@QEMU_SOURCE_DIR@/..\/..\/../g" $source_path/vpmu/Doxyfile.in > $target_dir/vpmu/Doxyfile
+      #Retrieve target macros for doxyfile
+      vpmu_doxy_predef=$(grep "=y" $config_target_mak | awk -F '=' '{print $1"=1"}' | xargs)
+      sed -i "s/@QEMU_CONFIG_TARGET@/${vpmu_doxy_predef}/g" $target_dir/vpmu/Doxyfile
+    fi
+  ;;
+esac
+
 
 done # for target in $targets
 

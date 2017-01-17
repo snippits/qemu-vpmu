@@ -1,5 +1,22 @@
 #ifndef __VPMU_TRANSLATE_HPP_
 #define __VPMU_TRANSLATE_HPP_
+/**
+ * @file vpmu-translate.hpp
+ * @author Medicine Yeh
+ * @date 17 Jan 2017
+ * @brief File contains the class handler using in QEMU translation stage.
+ *
+ * The main purpose of a translator class is to accumulate the cycles and
+ * counters of a TB. It should accumulate and store the variables in
+ * ExtraTBInfo with thread-safe insurance.
+ *
+ * The translator class got its name by when it's being executed instead of
+ * what it's doing. As the name indicates, the class is called when ever
+ * QEMU translate a TB and one should implement his/her own functions with
+ * C++ to C interface functions to complete the tasks.
+ * @see target-xxx/translate.c:gen_intermediate_code()
+ */
+
 #include <vector>       // std::vector
 #include <string>       // std::string
 #include <thread>       // std::thread
@@ -38,12 +55,14 @@ public:
     // TODO x86 models
 };
 
-
 #if defined(TARGET_ARM)
+/// Define architecture dependent translator type to ARM translator
 using VPMUArchTranslate = VPMUARMTranslate;
 #elif defined(TARGET_I386)
+/// Define architecture dependent translator type to i386 translator
 using VPMUArchTranslate = VPMUi386Translate;
 #elif defined(TARGET_X86_64)
+/// Define architecture dependent translator type to x86_64 translator
 using VPMUArchTranslate = VPMUi386Translate;
 #endif
 

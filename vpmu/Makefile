@@ -38,16 +38,30 @@ endif
 VPMU_CFLAGS=$(VPMU_FLAGS) -O3 -std=gnu11
 VPMU_CXXFLAGS=$(VPMU_FLAGS) -O3 -std=c++14
 
+vpmu_doxygen_found=$(shell command -v doxygen 2> /dev/null)
+
 .PHONY: all clean
 
 all	:	libvpmu_arm.a libvpmu_x86_64.a $(VPMU_EXTERNAL_LIBS)
 
 libvpmu_arm.a	:	$(VPMU_OBJS)
+ifeq ($(vpmu_doxygen_found),)
+	@echo "  No doxygen in PATH, skip building documents"
+else
+	@echo "  BUILD documents for $(TARGET_NAME) @ $(shell pwd)/docs/html/index.html"
+	@doxygen ./Doxyfile 2> ./doxygen_log 1> /dev/null
+endif
 	@echo "  BUILD VPMU for $(TARGET_NAME) with compiler: $(CC)"
 	@echo "  LINK    $@"
 	@ar -rcs $@ $^
 
 libvpmu_x86_64.a libvpmu_i386.a	:	$(VPMU_OBJS)
+ifeq ($(vpmu_doxygen_found),)
+	@echo "  No doxygen in PATH, skip building documents"
+else
+	@echo "  BUILD documents for $(TARGET_NAME) @ $(shell pwd)/docs/html/index.html"
+	@doxygen ./Doxyfile 2> ./doxygen_log 1> /dev/null
+endif
 	@echo "  BUILD VPMU for $(TARGET_NAME) with compiler: $(CC)"
 	@echo "  LINK    $@"
 	@ar -rcs $@ $^
