@@ -27,7 +27,7 @@ private: // VPMUARMTranslate
         void build(nlohmann::json config);
         uint16_t get_arm64_ticks(uint64_t insn) override
         {
-            log_debug("ARM 64 not is supported yet");
+            log_debug("ARM 64 is not supported yet");
             return 0;
         }
         uint16_t get_arm_ticks(uint32_t insn) override;
