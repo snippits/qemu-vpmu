@@ -16,40 +16,82 @@ extern "C" {
 #include "vpmu-log.hpp"   // Log system
 #include "vpmu-utils.hpp" // Misc. functions
 
+// TODO Use weak_ptr to implement a use_count() tester to check
+// if all programs, processes are free normally
+
 class ET_Path
 {
 public:
     // This function return true to all full_path containing the name,
     // expecially when name is assigned as relative path.
+    bool fuzy_compare_name(std::string full_path)
+    {
+        // Compare the path first
+        if (compare_path(full_path) == true) return true;
+        // Compare bash name first
+        if (compare_bash_name(full_path) == true) return true;
+        // Compare file name latter
+        if (compare_file_name(full_path) == true) return true;
+        return false;
+    }
+
     bool compare_name(std::string full_path)
     {
-        std::size_t found = std::string::npos;
-        if (path.size() != 0)
-            found = full_path.find(path);
-        else
-            found = full_path.find(name);
-        return (found != std::string::npos);
+        if (path.size() != 0) { // Match full path if the path exists
+            return compare_path(full_path);
+        } else { // Match only the file name if path does not exist
+            // Compare bash name first
+            if (compare_bash_name(full_path) == true) return true;
+            // Compare file name latter
+            if (compare_file_name(full_path) == true) return true;
+        }
+        return false;
+    }
+
+    // Compare only the bash name of the name
+    bool compare_bash_name(std::string name_or_path)
+    {
+        return compare_file_name_and_path(name, name_or_path);
     }
 
     // Compare only the filename of the name
-    bool compare_file_name(std::string file_name)
+    bool compare_file_name(std::string name_or_path)
     {
-        std::size_t found = file_name.find(name);
-        return (found != std::string::npos);
+        return compare_file_name_and_path(filename, name_or_path);
     }
+
+    // Compare only the full path
+    inline bool compare_path(std::string path_only) { return (path == path_only); }
 
     void set_name_or_path(std::string& new_name)
     {
-        int index = vpmu::utils::get_index_of_file_name(name.c_str());
+        int index = vpmu::utils::get_index_of_file_name(new_name.c_str());
         if (index < 0) return; // Maybe we should throw?
+        filename             = new_name.substr(index);
         name                 = new_name.substr(index);
         if (index != 0) path = new_name;
     }
 
+    void set_name(std::string& new_name) { name = new_name; }
+
 public:
     // Used too often, make it public for speed and convenience.
+    // if bash_name and its binary name are not the same, bash name would be used
     std::string name;
+    // This is the file name in the path
+    std::string filename;
+    // This is always the true (not symbolic link) path to the file
     std::string path;
+
+private:
+    inline bool compare_file_name_and_path(std::string& name, std::string& path)
+    {
+        int i = name.size(), j = path.size();
+        for (; i >= 0 && j >= 0; i--, j--) {
+            if (name[i] != path[j]) return false;
+        }
+        return true;
+    }
 };
 
 // TODO VPMU timing model switch
@@ -67,13 +109,29 @@ public:
         sym_table.insert(std::pair<std::string, uint64_t>(name, address));
     }
 
+    void push_binary(std::shared_ptr<ET_Program>& program)
+    {
+        if (program.get() == this) return; // No self include
+        // Check repeated pointer
+        for (auto& binary : library_list) {
+            if (binary == program) return;
+        }
+        if (program != nullptr) library_list.push_back(program);
+    }
+
 public:
+    // Caution! All the data should be process independent!!!
+    // An ET_Program instance could be shared by multiple processes.
+    // All process dependent information should be stored in ET_Process
+
     // The timing model bind to this program
     uint64_t timing_model;
     // The function address table
     std::map<std::string, uint64_t> sym_table;
     // Lists of shared pointer objects of dependent libraries
     std::vector<std::shared_ptr<ET_Program>> library_list;
+    // Used to identify the top process parent
+    bool is_shared_library = false;
 };
 
 class ET_Process : public ET_Path
@@ -83,10 +141,11 @@ public:
     ET_Process(std::shared_ptr<ET_Program>& program, uint64_t new_pid)
     {
         set_name_or_path(program->name);
-        pid = new_pid;
-        binary_list.push_back(program);
-        timing_model   = program->timing_model;
+        pid            = new_pid;
         is_top_process = true;
+
+        binary_list.push_back(program);
+        timing_model = program->timing_model;
     }
     ET_Process(std::string new_name, uint64_t new_pid)
     {
@@ -124,6 +183,10 @@ public:
 
     void push_binary(std::shared_ptr<ET_Program>& program)
     {
+        // Check repeated pointer
+        for (auto& binary : binary_list) {
+            if (binary == program) return;
+        }
         if (program != nullptr) binary_list.push_back(program);
     }
 
@@ -131,6 +194,8 @@ public:
     {
         if (process != nullptr) child_list.push_back(process);
     }
+
+    inline std::shared_ptr<ET_Program> get_main_program(void) { return binary_list[0]; }
 
 public:
     // Used to identify the top process parent
@@ -187,63 +252,98 @@ public:
     EventTracer(const EventTracer&) = delete;
     EventTracer& operator=(const EventTracer&) = delete;
 
-    inline void add_program(std::string name)
+    inline std::shared_ptr<ET_Program> add_program(std::string name)
     {
-        log_debug("Add new binary %s", name.c_str());
-        program_list.push_back(std::make_shared<ET_Program>(name));
-        debug_dump_program_map();
+        auto p = std::make_shared<ET_Program>(name);
+        log_debug("Add new binary '%s'", name.c_str());
+        program_list.push_back(p);
+        // debug_dump_program_map();
+        return p;
+    }
+
+    inline std::shared_ptr<ET_Program> add_library(std::string name)
+    {
+        auto p = std::make_shared<ET_Program>(name);
+        // Set this flag to true if it's a library
+        p->is_shared_library = true;
+        log_debug("Add new library '%s'", name.c_str());
+        program_list.push_back(p);
+        // debug_dump_program_map();
+        return p;
     }
 
     inline void remove_program(std::string name)
     {
         if (program_list.size() == 0) return;
-        log_debug("Try remove program %s", name.c_str());
-        // The STL way cost a little more time than hand coding, but it's much more SAFE!
+        log_debug("Try remove program '%s'", name.c_str());
+        // The STL way cost a little more time than hand coding,
+        // but it's much more SAFE!
         program_list.erase(std::remove_if(program_list.begin(),
                                           program_list.end(),
                                           [&](std::shared_ptr<ET_Program>& p) {
-                                              return p->compare_name(name);
+                                              return p->fuzy_compare_name(name);
                                           }),
                            program_list.end());
         debug_dump_program_map();
     }
 
-    inline void add_new_process(const char* path, uint64_t pid)
+    inline std::shared_ptr<ET_Process> add_new_process(const char* path, uint64_t pid)
     {
         auto program = find_program(path);
-        // Push the program info into the list
+        // Check if the target program is in the monitoring list
         if (program != nullptr) {
             log_debug("Start new process %s, pid:%5" PRIu64, path, pid);
             auto&& process      = std::make_shared<ET_Process>(program, pid);
             process_id_map[pid] = process;
             debug_dump_process_map();
+            return process;
         }
-        return;
+        return nullptr;
+    }
+
+    inline std::shared_ptr<ET_Process>
+    add_new_process_differ_name(const char* path, const char* name, uint64_t pid)
+    {
+        auto process = add_new_process(name, pid);
+        // Check if the target program is in the monitoring list
+        if (process != nullptr) {
+            auto program = process->get_main_program();
+            auto name    = vpmu::utils::get_file_name_from_path(path);
+            if (name != program->filename) {
+                log_debug(
+                  "Rename program '%s' attributes to: real path '%s', filename '%s'",
+                  program->name.c_str(),
+                  path,
+                  name.c_str());
+                // The program is main program, rename the real path and filename
+                program->filename = name;
+                program->path     = path;
+            }
+        }
+        return nullptr;
     }
 
     std::shared_ptr<ET_Program> find_program(const char* path)
     {
         if (path == nullptr) return nullptr;
-        if (path[0] == '/') {
-            // It's an absolute path
-            for (auto& p : program_list) {
-                if (p->compare_name(path)) return p;
-            }
-        } else {
-            // It's an relative path
-            int index = vpmu::utils::get_index_of_file_name(path);
 
-            for (auto& p : program_list) {
-                if (p->compare_file_name(&path[index])) return p;
-            }
+        for (auto& p : program_list) {
+            if (p->fuzy_compare_name(path)) return p;
         }
-
         return nullptr;
     }
 
     inline void remove_process(uint64_t pid)
     {
         if (process_id_map.size() == 0) return;
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        // It's not necessary to find, use it in debug only
+        if (process_id_map.find(pid) != process_id_map.end()) {
+            auto& process = process_id_map[pid];
+            debug_dump_program_map(process->binary_list[0]);
+            debug_dump_process_map(process);
+        }
+#endif
         log_debug("Try remove process %5" PRIu64, pid);
         process_id_map.erase(pid);
         debug_dump_process_map();
@@ -261,34 +361,44 @@ public:
     inline std::shared_ptr<ET_Process> find_process(const char* path)
     {
         if (path == nullptr) return nullptr;
-        if (path[0] == '/') {
-            // It's an absolute path
-            for (auto& p_pair : process_id_map) {
-                auto& p = p_pair.second;
-                if (p->compare_name(path)) return p;
-            }
-        } else {
-            // It's an relative path
-            int index = vpmu::utils::get_index_of_file_name(path);
 
-            for (auto& p_pair : process_id_map) {
-                auto& p = p_pair.second;
-                if (p->compare_file_name(&path[index])) return p;
-            }
+        for (auto& p_pair : process_id_map) {
+            auto& p = p_pair.second;
+            if (p->fuzy_compare_name(path)) return p;
         }
-
         return nullptr;
+    }
+
+    inline void attach_to_parent(std::shared_ptr<ET_Process> parent, uint64_t child_pid)
+    {
+        if (parent == nullptr) return;
+
+        log_debug("Attach process %5" PRIu64 " to %5" PRIu64, child_pid, parent->pid);
+        parent->attach_child_pid(child_pid);
+        // debug_dump_process_map();
     }
 
     inline void attach_to_parent(uint64_t parent_pid, uint64_t child_pid)
     {
-        log_debug("Attach process %5" PRIu64 " to %5" PRIu64, child_pid, parent_pid);
-        for (auto& p : process_id_map) {
-            if (p.first == parent_pid) {
-                p.second->attach_child_pid(child_pid);
-            }
-        }
-        debug_dump_process_map();
+        attach_to_parent(find_process(parent_pid), child_pid);
+    }
+
+    inline void attach_to_program(std::shared_ptr<ET_Program>  target_program,
+                                  std::shared_ptr<ET_Program>& program)
+    {
+        if (target_program == nullptr) return;
+
+        log_debug("Attach program '%s' to binary '%s'",
+                  program->name.c_str(),
+                  target_program->name.c_str());
+        target_program->push_binary(program);
+        // debug_dump_process_map();
+    }
+
+    inline void attach_to_program(std::string                  target_program_name,
+                                  std::shared_ptr<ET_Program>& program)
+    {
+        attach_to_program(find_program(target_program_name.c_str()), program);
     }
 
     void set_process_cpu_state(uint64_t pid, void* cs)
@@ -301,82 +411,30 @@ public:
 
     void parse_and_set_kernel_symbol(const char* filename);
 
-    void debug_dump_process_map(void)
+    void clear_shared_libraries(void)
     {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        log_debug("Printing all traced processes with its information "
-                  "(first level of children only)");
-        for (auto& p_pair : process_id_map) {
-            auto& p = p_pair.second;
-            if (p_pair.first != p->pid)
-                log_fatal("PID not match!! map(%p) != p(%p)", p_pair.first, p->pid);
-            log_debug("    pid:%5" PRIu64 ", Pointer %p Name:%s",
-                      p->pid,
-                      p.get(),
-                      p->name.c_str());
-            debug_dump_child_list(*p);
-            log_debug("    Binaries loaded into this process");
-            debug_dump_binary_list(*p);
-            log_debug("    ==============================================");
-        }
-#endif
+        // The STL way cost a little more time than hand coding, but it's much more SAFE!
+        program_list.erase(std::remove_if(program_list.begin(),
+                                          program_list.end(),
+                                          [&](std::shared_ptr<ET_Program>& p) {
+                                              return p->is_shared_library;
+                                          }),
+                           program_list.end());
     }
 
-    void debug_dump_program_map(void)
-    {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        log_debug("Printing all traced program with its information"
-                  "(first level of dependent libraries only)");
-        for (auto& program : program_list) {
-            log_debug("    Pointer %p, Name:%s, size of sym_table:%d"
-                      ", num libraries loaded:%d",
-                      program.get(),
-                      program->name.c_str(),
-                      program->sym_table.size(),
-                      program->library_list.size());
-            debug_dump_library_list(*program);
-            log_debug("    ============================================");
-        }
-#endif
-    }
+    void debug_dump_process_map(void);
 
-    void debug_dump_child_list(const ET_Process& process)
-    {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        for (auto& child : process.child_list) {
-            log_debug("        pid:%5" PRIu64 ", Pointer %p, Name:%s",
-                      child->pid,
-                      child.get(),
-                      child->name.c_str());
-        }
-#endif
-    }
+    void debug_dump_process_map(std::shared_ptr<ET_Process> marked_process);
 
-    void debug_dump_binary_list(const ET_Process& process)
-    {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        for (auto& binary : process.binary_list) {
-            log_debug("        Pointer %p, Name:%s, size of sym_table:%d"
-                      ", num libraries loaded:%d",
-                      binary.get(),
-                      binary->name.c_str(),
-                      binary->sym_table.size(),
-                      binary->library_list.size());
-        }
-#endif
-    }
+    void debug_dump_program_map(void);
 
-    void debug_dump_library_list(const ET_Program& program)
-    {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        for (auto& binary : program.library_list) {
-            log_debug("        Pointer %p, Name:%s, size of sym_table:%d",
-                      binary.get(),
-                      binary->name.c_str(),
-                      binary->sym_table.size());
-        }
-#endif
-    }
+    void debug_dump_program_map(std::shared_ptr<ET_Program> marked_program);
+
+    void debug_dump_child_list(const ET_Process& process);
+
+    void debug_dump_binary_list(const ET_Process& process);
+
+    void debug_dump_library_list(const ET_Program& program);
 
 private:
     ET_Kernel kernel;

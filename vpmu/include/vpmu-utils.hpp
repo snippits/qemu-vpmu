@@ -18,6 +18,26 @@ namespace utils
     void name_thread(std::thread &t, std::string new_name);
     int32_t clog2(uint32_t x);
 
+    inline std::string get_file_name_from_path(const char *path)
+    {
+        int index = 0; // Default name of file starts from the first letter
+        int i     = 0;
+
+        if (path == nullptr) return "";
+        for (i = 0; path[i] != '\0'; i++) {
+            if (path[i] == '/') {
+                index = i + 1;
+            }
+        }
+        i -= 1; // Set i to the length of string
+        if (index == i) {
+            // The path ends with '/' without a file name
+            return "";
+        }
+
+        return std::string(&path[index]);
+    }
+
     inline int get_index_of_file_name(const char *path)
     {
         int index = 0; // Default name of file starts from the first letter

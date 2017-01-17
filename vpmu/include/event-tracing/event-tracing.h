@@ -38,11 +38,13 @@ void et_remove_program_from_list(const char* name);
 bool et_find_program_in_list(const char* name);
 
 void et_add_new_process(const char* name, uint64_t pid);
+void et_add_new_process_differ_name(const char* path, const char* name, uint64_t pid);
 void et_remove_process(uint64_t pid);
 void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid);
 bool et_find_traced_pid(uint64_t pid);
 bool et_find_traced_process(const char* name);
 void et_set_process_cpu_state(uint64_t pid, void* cs);
 void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mode);
+void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath);
 
 #endif // __VPMU_EVENT_TRACING_

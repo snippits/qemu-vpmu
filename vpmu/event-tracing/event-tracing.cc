@@ -1,5 +1,6 @@
 extern "C" {
-#include "vpmu-common.h" // Include common C headers
+#include "vpmu-common.h"           // Include common C headers
+#include "vpmu/include/linux-mm.h" // VM_EXEC and other mmap() mode states
 }
 #include "elf++.hh"          // elf::elf
 #include "event-tracing.hpp" // EventTracer
@@ -76,6 +77,141 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename)
     }
 }
 
+void EventTracer::debug_dump_process_map(void)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    log_debug("Printing all traced processes with its information "
+              "(first level of children only)");
+    for (auto& p_pair : process_id_map) {
+        auto& p = p_pair.second;
+        if (p_pair.first != p->pid)
+            log_fatal("PID not match!! map(%p) != p(%p)", p_pair.first, p->pid);
+        log_debug("    pid: %5" PRIu64 ", Pointer %p Name: '%s'",
+                  p->pid,
+                  p.get(),
+                  p->name.c_str());
+        debug_dump_child_list(*p);
+        log_debug("    Binaries loaded into this process");
+        debug_dump_binary_list(*p);
+        log_debug("    ==============================================");
+    }
+#endif
+}
+
+void EventTracer::debug_dump_process_map(std::shared_ptr<ET_Process> marked_process)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    char indent_space[16] = "    ";
+
+    log_debug("Printing all traced processes with its information "
+              "(first level of children only)");
+    for (auto& p_pair : process_id_map) {
+        auto& p = p_pair.second;
+        if (p_pair.first != p->pid)
+            log_fatal("PID not match!! map(%p) != p(%p)", p_pair.first, p->pid);
+        if (p == marked_process) {
+            indent_space[2] = '*';
+        } else {
+            indent_space[2] = ' ';
+        }
+        log_debug("%spid: %5" PRIu64 ", Pointer %p Name: '%s'",
+                  indent_space,
+                  p->pid,
+                  p.get(),
+                  p->name.c_str());
+        debug_dump_child_list(*p);
+        log_debug("    Binaries loaded into this process");
+        debug_dump_binary_list(*p);
+        log_debug("    ==============================================");
+    }
+#endif
+}
+
+void EventTracer::debug_dump_program_map(void)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    log_debug("Printing all traced program with its information"
+              "(first level of dependent libraries only)");
+    for (auto& program : program_list) {
+        log_debug("    Pointer %p, Name: '%s' (%s), size of sym_table: %d"
+                  ", num libraries loaded: %d",
+                  program.get(),
+                  program->name.c_str(),
+                  program->filename.c_str(),
+                  program->sym_table.size(),
+                  program->library_list.size());
+        debug_dump_library_list(*program);
+        log_debug("    ============================================");
+    }
+#endif
+}
+
+void EventTracer::debug_dump_program_map(std::shared_ptr<ET_Program> marked_program)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    char indent_space[16] = "    ";
+
+    log_debug("Printing all traced program with its information"
+              "(first level of dependent libraries only)");
+    for (auto& program : program_list) {
+        if (program == marked_program) {
+            indent_space[2] = '*';
+        } else {
+            indent_space[2] = ' ';
+        }
+        log_debug("%sPointer %p, Name: '%s' (%s), size of sym_table: %d"
+                  ", num libraries loaded: %d",
+                  indent_space,
+                  program.get(),
+                  program->name.c_str(),
+                  program->filename.c_str(),
+                  program->sym_table.size(),
+                  program->library_list.size());
+        debug_dump_library_list(*program);
+    }
+    log_debug("    ============================================");
+#endif
+}
+
+void EventTracer::debug_dump_child_list(const ET_Process& process)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    for (auto& child : process.child_list) {
+        log_debug("        pid:%5" PRIu64 ", Pointer %p, Name:%s",
+                  child->pid,
+                  child.get(),
+                  child->name.c_str());
+    }
+#endif
+}
+
+void EventTracer::debug_dump_binary_list(const ET_Process& process)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    for (auto& binary : process.binary_list) {
+        log_debug("        Pointer %p, Name:%s (%s), size of sym_table:%d"
+                  ", num libraries loaded:%d",
+                  binary.get(),
+                  binary->name.c_str(),
+                  binary->filename.c_str(),
+                  binary->sym_table.size(),
+                  binary->library_list.size());
+    }
+#endif
+}
+
+void EventTracer::debug_dump_library_list(const ET_Program& program)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    for (auto& binary : program.library_list) {
+        log_debug("        Pointer %p, Name: '%s', size of sym_table: %d",
+                  binary.get(),
+                  binary->name.c_str(),
+                  binary->sym_table.size());
+    }
+#endif
+}
+
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr)
 {
     return event_tracer.get_kernel().find_event(vaddr);
@@ -116,6 +252,11 @@ void et_add_new_process(const char* name, uint64_t pid)
     event_tracer.add_new_process(name, pid);
 }
 
+void et_add_new_process_differ_name(const char* path, const char* name, uint64_t pid)
+{
+    auto process = event_tracer.add_new_process_differ_name(path, name, pid);
+}
+
 void et_remove_process(uint64_t pid)
 {
     event_tracer.remove_process(pid);
@@ -146,4 +287,35 @@ void et_set_process_cpu_state(uint64_t pid, void* cs)
 
 void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mode)
 {
+    if (mode & VM_EXEC) {
+        // Mapping executable page for shared library
+        et_attach_shared_library_to_process(pid, fullpath);
+    } else {
+        // TODO Just records all non-library files mapped to this process
+    }
+}
+
+void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath_lib)
+{
+    std::shared_ptr<ET_Process> process = event_tracer.find_process(pid);
+    if (process == nullptr) return;
+    std::shared_ptr<ET_Program> program = event_tracer.find_program(fullpath_lib);
+    if (program == nullptr) {
+        DBG(STR_VPMU "Shared library %s was not found in the list "
+                     "create an empty one.\n",
+            fullpath_lib);
+        program = event_tracer.add_library(fullpath_lib);
+    }
+
+    if (process->binary_list.size() == 0) {
+        auto name = vpmu::utils::get_file_name_from_path(fullpath_lib);
+        if (name != program->filename) {
+            // The program is main program, rename the real path and filename
+            program->filename = name;
+            program->path     = fullpath_lib;
+        }
+    } else {
+        event_tracer.attach_to_program(process->get_main_program()->name, program);
+    }
+    process->push_binary(program);
 }

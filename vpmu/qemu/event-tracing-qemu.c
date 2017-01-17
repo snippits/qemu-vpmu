@@ -22,7 +22,7 @@ static void parse_dentry_path(CPUArchState *env,
                               int           max_levels)
 {
     uintptr_t parent_dentry_addr = 0;
-    char *    name;
+    char *    name               = NULL;
 
     // Safety checks
     if (env == NULL || buff == NULL || position == NULL || size_buff == 0) return;
@@ -56,6 +56,9 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     // TODO make this thread safe and need to check branch!!!!!!!
     VPMU.cpu_arch_state         = env;
     static uint64_t current_pid = 0;
+    // TODO Maybe there's a better way?
+    static uint64_t    exec_event_pid = -1;
+    static const char *bash_path      = NULL;
 
     switch (et_find_kernel_event(target_addr)) {
     case ET_KERNEL_MMAP: {
@@ -65,14 +68,17 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         int       position       = 0;
         uintptr_t dentry_addr    = 0;
         uintptr_t mode           = 0;
+        uintptr_t vaddr          = 0;
 
         if (env->regs[0] == 0) break; // vaddr is zero
         dentry_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 12);
         if (dentry_addr == 0) break; // pointer to dentry is zero
         parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
-        mode = env->regs[3];
+        mode  = env->regs[3];
+        vaddr = env->regs[1];
+
         /*
-        DBG(STR_VPMU "mmap file: %s mode: (%lx) ", fullpath, mode);
+        DBG(STR_VPMU "mmap file: %s @ %lx mode: (%lx) ", fullpath, vaddr, mode);
 #ifdef CONFIG_VPMU_DEBUG_MSG
         print_mode(mode, VM_READ, " READ");
         print_mode(mode, VM_WRITE, " WRITE");
@@ -84,7 +90,45 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
 #endif
         DBG("\n");
         */
-        et_add_process_mapped_file(current_pid, fullpath, mode);
+
+        if (current_pid == exec_event_pid && (mode & VM_EXEC)) {
+            bool found_in_list_flag = false;
+            // Mapping executable page for main program
+            if (strcmp(fullpath, bash_path) != 0) {
+                // If the name were not match, try bash name
+                if (et_find_program_in_list(bash_path)) {
+                    et_add_new_process_differ_name(fullpath, bash_path, current_pid);
+                    found_in_list_flag = true;
+                }
+            } else {
+                if (et_find_program_in_list(fullpath)) {
+                    et_add_new_process(fullpath, current_pid);
+                    found_in_list_flag = true;
+                }
+            }
+
+            if (found_in_list_flag) {
+                DBG(STR_VPMU "Start tracing %s, File: %s (pid=%lu)\n",
+                    bash_path,
+                    fullpath,
+                    current_pid);
+                tic(&(VPMU.start_time));
+                VPMU_reset();
+                vpmu_simulator_status(&VPMU);
+                VPMU.enabled = 1;
+            }
+
+            // The current mapped file is the main program, push it to process anyway
+            et_add_process_mapped_file(current_pid, fullpath, mode);
+            exec_event_pid = -1;
+        } else {
+            // Records all mapped files, including shared library
+            if (et_find_traced_pid(current_pid)) {
+                et_add_process_mapped_file(current_pid, fullpath, mode);
+            }
+        }
+
+        (void)vaddr;
         break;
     }
     case ET_KERNEL_FORK: {
@@ -106,21 +150,14 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     case ET_KERNEL_EXECV: {
         // Linux Kernel: New process creation
         // This is kernel v3.6.11
-        // char *filepath = (char *)vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
-        // This is kernel v4.4.0
-        uintptr_t name_addr =
-          (uintptr_t)vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
-        char *filepath = (char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
+        // uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
+        uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
+        // Remember this pointer gor mmap()
+        bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
 
-        if (et_find_program_in_list(filepath)) {
-            DBG(STR_VPMU "target_addr == %lx from %lx\n", target_addr, return_addr);
-            DBG(STR_VPMU "file: %s (pid=%lu)\n", filepath, current_pid);
-            tic(&(VPMU.start_time));
-            VPMU_reset();
-            vpmu_simulator_status(&VPMU);
-            et_add_new_process(filepath, current_pid);
-            VPMU.enabled = 1;
-        }
+        // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, current_pid);
+        // Let another kernel event handle. It can find the absolute path.
+        exec_event_pid = current_pid;
         break;
     }
     case ET_KERNEL_EXIT: {
