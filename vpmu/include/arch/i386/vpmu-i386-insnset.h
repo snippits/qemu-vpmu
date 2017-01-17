@@ -1,5 +1,5 @@
-#ifndef __VPMU_X86_INSNSET_
-#define __VPMU_X86_INSNSET_
+#ifndef __VPMU_I386_INSNSET_
+#define __VPMU_I386_INSNSET_
 
 #define macro_str(str) #str
 

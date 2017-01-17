@@ -8469,6 +8469,11 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         max_insns = TCG_MAX_INSNS;
     }
 
+#ifdef CONFIG_VPMU
+    memset(&(tb->extra_tb_info), 0, sizeof(ExtraTBInfo));
+    gen_helper_vpmu_accumulate_tb_info(cpu_env, tcg_const_ptr((uint64_t)&(tb->extra_tb_info)));
+#endif
+
     gen_tb_start(tb);
     for(;;) {
         tcg_gen_insn_start(pc_ptr, dc->cc_op);
@@ -8559,6 +8564,16 @@ done_generating:
 
     tb->size = pc_ptr - pc_start;
     tb->icount = num_insns;
+
+#ifdef CONFIG_VPMU
+    /* paslab : instruction cache support */
+    tb->extra_tb_info.counters.total      = num_insns;
+    tb->extra_tb_info.counters.size_bytes = dc->pc - pc_start;
+    tb->extra_tb_info.start_addr          = pc_start;
+    //s->tb->extra_tb_info.counters.alu++;
+#endif
+
+
 }
 
 void restore_state_to_opc(CPUX86State *env, TranslationBlock *tb,

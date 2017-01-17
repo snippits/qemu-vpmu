@@ -1,3 +1,10 @@
+#ifdef CONFIG_VPMU
+#include "../vpmu/include/vpmu-qemu.h"
+DEF_HELPER_2(vpmu_accumulate_tb_info, void, env, ptr)
+DEF_HELPER_4(vpmu_memory_access, void, env, i64, i64, i64)
+#endif
+
+
 DEF_HELPER_FLAGS_4(cc_compute_all, TCG_CALL_NO_RWG_SE, tl, tl, tl, tl, int)
 DEF_HELPER_FLAGS_4(cc_compute_c, TCG_CALL_NO_RWG_SE, tl, tl, tl, tl, int)
 

@@ -1,5 +1,5 @@
-#ifndef _VPMU_X86_TRANSLATE_H_
-#define _VPMU_X86_TRANSLATE_H_
+#ifndef _VPMU_I386_TRANSLATE_H_
+#define _VPMU_I386_TRANSLATE_H_
 #include <stdint.h>        // uint8_t, uint32_t, etc.
 #include "config-target.h" // QEMU Target Information
 

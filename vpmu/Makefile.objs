@@ -26,7 +26,7 @@ VPMU_OBJS+=vpmu-arm-insn.o vpmu-arm-translate.o vpmu-arm-insnset.o Cortex-A9.o
 endif
 ifeq ($(TARGET_NAME),x86_64)
 VPATH+=:$(SRC_PATH)/vpmu/arch/i386
-VPMU_OBJS+=vpmu-i386-insn.o
+VPMU_OBJS+=vpmu-i386-insn.o vpmu-i386-translate.o vpmu-i386-insnset.o Intel-I7.o
 endif
 
 ifeq ($(CONFIG_VPMU_SET),y)

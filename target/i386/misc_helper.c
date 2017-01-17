@@ -25,6 +25,13 @@
 #include "exec/cpu_ldst.h"
 #include "exec/address-spaces.h"
 
+#ifdef CONFIG_VPMU
+#include "../vpmu/include/vpmu.h"
+#include "../vpmu/include/event-tracing/event-tracing.h"
+#include "../vpmu/qemu/op-vpmu-i386.c"
+#include "qemu/timer.h"
+#endif
+
 void helper_outb(CPUX86State *env, uint32_t port, uint32_t data)
 {
 #ifdef CONFIG_USER_ONLY

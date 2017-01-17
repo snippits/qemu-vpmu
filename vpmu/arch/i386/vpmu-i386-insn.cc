@@ -3,13 +3,15 @@
 #include "vpmu-packet.hpp" // VPMU_Insn::Reference
 
 // Put your own timing simulator below
+#include "simulator/Intel-I7.hpp"
+
 // Put you own timing simulator above
 InstructionStream::Sim_ptr InstructionStream::create_sim(std::string sim_name)
 {
     // Construct your timing model with ownership transfering
     // The return will use "move semantics" automatically.
-    if (sim_name == "")
-        return nullptr;
+    if (sim_name == "Intel-I7")
+        return std::make_unique<CPU_IntelI7>();
     else
         return nullptr;
 }
