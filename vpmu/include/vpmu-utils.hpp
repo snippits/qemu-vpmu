@@ -1,5 +1,6 @@
 #ifndef __VPMU_UTILS_HPP
 #define __VPMU_UTILS_HPP
+#include <fstream>      // std::ifstream::pos_type, basic_ifstream
 #include <vector>       // std::vector
 #include <string>       // std::string
 #include <thread>       // std::thread
@@ -16,6 +17,26 @@ namespace utils
     void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
     int32_t clog2(uint32_t x);
+
+    inline int get_index_of_file_name(const char *path)
+    {
+        int index = 0; // Default name of file starts from the first letter
+        int i     = 0;
+
+        if (path == nullptr) return -1;
+        for (i = 0; path[i] != '\0'; i++) {
+            if (path[i] == '/') {
+                index = i + 1;
+            }
+        }
+        i -= 1; // Set i to the length of string
+        if (index == i) {
+            // The path ends with '/' without a file name
+            return -1;
+        }
+
+        return index;
+    }
 
     inline void json_check_or_exit(nlohmann::json config, std::string field)
     {

@@ -8,15 +8,41 @@ extern "C" {
 #include "vpmu.h"          // vpmu_clone_qemu_cpu_state
 }
 
-#include <string>       // std::string
-#include <vector>       // std::vector
-#include <utility>      // std::forward
-#include <map>          // std::map
-#include <algorithm>    // std::remove_if
-#include "vpmu-log.hpp" // Log system
+#include <string>         // std::string
+#include <vector>         // std::vector
+#include <utility>        // std::forward
+#include <map>            // std::map
+#include <algorithm>      // std::remove_if
+#include "vpmu-log.hpp"   // Log system
+#include "vpmu-utils.hpp" // Misc. functions
+
+class ET_Path
+{
+public:
+    // This function return true to all full_path containing the name,
+    // expecially when name is assigned as relative path.
+    bool compare_name(std::string full_path)
+    {
+        std::size_t found = full_path.find(name);
+        return (found != std::string::npos);
+    }
+
+    // Compare only the filename of the name
+    bool compare_file_name(std::string file_name)
+    {
+        int index = vpmu::utils::get_index_of_file_name(name.c_str());
+        if (index < 0) return false;
+        std::size_t found = file_name.find(name.substr(index));
+        return (found != std::string::npos);
+    }
+
+public:
+    // Used too often, make it public for speed and convenience.
+    std::string name;
+};
 
 // TODO VPMU timing model switch
-class ET_Program
+class ET_Program : public ET_Path
 {
 public:
     ET_Program(std::string new_name) { name = new_name; }
@@ -25,20 +51,12 @@ public:
     inline bool operator==(const ET_Program& rhs) { return (this == &rhs); }
     inline bool operator!=(const ET_Program& rhs) { return !(this == &rhs); }
 
-    bool compare_name(std::string full_path)
-    {
-        std::size_t found = full_path.find(name);
-        return (found != std::string::npos);
-    }
-
     void add_symbol(std::string name, uint64_t address)
     {
         sym_table.insert(std::pair<std::string, uint64_t>(name, address));
     }
 
 public:
-    // Used too often, make it public for speed and convenience.
-    std::string name;
     // The timing model bind to this program
     uint64_t timing_model;
     // The function address table
@@ -47,7 +65,7 @@ public:
     std::vector<std::shared_ptr<ET_Program>> library_list;
 };
 
-class ET_Process
+class ET_Process : public ET_Path
 {
 public:
     // This program should be the main program
@@ -76,12 +94,6 @@ public:
 
     inline bool operator==(const ET_Process& rhs) { return (this == &rhs); }
     inline bool operator!=(const ET_Process& rhs) { return !(this == &rhs); }
-
-    bool compare_name(std::string full_path)
-    {
-        std::size_t found = full_path.find(name);
-        return (found != std::string::npos);
-    }
 
     void attach_child_pid(uint64_t child_pid)
     {
@@ -112,8 +124,6 @@ public:
 public:
     // Used to identify the top process parent
     bool is_top_process;
-    // Used too often, make it public for speed and convenience.
-    std::string name;
     // The root pid
     uint64_t pid = 0;
     // The timing model bind to this program
@@ -202,21 +212,21 @@ public:
 
     std::shared_ptr<ET_Program> find_program(const char* path)
     {
-        // Match full path first
-        for (auto& p : program_list) {
-            if (p->compare_name(path)) return p;
-        }
-        const char* name = nullptr;
-        for (int i = 0; path[i] != '\0'; i++) {
-            if (path[i] == '/') {
-                name = &path[i + 1];
+        if (path == nullptr) return nullptr;
+        if (path[0] == '/') {
+            // It's an absolute path
+            for (auto& p : program_list) {
+                if (p->compare_name(path)) return p;
+            }
+        } else {
+            // It's an relative path
+            int index = vpmu::utils::get_index_of_file_name(path);
+
+            for (auto& p : program_list) {
+                if (p->compare_file_name(&path[index])) return p;
             }
         }
-        if (name == nullptr) name = path;
-        // Match program name
-        for (auto& p : program_list) {
-            if (p->compare_name(name)) return p;
-        }
+
         return nullptr;
     }
 
@@ -239,23 +249,23 @@ public:
 
     inline std::shared_ptr<ET_Process> find_process(const char* path)
     {
-        // Match full path first
-        for (auto& p_pair : process_id_map) {
-            auto& p = p_pair.second;
-            if (p->compare_name(path)) return p;
-        }
-        const char* name = nullptr;
-        for (int i = 0; path[i] != '\0'; i++) {
-            if (path[i] == '/') {
-                name = &path[i + 1];
+        if (path == nullptr) return nullptr;
+        if (path[0] == '/') {
+            // It's an absolute path
+            for (auto& p_pair : process_id_map) {
+                auto& p = p_pair.second;
+                if (p->compare_name(path)) return p;
+            }
+        } else {
+            // It's an relative path
+            int index = vpmu::utils::get_index_of_file_name(path);
+
+            for (auto& p_pair : process_id_map) {
+                auto& p = p_pair.second;
+                if (p->compare_file_name(&path[index])) return p;
             }
         }
-        if (name == nullptr) name = path;
-        // Match program name
-        for (auto& p_pair : process_id_map) {
-            auto& p = p_pair.second;
-            if (p->compare_name(name)) return p;
-        }
+
         return nullptr;
     }
 
