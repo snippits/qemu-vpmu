@@ -177,7 +177,7 @@ void EventTracer::debug_dump_child_list(const ET_Process& process)
 {
 #ifdef CONFIG_VPMU_DEBUG_MSG
     for (auto& child : process.child_list) {
-        log_debug("        pid:%5" PRIu64 ", Pointer %p, Name:%s",
+        log_debug("        pid:%5" PRIu64 ", Pointer %p, Name: '%s'",
                   child->pid,
                   child.get(),
                   child->name.c_str());
@@ -189,7 +189,7 @@ void EventTracer::debug_dump_binary_list(const ET_Process& process)
 {
 #ifdef CONFIG_VPMU_DEBUG_MSG
     for (auto& binary : process.binary_list) {
-        log_debug("        Pointer %p, Name:%s (%s), size of sym_table:%d"
+        log_debug("        Pointer %p, Name: '%s' (%s), size of sym_table:%d"
                   ", num libraries loaded:%d",
                   binary.get(),
                   binary->name.c_str(),
@@ -247,14 +247,12 @@ void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)
     return event_tracer.attach_to_parent(parent_pid, child_pid);
 }
 
-void et_add_new_process(const char* name, uint64_t pid)
+void et_add_new_process(const char* path, const char* name, uint64_t pid)
 {
-    event_tracer.add_new_process(name, pid);
-}
-
-void et_add_new_process_differ_name(const char* path, const char* name, uint64_t pid)
-{
-    auto process = event_tracer.add_new_process_differ_name(path, name, pid);
+    if (path == nullptr)
+        event_tracer.add_new_process(name, pid);
+    else
+        event_tracer.add_new_process(path, name, pid);
 }
 
 void et_remove_process(uint64_t pid)

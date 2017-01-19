@@ -19,12 +19,15 @@ extern "C" {
 // TODO Use weak_ptr to implement a use_count() tester to check
 // if all programs, processes are free normally
 
+// TODO The current implementation of name comparison does not apply well
+// when the number of monitored/traced binary is large
+// Maybe use formally two names and two paths
 class ET_Path
 {
 public:
     // This function return true to all full_path containing the name,
     // expecially when name is assigned as relative path.
-    bool fuzy_compare_name(std::string full_path)
+    bool fuzzy_compare_name(std::string full_path)
     {
         // Compare the path first
         if (compare_path(full_path) == true) return true;
@@ -86,9 +89,41 @@ public:
 private:
     inline bool compare_file_name_and_path(std::string& name, std::string& path)
     {
-        int i = name.size(), j = path.size();
+        int i = name.size() - 1, j = path.size() - 1;
+        // Empty string means no file name, return false in this case.
+        if (i < 0 || j < 0) return false;
         for (; i >= 0 && j >= 0; i--, j--) {
             if (name[i] != path[j]) return false;
+        }
+        return true;
+    }
+
+    // This compares partial_path to full_path, with relative path awareness
+    // Ex:  ../../test_set/matrix and /root/test_set/matrix are considered as true.
+    // Ex:  /bin/bash and /usr/bin/bash are considered as false.
+    inline bool compare_partial_path(std::string& partial_path, std::string& full_path)
+    {
+        int first_slash_index = 0;
+        int i = partial_path.size() - 1, j = full_path.size() - 1, k = 0;
+
+        // Empty string means no file name, return false in this case.
+        if (i < 0 || j < 0) return false;
+        // Find the first slash if the partial path is a relative path
+        if (partial_path[0] == '.') {
+            for (k = 0; k < partial_path.size(); k++) {
+                if (partial_path[k] != '/' && partial_path[k] != '.')
+                    break; // Break when hit the first character of non relative path
+                if (partial_path[k] == '/') {
+                    first_slash_index = k;
+                }
+            }
+        } else {
+            // If both are absolute path, it should be the same
+            if (partial_path.size() != full_path.size()) return false;
+        }
+        // Compare the path to the root slash of partial_path
+        for (; i >= first_slash_index && j >= 0; i--, j--) {
+            if (partial_path[i] != full_path[j]) return false;
         }
         return true;
     }
@@ -140,7 +175,9 @@ public:
     // This program should be the main program
     ET_Process(std::shared_ptr<ET_Program>& program, uint64_t new_pid)
     {
-        set_name_or_path(program->name);
+        name           = program->name;
+        filename       = program->filename;
+        path           = program->path;
         pid            = new_pid;
         is_top_process = true;
 
@@ -155,7 +192,9 @@ public:
     }
     ET_Process(ET_Process* target_process, uint64_t new_pid)
     {
-        set_name_or_path(target_process->name);
+        name         = target_process->name;
+        filename     = target_process->filename;
+        path         = target_process->path;
         pid          = new_pid;
         binary_list  = target_process->binary_list;
         timing_model = target_process->timing_model;
@@ -281,19 +320,28 @@ public:
         program_list.erase(std::remove_if(program_list.begin(),
                                           program_list.end(),
                                           [&](std::shared_ptr<ET_Program>& p) {
-                                              return p->fuzy_compare_name(name);
+                                              return p->fuzzy_compare_name(name);
                                           }),
                            program_list.end());
         debug_dump_program_map();
     }
 
-    inline std::shared_ptr<ET_Process> add_new_process(const char* path, uint64_t pid)
+    inline std::shared_ptr<ET_Process> add_new_process(const char* name, uint64_t pid)
     {
-        auto program = find_program(path);
+        auto program = find_program(name);
         // Check if the target program is in the monitoring list
         if (program != nullptr) {
-            log_debug("Start new process %s, pid:%5" PRIu64, path, pid);
+            log_debug("Trace new process %s, pid:%5" PRIu64, name, pid);
             auto&& process      = std::make_shared<ET_Process>(program, pid);
+            process->name       = name;
+            process_id_map[pid] = process;
+            debug_dump_process_map();
+            return process;
+        }
+        else {
+            log_debug("Trace new process %s, pid:%5" PRIu64, name, pid);
+            auto&& process      = std::make_shared<ET_Process>(name, pid);
+            process->name       = name;
             process_id_map[pid] = process;
             debug_dump_process_map();
             return process;
@@ -302,21 +350,21 @@ public:
     }
 
     inline std::shared_ptr<ET_Process>
-    add_new_process_differ_name(const char* path, const char* name, uint64_t pid)
+    add_new_process(const char* path, const char* name, uint64_t pid)
     {
         auto process = add_new_process(name, pid);
         // Check if the target program is in the monitoring list
         if (process != nullptr) {
-            auto program = process->get_main_program();
-            auto name    = vpmu::utils::get_file_name_from_path(path);
+            auto program  = process->get_main_program();
+            auto filename = vpmu::utils::get_file_name_from_path(path);
             if (name != program->filename) {
                 log_debug(
                   "Rename program '%s' attributes to: real path '%s', filename '%s'",
                   program->name.c_str(),
                   path,
-                  name.c_str());
+                  filename.c_str());
                 // The program is main program, rename the real path and filename
-                program->filename = name;
+                program->filename = filename;
                 program->path     = path;
             }
         }
@@ -328,7 +376,7 @@ public:
         if (path == nullptr) return nullptr;
 
         for (auto& p : program_list) {
-            if (p->fuzy_compare_name(path)) return p;
+            if (p->fuzzy_compare_name(path)) return p;
         }
         return nullptr;
     }
@@ -364,7 +412,7 @@ public:
 
         for (auto& p_pair : process_id_map) {
             auto& p = p_pair.second;
-            if (p->fuzy_compare_name(path)) return p;
+            if (p->fuzzy_compare_name(path)) return p;
         }
         return nullptr;
     }

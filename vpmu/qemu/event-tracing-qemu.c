@@ -92,22 +92,9 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         */
 
         if (current_pid == exec_event_pid && (mode & VM_EXEC)) {
-            bool found_in_list_flag = false;
             // Mapping executable page for main program
-            if (strcmp(fullpath, bash_path) != 0) {
-                // If the name were not match, try bash name
-                if (et_find_program_in_list(bash_path)) {
-                    et_add_new_process_differ_name(fullpath, bash_path, current_pid);
-                    found_in_list_flag = true;
-                }
-            } else {
-                if (et_find_program_in_list(fullpath)) {
-                    et_add_new_process(fullpath, current_pid);
-                    found_in_list_flag = true;
-                }
-            }
-
-            if (found_in_list_flag) {
+            if (et_find_program_in_list(bash_path)) {
+                et_add_new_process(fullpath, bash_path, current_pid);
                 DBG(STR_VPMU "Start tracing %s, File: %s (pid=%lu)\n",
                     bash_path,
                     fullpath,
