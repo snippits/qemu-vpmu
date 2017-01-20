@@ -7,6 +7,51 @@ extern "C" {
 
 EventTracer event_tracer;
 
+// TODO Implement updating dwarf as well.
+void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
+                                   const char*                 file_name)
+{
+    if (program == nullptr) return;
+    int fd = open(file_name, O_RDONLY);
+    if (fd < 0) {
+        LOG_FATAL("File %s not found!", file_name);
+        return;
+    }
+
+    log_debug("Loading symbol table to %s", program->name.c_str());
+    elf::elf f(elf::create_mmap_loader(fd));
+    for (auto& sec : f.sections()) {
+        if (sec.get_hdr().type != elf::sht::symtab
+            && sec.get_hdr().type != elf::sht::dynsym)
+            continue;
+#if 0
+        log_debug("Symbol table '%s':", sec.get_name().c_str());
+        log_debug("%-16s %-5s %-7s %-7s %-5s %s",
+                  "Value",
+                  "Size",
+                  "Type",
+                  "Binding",
+                  "Index",
+                  "Name");
+#endif
+        for (auto sym : sec.as_symtab()) {
+            auto& d = sym.get_data();
+            if (d.type() == elf::stt::func) {
+#if 0
+                log_debug("%016" PRIx64 " %5" PRId64 " %-7s %-7s %5s %s",
+                          d.value,
+                          d.size,
+                          to_string(d.type()).c_str(),
+                          to_string(d.binding()).c_str(),
+                          to_string(d.shnxd).c_str(),
+                          sym.get_name().c_str());
+#endif
+                program->sym_table[sym.get_name()] = d.value;
+            }
+        }
+    }
+}
+
 void EventTracer::parse_and_set_kernel_symbol(const char* filename)
 {
     int fd = open(filename, O_RDONLY);
@@ -20,8 +65,8 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename)
         if (sec.get_hdr().type != elf::sht::symtab
             && sec.get_hdr().type != elf::sht::dynsym)
             continue;
-        log_debug("Symbol table '%s':\n", sec.get_name().c_str());
-        log_debug("%-16s %-5s %-7s %-7s %-5s %s\n",
+        log_debug("Symbol table '%s':", sec.get_name().c_str());
+        log_debug("%-16s %-5s %-7s %-7s %-5s %s",
                   "Value",
                   "Size",
                   "Type",
@@ -316,4 +361,10 @@ void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath_lib)
         event_tracer.attach_to_program(process->get_main_program()->name, program);
     }
     process->push_binary(program);
+}
+
+void et_update_program_elf_dwarf(const char* name, const char* file_name)
+{
+    auto program = event_tracer.find_program(name);
+    event_tracer.update_elf_dwarf(program, file_name);
 }

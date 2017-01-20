@@ -78,10 +78,11 @@ static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
 {
 #ifdef CONFIG_VPMU_SET
-    void *     paddr = NULL;
-    char *     buffer;
-    static int buffer_size = 0;
-    FILE *     fp;
+    static char *binary_name = NULL;
+    void *       paddr       = NULL;
+    char *       buffer;
+    static int   buffer_size = 0;
+    FILE *       fp;
 #endif
 
     DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
@@ -136,8 +137,12 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             vpmu_qemu_free_cpu_arch_state(vpmu_cpu_context[0]);
             vpmu_cpu_context[0] = vpmu_qemu_clone_cpu_arch_state(VPMU.cpu_arch_state);
             paddr               = vpmu_tlb_get_host_addr(vpmu_cpu_context[0], value);
+            binary_name         = (char *)paddr;
             DBG(STR_VPMU "trace process name: %s\n", (char *)paddr);
-            et_add_program_to_list((const char *)paddr);
+            if (!et_find_program_in_list((const char *)paddr)) {
+                // Only push to the list when it's not duplicated
+                et_add_program_to_list((const char *)paddr);
+            }
         }
         break;
     case VPMU_MMAP_REMOVE_PROC_NAME:
@@ -166,7 +171,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             free(buffer);
             buffer_size = 0;
             buffer      = NULL;
-            vpmu_dump_elf_symbols("/tmp/vpmu-traced-bin");
+            if (binary_name != NULL)
+            et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
         }
         break;
 #endif

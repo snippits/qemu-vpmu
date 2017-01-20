@@ -291,6 +291,8 @@ public:
     EventTracer(const EventTracer&) = delete;
     EventTracer& operator=(const EventTracer&) = delete;
 
+    void update_elf_dwarf(std::shared_ptr<ET_Program> program, const char* file_name);
+
     inline std::shared_ptr<ET_Program> add_program(std::string name)
     {
         auto p = std::make_shared<ET_Program>(name);
