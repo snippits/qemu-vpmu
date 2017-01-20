@@ -328,6 +328,7 @@ static void fw_cfg_dma_transfer(FWCfgState *s)
         write = 0;
     } else {
         dma.length = 0;
+        read = 0;
     }
 
     dma.control = 0;
