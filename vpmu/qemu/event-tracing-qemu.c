@@ -3,6 +3,7 @@
 #include "vpmu/include/event-tracing/event-tracing.h"
 #include "vpmu/include/linux-mm.h"
 
+uint64_t et_current_pid = 0;
 #if defined(TARGET_ARM)
 static inline void __append_str(char *buff, int *position, int size_buff, const char *str)
 {
@@ -54,8 +55,7 @@ static inline void print_mode(uint64_t mode, uint64_t mask, const char *message)
 void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t return_addr)
 {
     // TODO make this thread safe and need to check branch!!!!!!!
-    VPMU.cpu_arch_state         = env;
-    static uint64_t current_pid = 0;
+    VPMU.cpu_arch_state = env;
     // TODO Maybe there's a better way?
     static uint64_t    exec_event_pid = -1;
     static const char *bash_path      = NULL;
@@ -63,7 +63,7 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     switch (et_find_kernel_event(target_addr)) {
     case ET_KERNEL_MMAP: {
         // Linux Kernel: Mmap a file or shared library
-        // DBG(STR_VPMU "fork from %lu\n", current_pid);
+        // DBG(STR_VPMU "fork from %lu\n", et_current_pid);
         char      fullpath[1024] = {0};
         int       position       = 0;
         uintptr_t dentry_addr    = 0;
@@ -91,14 +91,14 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         DBG("\n");
         */
 
-        if (current_pid == exec_event_pid && (mode & VM_EXEC)) {
+        if (et_current_pid == exec_event_pid && (mode & VM_EXEC)) {
             // Mapping executable page for main program
             if (et_find_program_in_list(bash_path)) {
-                et_add_new_process(fullpath, bash_path, current_pid);
+                et_add_new_process(fullpath, bash_path, et_current_pid);
                 DBG(STR_VPMU "Start tracing %s, File: %s (pid=%lu)\n",
                     bash_path,
                     fullpath,
-                    current_pid);
+                    et_current_pid);
                 tic(&(VPMU.start_time));
                 VPMU_reset();
                 vpmu_simulator_status(&VPMU);
@@ -106,12 +106,12 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
             }
 
             // The current mapped file is the main program, push it to process anyway
-            et_add_process_mapped_file(current_pid, fullpath, mode);
+            et_add_process_mapped_file(et_current_pid, fullpath, mode);
             exec_event_pid = -1;
         } else {
             // Records all mapped files, including shared library
-            if (et_find_traced_pid(current_pid)) {
-                et_add_process_mapped_file(current_pid, fullpath, mode);
+            if (et_find_traced_pid(et_current_pid)) {
+                et_add_process_mapped_file(et_current_pid, fullpath, mode);
             }
         }
 
@@ -120,7 +120,7 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     }
     case ET_KERNEL_FORK: {
         // Linux Kernel: Fork a process
-        // DBG(STR_VPMU "fork from %lu\n", current_pid);
+        // DBG(STR_VPMU "fork from %lu\n", et_current_pid);
         break;
     }
     case ET_KERNEL_WAKE_NEW_TASK: {
@@ -129,8 +129,8 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         // uint32_t target_pid = vpmu_read_uint32_from_guest(env, env->regs[0], 204);
         // This is kernel v4.4.0
         uint32_t target_pid = vpmu_read_uint32_from_guest(env, env->regs[0], 512);
-        if (current_pid != 0 && et_find_traced_pid(current_pid)) {
-            et_attach_to_parent_pid(current_pid, target_pid);
+        if (et_current_pid != 0 && et_find_traced_pid(et_current_pid)) {
+            et_attach_to_parent_pid(et_current_pid, target_pid);
         }
         break;
     }
@@ -142,14 +142,14 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         // Remember this pointer gor mmap()
         bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
 
-        // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, current_pid);
+        // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
         // Let another kernel event handle. It can find the absolute path.
-        exec_event_pid = current_pid;
+        exec_event_pid = et_current_pid;
         break;
     }
     case ET_KERNEL_EXIT: {
         // Linux Kernel: Process End
-        et_remove_process(current_pid);
+        et_remove_process(et_current_pid);
         break;
     }
     case ET_KERNEL_CONTEXT_SWITCH: {
@@ -160,13 +160,13 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
 #pragma message("VPMU SET: 64 bits Not supported!!")
 #endif
         // This is kernel v3.6.11
-        // current_pid = vpmu_read_uint32_from_guest(env, task_ptr, 204);
+        // et_current_pid = vpmu_read_uint32_from_guest(env, task_ptr, 204);
         // This is kernel v4.4.0
-        current_pid = vpmu_read_uint32_from_guest(env, task_ptr, 512);
-        // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[2], current_pid);
+        et_current_pid = vpmu_read_uint32_from_guest(env, task_ptr, 512);
+        // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[2], et_current_pid);
 
-        if (et_find_traced_pid(current_pid)) {
-            et_set_process_cpu_state(current_pid, env);
+        if (et_find_traced_pid(et_current_pid)) {
+            et_set_process_cpu_state(et_current_pid, env);
             VPMU.enabled = true;
         } else {
             // Switching VPMU when current process is traced

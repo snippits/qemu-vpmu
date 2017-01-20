@@ -8,13 +8,14 @@ extern "C" {
 #include "vpmu.h"          // vpmu_clone_qemu_cpu_state
 }
 
-#include <string>         // std::string
-#include <vector>         // std::vector
-#include <utility>        // std::forward
-#include <map>            // std::map
-#include <algorithm>      // std::remove_if
-#include "vpmu-log.hpp"   // Log system
-#include "vpmu-utils.hpp" // Misc. functions
+#include <string>          // std::string
+#include <vector>          // std::vector
+#include <utility>         // std::forward
+#include <map>             // std::map
+#include <algorithm>       // std::remove_if
+#include "vpmu-log.hpp"    // Log system
+#include "vpmu-utils.hpp"  // Misc. functions
+#include "phase/phase.hpp" // Phase class
 
 // TODO Use weak_ptr to implement a use_count() tester to check
 // if all programs, processes are free normally
@@ -247,6 +248,9 @@ public:
     std::vector<std::shared_ptr<ET_Program>> binary_list;
     std::vector<std::shared_ptr<ET_Process>> child_list;
 
+    std::vector<Phase> phase_list;
+    Window             current_window;
+
 private:
     void* cpu_state = nullptr; // CPUState *
 };
@@ -339,8 +343,7 @@ public:
             process_id_map[pid] = process;
             debug_dump_process_map();
             return process;
-        }
-        else {
+        } else {
             log_debug("Trace new process %s, pid:%5" PRIu64, name, pid);
             auto&& process      = std::make_shared<ET_Process>(name, pid);
             process->name       = name;
@@ -493,5 +496,6 @@ private:
 };
 
 extern EventTracer event_tracer;
+extern uint64_t    et_current_pid;
 
 #endif // __VPMU_EVENT_TRACING_HPP_

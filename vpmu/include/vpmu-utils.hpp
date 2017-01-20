@@ -10,6 +10,29 @@
 
 namespace vpmu
 {
+
+namespace math
+{
+    double l2_norm(const std::vector<double> &u);
+    void normalize(const std::vector<double> &in_v, std::vector<double> &out_v);
+    void normalize(std::vector<double> &vec);
+
+    inline uint64_t simple_hash(uint64_t key, uint64_t m)
+    {
+        return (key % m);
+    }
+
+    // http://zimbry.blogspot.tw/2011/09/better-bit-mixing-improving-on.html
+    inline uint64_t bitmix_hash(uint64_t key)
+    {
+        key = (key ^ (key >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+        key = (key ^ (key >> 27)) * UINT64_C(0x94d049bb133111eb);
+        key = key ^ (key >> 31);
+
+        return key;
+    }
+} // End of namespace vpmu::math
+
 namespace utils
 {
 
@@ -17,6 +40,7 @@ namespace utils
     void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
     int32_t clog2(uint32_t x);
+
 
     inline std::string get_file_name_from_path(const char *path)
     {

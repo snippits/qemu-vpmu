@@ -4,6 +4,7 @@
 #include "vpmu/include/arch/vpmu-insn.h"     // vpmu_insn_ref
 #include "vpmu/include/arch/vpmu-cache.h"    // vpmu_cache_ref
 #include "vpmu/include/arch/vpmu-branch.h"   // vpmu_branch_ref
+#include "vpmu/include/phase/phase.h"        // phasedet_ref
 
 // helper function to calculate TLB misses
 void HELPER(vpmu_tlb_access)(uint32_t addr)
@@ -86,6 +87,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
     uint8_t mode = env->uncached_cpsr & CPSR_M;
 
     vpmu_current_extra_tb_info = extra_tb_info;
+    extra_tb_info->cpu_mode    = mode;
 
     //    static uint32_t return_addr = 0;
     //    static uint32_t last_issue_time = 0;
@@ -147,6 +149,11 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
             last_tb_has_branch = extra_tb_info->has_branch;
         } // End of VPMU_BRANCH_SIM
 
+        if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
+            phasedet_ref((mode == ARM_CPU_MODE_USR),
+                         extra_tb_info->start_addr,
+                         extra_tb_info->counters);
+        } // End of VPMU_PHASEDET
 #if 0
         /* TODO: this mechanism should be wrapped */
         /* asm_do_IRQ handles all the hardware interrupts, not only for timer interrupts

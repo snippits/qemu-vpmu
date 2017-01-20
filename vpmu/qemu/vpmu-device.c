@@ -64,6 +64,9 @@ void vpmu_simulator_status(VPMU_Struct *vpmu)
 
     vpmu->timing_model &VPMU_EVENT_TRACE ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
     CONSOLE_LOG("VPMU Event Trace mechanism\n");
+
+    vpmu->timing_model &VPMU_PHASEDET ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Phase Detection and Profiling\n");
 }
 static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 {
