@@ -7,6 +7,8 @@
 #include "vpmu-branch.hpp"    // BranchStream
 #include "event-tracing.hpp"  // EventTracer event_tracer
 
+#include <boost/filesystem.hpp> // boost::filesystem
+
 #include "json.hpp" // nlohmann::json
 using json = nlohmann::json;
 
@@ -183,7 +185,8 @@ void VPMU_init(int argc, char **argv)
     for (int i = 0; i < (argc - 1); i++) {
         if (std::string(argv[i]) == "-vpmu-config") strcpy(config_file, argv[i + 1]);
         if (std::string(argv[i]) == "-smp") VPMU.platform.cpu.cores = atoi(argv[i + 1]);
-        if (std::string(argv[i]) == "-vpmu-kernel-symbol") strcpy(kernel_file, argv[i + 1]);
+        if (std::string(argv[i]) == "-vpmu-kernel-symbol")
+            strcpy(kernel_file, argv[i + 1]);
     }
 
     // Set to 1 if (1) no -smp presents. (2) the argument after smp is not a number.
@@ -199,12 +202,16 @@ void VPMU_init(int argc, char **argv)
 #ifdef CONFIG_VPMU_SET
     if (strlen(kernel_file) > 0) {
         event_tracer.parse_and_set_kernel_symbol(kernel_file);
-    }
-    else {
+    } else {
         ERR_MSG("Path to vmlinux is not set!!\n"
                 "\tPlease specify '-vpmu-kernel-symbol <PATH>' when executing QEMU\n\n");
         exit(EXIT_FAILURE);
     }
+
+    if (boost::filesystem::exists("/tmp/vpmu")) {
+        boost::filesystem::remove_all("/tmp/vpmu");
+    }
+    boost::filesystem::create_directories("/tmp/vpmu/phase");
 #endif
     // this would let print system support comma.
     setlocale(LC_NUMERIC, "");

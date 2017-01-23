@@ -239,6 +239,9 @@ public:
 
     inline std::shared_ptr<ET_Program> get_main_program(void) { return binary_list[0]; }
 
+    void dump_phase_result(void);
+    void dump_process_info(void);
+
 public:
     // Used to identify the top process parent
     bool is_top_process;

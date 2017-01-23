@@ -4,6 +4,8 @@ extern "C" {
 }
 #include "elf++.hh"          // elf::elf
 #include "event-tracing.hpp" // EventTracer
+#include "phase/phase.hpp"   // Phase class
+#include "json.hpp"          // nlohmann::json
 
 #include <boost/filesystem.hpp> // boost::filesystem
 
@@ -302,41 +304,61 @@ void et_add_new_process(const char* path, const char* name, uint64_t pid)
         event_tracer.add_new_process(path, name, pid);
 }
 
+void ET_Process::dump_process_info(void)
+{
+    char        file_path[512] = {0};
+    std::string output_path    = "/tmp/vpmu/phase/" + std::to_string(pid);
+    boost::filesystem::create_directory(output_path);
+
+    sprintf(file_path, "%s/process_info", output_path.c_str());
+    FILE* fp = fopen(file_path, "wt");
+
+    nlohmann::json j;
+    j["Name"]      = name;
+    j["File Name"] = filename;
+    j["File Path"] = path;
+    j["pid"]       = pid;
+    for (int i = 0; i < child_list.size(); i++) {
+        j["Childrens"][i]["Name"] = child_list[i]->name;
+        j["Childrens"][i]["pid"]  = child_list[i]->pid;
+    }
+    for (int i = 0; i < binary_list.size(); i++) {
+        j["Binaries"][i]["Name"]      = binary_list[i]->name;
+        j["Binaries"][i]["File Name"] = binary_list[i]->filename;
+        j["Binaries"][i]["Path"]      = binary_list[i]->path;
+        j["Binaries"][i]["Symbols"]   = binary_list[i]->sym_table.size();
+        j["Binaries"][i]["Libraries"] = binary_list[i]->library_list.size();
+    }
+    fprintf(fp, "%s\n", j.dump(4).c_str());
+
+    fclose(fp);
+}
+
+void ET_Process::dump_phase_result(void)
+{
+    char        file_path[512] = {0};
+    std::string output_path    = "/tmp/vpmu/phase/" + std::to_string(pid);
+
+    CONSOLE_LOG(STR_PHASE "Phase log path: %s\n", output_path.c_str());
+    dump_process_info();
+    boost::filesystem::create_directory(output_path);
+    for (int idx = 0; idx < phase_list.size(); idx++) {
+        sprintf(file_path, "%s/phase-%05d", output_path.c_str(), idx);
+        FILE* fp = fopen(file_path, "wt");
+        phase_list[idx].dump_metadata(fp);
+        phase_list[idx].dump_lines(fp);
+        phase_list[idx].dump_result(fp);
+        fclose(fp);
+    }
+}
+
 void et_remove_process(uint64_t pid)
 {
     auto process = event_tracer.find_process(pid);
     if (process != nullptr) {
-        char path[128] = {0};
-        boost::filesystem::remove_all("/tmp/vpmu-phase");
-        boost::filesystem::create_directory("/tmp/vpmu-phase");
-        for (int idx = 0; idx < process->phase_list.size(); idx++) {
-            sprintf(path, "/tmp/vpmu-phase/phase-%05d", idx);
-            FILE* fp = fopen(path, "wt");
-            process->phase_list[idx].dump_metadata(fp);
-            process->phase_list[idx].dump_lines(fp);
-            process->phase_list[idx].dump_result(fp);
-            fclose(fp);
-        }
+        process->dump_phase_result();
+        event_tracer.remove_process(pid);
     }
-    event_tracer.remove_process(pid);
-    /*
-    int flag_hit = 0;
-    // Loop through pid list to find if hit
-    for (int i = 0; traced_pid[i] != 0; i++) {
-        if (current_pid == traced_pid[i]) {
-            flag_hit = 1;
-            break;
-        }
-    }
-    if (flag_hit) VPMU.num_traced_threads--;
-    if (flag_hit && VPMU.num_traced_threads == 0) {
-        VPMU_sync();
-        toc(&(VPMU.start_time), &(VPMU.end_time));
-        VPMU_dump_result();
-        memset(traced_pid, 0, sizeof(VPMU.traced_process_pid));
-        VPMU.enabled = 0;
-        flag_tracing = 0;
-    }*/
 }
 
 void et_set_process_cpu_state(uint64_t pid, void* cs)

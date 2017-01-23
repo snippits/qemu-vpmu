@@ -138,7 +138,6 @@ void PhaseDetect::dump_data(FILE* fp, VPMU_Cache::Data data)
 void Phase::dump_result(FILE* fp)
 {
 #define FILE_TME(str, val) fprintf(fp, str " %'lf sec\n", (double)val / 1000000000.0)
-    fprintf(fp, "========================================\n");
     fprintf(fp, "==== Program Profile ====\n\n");
     fprintf(fp, "   === QEMU/ARM ===\n");
     fprintf(fp, "Instructions:\n");
@@ -155,7 +154,6 @@ void Phase::dump_result(FILE* fp)
     FILE_TME("  ->System memory              :", snapshot.time_ns[3]);
     FILE_TME("  ->I/O memory                 :", snapshot.time_ns[4]);
     FILE_TME("Estimated execution time       :", snapshot.time_ns[5]);
-    fprintf(fp, "========================================\n\n");
 #undef FILE_TME
 }
 
