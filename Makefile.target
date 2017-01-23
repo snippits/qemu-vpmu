@@ -203,7 +203,7 @@ include vpmu/Makefile.objs
 all-obj-$(CONFIG_VPMU) += vpmu/libvpmu_$(TARGET_NAME).a $(VPMU_EXTERNAL_LIBS)
 # This phony will force QEMU to call make vpmu for correctness!!!!!
 .PHONY: vpmu/libvpmu_$(TARGET_NAME).a $(VPMU_EXTERNAL_LIBS)
-LIBS += -lboost_system -lboost_thread
+LIBS += -lboost_system -lboost_thread -lboost_filesystem
 VPMU_MAKE_ARG=TARGET_NAME=$(TARGET_NAME)
 
 VPMU_MAKE_ARG+= CC=$(VPMU_CC) CXX=$(VPMU_CXX)

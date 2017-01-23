@@ -5,6 +5,8 @@ extern "C" {
 #include "elf++.hh"          // elf::elf
 #include "event-tracing.hpp" // EventTracer
 
+#include <boost/filesystem.hpp> // boost::filesystem
+
 EventTracer event_tracer;
 
 // TODO Implement updating dwarf as well.
@@ -302,6 +304,20 @@ void et_add_new_process(const char* path, const char* name, uint64_t pid)
 
 void et_remove_process(uint64_t pid)
 {
+    auto process = event_tracer.find_process(pid);
+    if (process != nullptr) {
+        char path[128] = {0};
+        boost::filesystem::remove_all("/tmp/vpmu-phase");
+        boost::filesystem::create_directory("/tmp/vpmu-phase");
+        for (int idx = 0; idx < process->phase_list.size(); idx++) {
+            sprintf(path, "/tmp/vpmu-phase/phase-%05d", idx);
+            FILE* fp = fopen(path, "wt");
+            process->phase_list[idx].dump_metadata(fp);
+            process->phase_list[idx].dump_lines(fp);
+            process->phase_list[idx].dump_result(fp);
+            fclose(fp);
+        }
+    }
     event_tracer.remove_process(pid);
     /*
     int flag_hit = 0;

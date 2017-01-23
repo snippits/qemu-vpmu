@@ -10,6 +10,8 @@ extern "C" {
 #include "vpmu-utils.hpp"  // Various functions
 #include "vpmu-packet.hpp" // All performance counter data types
 
+#include "vpmu-snapshot.hpp" // VPMUSanpshot
+
 class Window
 {
 public:
@@ -41,7 +43,7 @@ public:
         n_branch_vector.resize(branch_vector.size());
         vpmu::math::normalize(branch_vector, n_branch_vector);
         num_windows = 1;
-        // memset(&(phases[number_of_phases].prof), 0, sizeof(Profiling_Result));
+        snapshot.reset();
     }
 
     void set_vector(std::vector<double>& vec)
@@ -90,7 +92,11 @@ public:
 
     static Phase not_found;
 
-    void update_performance_counters(void);
+    void update_snapshot(VPMUSnapshot& process_snapshot);
+
+    void dump_result(FILE* fp);
+    void dump_metadata(FILE* fp);
+    void dump_lines(FILE* fp);
 
 private:
     bool m_vector_dirty = false;
@@ -99,10 +105,8 @@ private:
     std::vector<double> n_branch_vector;
     uint64_t            num_windows = 0;
 
-public: //FIXME, make it private
-    VPMU_Insn::Data   insn_data;
-    VPMU_Branch::Data branch_data;
-    VPMU_Cache::Data  cache_data;
+public: // FIXME, make it private
+    VPMUSnapshot snapshot = {};
 };
 
 class Classifier : public VPMULog
@@ -149,6 +153,10 @@ public:
     }
 
     inline uint64_t get_window_size(void) { return window_size; }
+
+    void dump_data(FILE* fp, VPMU_Insn::Data data);
+    void dump_data(FILE* fp, VPMU_Cache::Data data);
+    void dump_data(FILE* fp, VPMU_Branch::Data data);
 
 private:
     uint64_t window_size;

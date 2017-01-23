@@ -10,19 +10,36 @@
 class VPMUSnapshot
 {
 public:
-    // Create a snapshot at creation
-    VPMUSnapshot()
-    {
-        _insn_data   = vpmu_insn_stream.get_data();
-        _branch_data = vpmu_branch_stream.get_data();
-        _cache_data  = vpmu_cache_stream.get_data();
-    }
+    VPMUSnapshot() { reset(); }
     // Copy constructor
     VPMUSnapshot(const VPMUSnapshot& rhs)
     {
-        _insn_data   = rhs._insn_data;
-        _branch_data = rhs._branch_data;
-        _cache_data  = rhs._cache_data;
+        insn_data   = rhs.insn_data;
+        branch_data = rhs.branch_data;
+        cache_data  = rhs.cache_data;
+        memcpy(time_ns, rhs.time_ns, sizeof(time_ns));
+    }
+
+    void take_snapshot(void)
+    {
+        insn_data   = vpmu_insn_stream.get_data();
+        branch_data = vpmu_branch_stream.get_data();
+        cache_data  = vpmu_cache_stream.get_data();
+
+        time_ns[0] = vpmu::target::cpu_time_ns();
+        time_ns[1] = vpmu::target::branch_time_ns();
+        time_ns[2] = vpmu::target::cache_time_ns();
+        time_ns[3] = vpmu::target::memory_time_ns();
+        time_ns[4] = vpmu::target::io_time_ns();
+        time_ns[5] = vpmu::target::time_ns();
+    }
+
+    void reset(void)
+    {
+        memset(&insn_data, 0, sizeof(insn_data));
+        memset(&branch_data, 0, sizeof(branch_data));
+        memset(&cache_data, 0, sizeof(cache_data));
+        memset(&time_ns, 0, sizeof(time_ns));
     }
 
     void accumulate_counter(VPMU_Branch::Data& in_old,
@@ -100,18 +117,27 @@ public:
     }
 
     void accumulate(VPMUSnapshot&      new_snapshot,
-                    VPMU_Insn::Data&   insn_data,
-                    VPMU_Branch::Data& branch_data,
-                    VPMU_Cache::Data&  cache_data)
+                    VPMU_Insn::Data&   _insn_data,
+                    VPMU_Branch::Data& _branch_data,
+                    VPMU_Cache::Data&  _cache_data,
+                    uint64_t           _time_ns[])
     {
-        accumulate_counter(_insn_data, new_snapshot._insn_data, insn_data);
-        accumulate_counter(_branch_data, new_snapshot._branch_data, branch_data);
-        accumulate_counter(_cache_data, new_snapshot._cache_data, cache_data);
+        accumulate_counter(insn_data, new_snapshot.insn_data, _insn_data);
+        accumulate_counter(branch_data, new_snapshot.branch_data, _branch_data);
+        accumulate_counter(cache_data, new_snapshot.cache_data, _cache_data);
+
+        _time_ns[0] += vpmu::target::cpu_time_ns() - time_ns[0];
+        _time_ns[1] += vpmu::target::branch_time_ns() - time_ns[1];
+        _time_ns[2] += vpmu::target::cache_time_ns() - time_ns[2];
+        _time_ns[3] += vpmu::target::memory_time_ns() - time_ns[3];
+        _time_ns[4] += vpmu::target::io_time_ns() - time_ns[4];
+        _time_ns[5] += vpmu::target::time_ns() - time_ns[5];
     }
 
-    VPMU_Insn::Data   _insn_data   = {};
-    VPMU_Branch::Data _branch_data = {};
-    VPMU_Cache::Data  _cache_data  = {};
+    VPMU_Insn::Data   insn_data   = {};
+    VPMU_Branch::Data branch_data = {};
+    VPMU_Cache::Data  cache_data  = {};
+    uint64_t          time_ns[6]  = {};
 };
 
 #endif

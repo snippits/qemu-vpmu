@@ -70,7 +70,7 @@ public:
         Reference ref;
         ref.type = VPMU_PACKET_BARRIER;
 
-        log_debug("sync");
+        // log_debug("sync");
         // Barrier packet also synchronize data back to Cache_Data structure.
         // Push the barrier packet into the queue to
         // ensure everything before the barrier packet is done.

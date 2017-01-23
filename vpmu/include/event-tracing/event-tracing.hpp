@@ -17,6 +17,8 @@ extern "C" {
 #include "vpmu-utils.hpp"  // Misc. functions
 #include "phase/phase.hpp" // Phase class
 
+#include "vpmu-snapshot.hpp" // VPMUSanpshot
+
 // TODO Use weak_ptr to implement a use_count() tester to check
 // if all programs, processes are free normally
 
@@ -250,6 +252,7 @@ public:
 
     std::vector<Phase> phase_list;
     Window             current_window;
+    VPMUSnapshot       snapshot;
 
 private:
     void* cpu_state = nullptr; // CPUState *

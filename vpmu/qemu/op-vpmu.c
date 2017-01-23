@@ -93,6 +93,12 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
     //    static uint32_t last_issue_time = 0;
     //    char *state = &(VPMU.state);
 
+    if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
+        phasedet_ref((mode == ARM_CPU_MODE_USR), // Flag of user / other modes
+                     extra_tb_info->start_addr,
+                     extra_tb_info->counters);
+    } // End of VPMU_PHASEDET
+
     if (likely(env && VPMU.enabled)) {
         if (vpmu_model_has(VPMU_JIT_MODEL_SELECT, VPMU)) {
             uint64_t distance =
@@ -148,12 +154,6 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
             last_tb_pc = extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
             last_tb_has_branch = extra_tb_info->has_branch;
         } // End of VPMU_BRANCH_SIM
-
-        if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
-            phasedet_ref((mode == ARM_CPU_MODE_USR),
-                         extra_tb_info->start_addr,
-                         extra_tb_info->counters);
-        } // End of VPMU_PHASEDET
 #if 0
         /* TODO: this mechanism should be wrapped */
         /* asm_do_IRQ handles all the hardware interrupts, not only for timer interrupts
