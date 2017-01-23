@@ -28,6 +28,7 @@ enum ET_KERNEL_EVENT_TYPE {
 void et_check_function_call(CPUArchState* env,
                             uint64_t      target_addr,
                             uint64_t      return_addr);
+void et_check_mmap_return(CPUArchState* env, uint64_t start_addr);
 #endif
 
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);
@@ -47,4 +48,5 @@ void et_set_process_cpu_state(uint64_t pid, void* cs);
 void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mode);
 void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath);
 
+void et_update_last_mmaped_binary(uint64_t pid, uint64_t vaddr, uint64_t len);
 #endif // __VPMU_EVENT_TRACING_

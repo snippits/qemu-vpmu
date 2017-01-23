@@ -52,6 +52,23 @@ static inline void print_mode(uint64_t mode, uint64_t mask, const char *message)
     }
 }
 
+// TODO Find a better way
+static uint64_t mmap_ret_addr = 0, last_mmap_len = 0;
+static bool     mmap_update_flag = false;
+
+void et_check_mmap_return(CPUArchState *env, uint64_t start_addr)
+{
+    if (mmap_update_flag == true && start_addr == mmap_ret_addr) {
+        /*
+        DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
+            (uint64_t)env->regs[0],
+            (uint64_t)env->regs[0] + last_mmap_len);
+        */
+        // TODO Find a better way
+        et_update_last_mmaped_binary(et_current_pid, env->regs[0], last_mmap_len);
+    }
+}
+
 void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t return_addr)
 {
     // TODO make this thread safe and need to check branch!!!!!!!
@@ -77,6 +94,9 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         mode  = env->regs[3];
         vaddr = env->regs[1];
 
+        mmap_ret_addr    = return_addr;
+        last_mmap_len    = env->regs[2];
+        mmap_update_flag = false;
         /*
         DBG(STR_VPMU "mmap file: %s @ %lx mode: (%lx) ", fullpath, vaddr, mode);
 #ifdef CONFIG_VPMU_DEBUG_MSG
@@ -107,10 +127,13 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
 
             // The current mapped file is the main program, push it to process anyway
             et_add_process_mapped_file(et_current_pid, fullpath, mode);
-            exec_event_pid = -1;
+            exec_event_pid   = -1;
+            mmap_update_flag = true;
         } else {
             // Records all mapped files, including shared library
             if (et_find_traced_pid(et_current_pid)) {
+                // Update the mapped vadder for only exec pages
+                if (mode & VM_EXEC) mmap_update_flag = true;
                 et_add_process_mapped_file(et_current_pid, fullpath, mode);
             }
         }

@@ -93,11 +93,15 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
     //    static uint32_t last_issue_time = 0;
     //    char *state = &(VPMU.state);
 
+#ifdef CONFIG_VPMU_SET
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
         phasedet_ref((mode == ARM_CPU_MODE_USR), // Flag of user / other modes
                      extra_tb_info->start_addr,
                      extra_tb_info->counters);
     } // End of VPMU_PHASEDET
+
+    et_check_mmap_return(env, extra_tb_info->start_addr);
+#endif
 
     if (likely(env && VPMU.enabled)) {
         if (vpmu_model_has(VPMU_JIT_MODEL_SELECT, VPMU)) {

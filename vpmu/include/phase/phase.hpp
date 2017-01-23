@@ -12,6 +12,8 @@ extern "C" {
 
 #include "vpmu-snapshot.hpp" // VPMUSanpshot
 
+using CodeRange = std::pair<uint64_t, uint64_t>;
+
 class Window
 {
 public:
@@ -23,12 +25,14 @@ public:
     {
         instruction_count = 0;
         memset(&branch_vector[0], 0, branch_vector.size() * sizeof(branch_vector[0]));
+        code_walk_count.clear();
     }
 
     // Eigen::VectorXd branch_vector;
     std::vector<double> branch_vector;
     // Instruction count
     uint64_t instruction_count = 0;
+    std::map<CodeRange, uint32_t> code_walk_count;
 };
 
 class Phase
@@ -44,6 +48,7 @@ public:
         vpmu::math::normalize(branch_vector, n_branch_vector);
         num_windows = 1;
         snapshot.reset();
+        code_walk_count = window.code_walk_count;
     }
 
     void set_vector(std::vector<double>& vec)
@@ -64,15 +69,17 @@ public:
         }
     }
 
+    void update_walk_count(std::map<CodeRange, uint32_t>& new_walk_count)
+    {
+        for (auto&& wc : new_walk_count) {
+            code_walk_count[wc.first] += wc.second;
+        }
+    }
+
     void update(Window& window)
     {
-        m_vector_dirty = true;
-        for (int i = 0; i < branch_vector.size(); i++) {
-            branch_vector[i] = (branch_vector[i] * num_windows + window.branch_vector[i])
-                               / (num_windows + 1);
-        }
-
-        // update_vector(window.branch_vector);
+        update_vector(window.branch_vector);
+        update_walk_count(window.code_walk_count);
         num_windows++;
     }
 
@@ -96,7 +103,6 @@ public:
 
     void dump_result(FILE* fp);
     void dump_metadata(FILE* fp);
-    void dump_lines(FILE* fp);
 
 private:
     bool m_vector_dirty = false;
@@ -107,6 +113,7 @@ private:
 
 public: // FIXME, make it private
     VPMUSnapshot snapshot = {};
+    std::map<CodeRange, uint32_t> code_walk_count;
 };
 
 class Classifier : public VPMULog

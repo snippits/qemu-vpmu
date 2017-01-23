@@ -334,6 +334,7 @@ void et_add_new_process(const char* path, const char* name, uint64_t pid)
 void ET_Process::dump_process_info(void)
 {
     char        file_path[512] = {0};
+    char        temp_str[512]  = {0};
     std::string output_path    = "/tmp/vpmu/phase/" + std::to_string(pid);
     boost::filesystem::create_directory(output_path);
 
@@ -356,10 +357,77 @@ void ET_Process::dump_process_info(void)
         j["Binaries"][i]["Symbols"]   = binary_list[i]->sym_table.size();
         j["Binaries"][i]["DWARF"]     = binary_list[i]->line_table.size();
         j["Binaries"][i]["Libraries"] = binary_list[i]->library_list.size();
+        // TODO these vars would be moved away
+        sprintf(temp_str, "%p", (void*)binary_list[i]->address_start);
+        j["Binaries"][i]["Addr Beg"] = temp_str;
+        sprintf(temp_str, "%p", (void*)binary_list[i]->address_end);
+        j["Binaries"][i]["Addr End"] = temp_str;
     }
     fprintf(fp, "%s\n", j.dump(4).c_str());
 
     fclose(fp);
+}
+
+std::string ET_Program::find_code_line_number(uint64_t pc)
+{
+    if (is_shared_library) {
+        pc -= address_start;
+    }
+    auto low = line_table.lower_bound(pc);
+    if (low == line_table.end()) {
+        // Not found
+    } else if (low == line_table.begin()) {
+        // Found first element
+        if (low->first == pc) return low->second;
+        // Not found
+    } else {
+        // Found but it's greater than pc
+        if (low->first > pc) low--;
+        // low is now the biggest smaller/equal to pc
+        return low->second;
+    }
+    return "";
+}
+
+std::string ET_Process::find_code_line_number(uint64_t pc)
+{
+    for (auto& binary : binary_list) {
+        if (binary->line_table.size() == 0) continue;
+        auto ret = binary->find_code_line_number(pc);
+        if (ret != "") return ret;
+    }
+    return "";
+}
+
+void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
+{
+    nlohmann::json j;
+
+    for (auto&& wc : phase.code_walk_count) {
+        auto&& key   = wc.first;
+        auto&& value = wc.second;
+        for (auto& binary : binary_list) {
+            if (binary->address_start == 0) continue;
+            if (key.first >= binary->address_start && key.second <= binary->address_end) {
+                // Consider both ARM and Thumb mode
+                for (uint64_t i = key.first; i < key.second; i += 2) {
+                    binary->walk_count_vector[i - binary->address_start] += value;
+                }
+            }
+        }
+    }
+
+    for (auto& binary : binary_list) {
+        for (int offset = 0; offset < binary->walk_count_vector.size(); offset++) {
+            if (binary->walk_count_vector[offset] != 0) {
+                auto key = binary->find_code_line_number(offset + binary->address_start);
+                if (key.size() == 0) continue; // Skip unknown lines
+                // If two keys are the same, this assignment would solve it anyway
+                j[key] = binary->walk_count_vector[offset];
+            }
+        }
+    }
+    fprintf(fp, "%s\n", j.dump(4).c_str());
 }
 
 void ET_Process::dump_phase_result(void)
@@ -374,7 +442,7 @@ void ET_Process::dump_phase_result(void)
         sprintf(file_path, "%s/phase-%05d", output_path.c_str(), idx);
         FILE* fp = fopen(file_path, "wt");
         phase_list[idx].dump_metadata(fp);
-        phase_list[idx].dump_lines(fp);
+        dump_phase_code_mapping(fp, phase_list[idx]);
         phase_list[idx].dump_result(fp);
         fclose(fp);
     }
@@ -433,4 +501,13 @@ void et_update_program_elf_dwarf(const char* name, const char* file_name)
 {
     auto program = event_tracer.find_program(name);
     event_tracer.update_elf_dwarf(program, file_name);
+}
+
+// TODO Find a better way
+void et_update_last_mmaped_binary(uint64_t pid, uint64_t vaddr, uint64_t len)
+{
+    auto process = event_tracer.find_process(pid);
+    if (process != nullptr) {
+        process->binary_list.back()->set_mapped_address(vaddr, vaddr + len);
+    }
 }

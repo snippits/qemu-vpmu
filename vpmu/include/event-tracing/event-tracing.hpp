@@ -157,6 +157,19 @@ public:
         if (program != nullptr) library_list.push_back(program);
     }
 
+    std::string find_code_line_number(uint64_t pc);
+
+    // TODO These two are run time info, should be moved out of here.
+    void set_mapped_address(uint64_t start_addr, uint64_t end_addr)
+    {
+        address_start = start_addr;
+        address_end   = end_addr;
+        if (address_end < address_start) {
+            ERR_MSG("Address range format incorrect\n");
+        }
+        walk_count_vector.resize(address_end - address_start);
+    }
+
 public:
     // Caution! All the data should be process independent!!!
     // An ET_Program instance could be shared by multiple processes.
@@ -172,6 +185,11 @@ public:
     std::vector<std::shared_ptr<ET_Program>> library_list;
     // Used to identify the top process parent
     bool is_shared_library = false;
+    // TODO These two are run time info, should be moved out of here.
+    // Used to count the walk count
+    std::vector<uint32_t> walk_count_vector;
+    // Used to identify the mapped virtual address of this program
+    uint64_t address_start, address_end;
 };
 
 class ET_Process : public ET_Path
@@ -241,8 +259,11 @@ public:
 
     inline std::shared_ptr<ET_Program> get_main_program(void) { return binary_list[0]; }
 
+    std::string find_code_line_number(uint64_t pc);
+
     void dump_phase_result(void);
     void dump_process_info(void);
+    void dump_phase_code_mapping(FILE* fp, const Phase& phase);
 
 public:
     // Used to identify the top process parent

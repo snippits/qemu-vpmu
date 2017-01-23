@@ -161,10 +161,6 @@ void Phase::dump_metadata(FILE* fp)
 {
 }
 
-void Phase::dump_lines(FILE* fp)
-{
-}
-
 void Phase::update_snapshot(VPMUSnapshot& process_snapshot)
 {
     // TODO use async call back, the current counters are out of date
@@ -202,6 +198,8 @@ void phasedet_ref(bool user_mode, uint64_t pc, const Insn_Counters counters)
         auto& current_window = process->current_window;
         current_window.update_vector(pc);
         current_window.instruction_count += counters.total;
+        auto&& key = std::make_pair(pc, pc + counters.total);
+        current_window.code_walk_count[key] += 1;
         if (current_window.instruction_count > phase_detect.get_window_size()) {
 #ifdef CONFIG_VPMU_DEBUG_MSG
             window_cnt++;
