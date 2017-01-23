@@ -166,6 +166,8 @@ public:
     uint64_t timing_model;
     // The function address table
     std::map<std::string, uint64_t> sym_table;
+    // The dwarf file and line table
+    std::map<uint64_t, std::string> line_table;
     // Lists of shared pointer objects of dependent libraries
     std::vector<std::shared_ptr<ET_Program>> library_list;
     // Used to identify the top process parent

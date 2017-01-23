@@ -3,6 +3,7 @@ extern "C" {
 #include "vpmu/include/linux-mm.h" // VM_EXEC and other mmap() mode states
 }
 #include "elf++.hh"          // elf::elf
+#include "dwarf++.hh"        // dwarf::dwarf
 #include "event-tracing.hpp" // EventTracer
 #include "phase/phase.hpp"   // Phase class
 #include "json.hpp"          // nlohmann::json
@@ -23,8 +24,8 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
     }
 
     log_debug("Loading symbol table to %s", program->name.c_str());
-    elf::elf f(elf::create_mmap_loader(fd));
-    for (auto& sec : f.sections()) {
+    elf::elf ef(elf::create_mmap_loader(fd));
+    for (auto& sec : ef.sections()) {
         if (sec.get_hdr().type != elf::sht::symtab
             && sec.get_hdr().type != elf::sht::dynsym)
             continue;
@@ -53,6 +54,32 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
                 program->sym_table[sym.get_name()] = d.value;
             }
         }
+    }
+
+    try {
+        dwarf::dwarf dw(dwarf::elf::create_loader(ef));
+        for (auto cu : dw.compilation_units()) {
+            // log_debug("--- <%x>\n", (unsigned int)cu.get_section_offset());
+            auto& lt = cu.get_line_table();
+            for (auto& line : lt) {
+                program->line_table[line.address] =
+                  line.file->path + ":" + std::to_string(line.line);
+#if 0
+                if (line.end_sequence)
+                    log_debug("\n");
+                else
+                    log_debug("%-40s%8d%#20" PRIx64 "\n",
+                              line.file->path.c_str(),
+                              line.line,
+                              line.address);
+#endif
+            }
+            // log_debug("\n");
+        }
+    } catch (dwarf::format_error e) {
+        log_debug("Warning: Target binary '%s' does not contatin dwarf sections",
+                  program->name.c_str());
+        return;
     }
 }
 
@@ -327,6 +354,7 @@ void ET_Process::dump_process_info(void)
         j["Binaries"][i]["File Name"] = binary_list[i]->filename;
         j["Binaries"][i]["Path"]      = binary_list[i]->path;
         j["Binaries"][i]["Symbols"]   = binary_list[i]->sym_table.size();
+        j["Binaries"][i]["DWARF"]     = binary_list[i]->line_table.size();
         j["Binaries"][i]["Libraries"] = binary_list[i]->library_list.size();
     }
     fprintf(fp, "%s\n", j.dump(4).c_str());
