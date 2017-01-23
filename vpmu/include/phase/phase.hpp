@@ -5,9 +5,10 @@ extern "C" {
 #include "phase.h"
 }
 // #include <eigen3/Eigen/Dense> // Use Eigen for vector and its operations
-#include "vpmu.hpp"     // Include types and basic headers
-#include "vpmu-log.hpp" // VPMULog
-#include "vpmu-utils.hpp"
+#include "vpmu.hpp"        // Include types and basic headers
+#include "vpmu-log.hpp"    // VPMULog
+#include "vpmu-utils.hpp"  // Various functions
+#include "vpmu-packet.hpp" // All performance counter data types
 
 class Window
 {
@@ -89,12 +90,19 @@ public:
 
     static Phase not_found;
 
+    void update_performance_counters(void);
+
 private:
     bool m_vector_dirty = false;
     // Eigen::VectorXd branch_vector;
     std::vector<double> branch_vector;
     std::vector<double> n_branch_vector;
     uint64_t            num_windows = 0;
+
+public: //FIXME, make it private
+    VPMU_Insn::Data   insn_data;
+    VPMU_Branch::Data branch_data;
+    VPMU_Cache::Data  cache_data;
 };
 
 class Classifier : public VPMULog

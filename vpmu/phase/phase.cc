@@ -2,10 +2,27 @@
 #include "phase/phase.hpp"            // Phase class
 #include "phase/phase-classifier.hpp" // NearestCluster, and other classifiers
 #include "event-tracing.hpp"          // EventTracer
+#include "vpmu-insn.hpp"              // InsnStream
+#include "vpmu-cache.hpp"             // CacheStream
+#include "vpmu-branch.hpp"            // BranchStream
+#include "vpmu-snapshot.hpp"          // VPMUSanpshot
 
 Phase Phase::not_found = Phase();
 
 PhaseDetect phase_detect(DEFAULT_WINDOW_SIZE, std::make_unique<NearestCluster>());
+
+void Phase::update_performance_counters(void)
+{
+    static VPMUSnapshot snapshot;
+
+    // TODO use async call back, the current counters are out of date
+    {
+        VPMUSnapshot new_snapshot;
+
+        snapshot.accumulate(new_snapshot, insn_data, branch_data, cache_data);
+        snapshot = new_snapshot;
+    }
+}
 
 inline void Window::update_vector(uint64_t pc)
 {
@@ -17,7 +34,7 @@ inline void Window::update_vector(uint64_t pc)
 void phasedet_ref(bool user_mode, uint64_t pc, const Insn_Counters counters)
 {
 #ifdef CONFIG_VPMU_DEBUG_MSG
-    static uint64_t ref_cnt = 0;
+    static uint64_t window_cnt = 0;
 #endif
     // Only detect user mode program, exclude the kernel behavior
     if (user_mode == false) return;
@@ -29,9 +46,9 @@ void phasedet_ref(bool user_mode, uint64_t pc, const Insn_Counters counters)
         current_window.instruction_count += counters.total;
         if (current_window.instruction_count > phase_detect.get_window_size()) {
 #ifdef CONFIG_VPMU_DEBUG_MSG
-            ref_cnt++;
-            if (ref_cnt % 100 == 0)
-                DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n", ref_cnt);
+            window_cnt++;
+            if (window_cnt % 100 == 0)
+                DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n", window_cnt);
 #endif
             // Classify the window to phase
             auto& phase = phase_detect.classify(process->phase_list, current_window);
@@ -46,8 +63,8 @@ void phasedet_ref(bool user_mode, uint64_t pc, const Insn_Counters counters)
                 // DBG(STR_PHASE "Update phase id %zu\n",
                 //     (&phase - &process->phase_list[0]));
                 phase.update(current_window);
+                phase.update_performance_counters();
             }
-            // collect_profiling_result(current_phase);
 
             // Reset all counters and vars of current window
             current_window.reset();

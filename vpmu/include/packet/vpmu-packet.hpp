@@ -306,6 +306,7 @@ public:
 
     // The data/states of each simulators for VPMU
     typedef struct {
+        // TODO This should be core independent
         Insn_Data_Cell user, system, interrupt, system_call, rest, fpu, co_processor;
 
         uint64_t cycles[VPMU_MAX_CPU_CORES];   // Total cycles
