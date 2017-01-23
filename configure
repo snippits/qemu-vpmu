@@ -274,6 +274,8 @@ vpmu_debug="no"
 vpmu_cpu_fence="no"
 vpmu_vfp="no"
 vpmu_set="no"
+vpmu_mancos="no"
+
 
 # Don't accept a target_list environment variable.
 unset target_list
@@ -1283,6 +1285,10 @@ for opt do
   ;;
   --disable-vpmu-vfp) vpmu_vfp="no"
   ;;
+  --enable-vpmu-mancos) vpmu_mancos="yes"
+  ;;
+  --disable-vpmu-mancos) vpmu_mancos="no"
+  ;;
 #endif CONFIG_VPMU
   --disable-vte) vte="no"
   ;;
@@ -1586,6 +1592,8 @@ disabled with --disable-FEATURE, default is enabled if available:
   vpmu-mem-fence  force CPU memory order on ring buffer(non-x86 platform needed)
   vpmu-vfp        enable counter for virtual floating point
   vpmu-clang      set to use clang++ for compiling VPMU (default is enable)
+  vpmu-mancos     set to enable MANCOS for microarchitecture and network co-simulation (default is disable)
+
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -5466,6 +5474,8 @@ echo "VPMU debug        $vpmu_debug"
 echo "VPMU mem fence    $vpmu_cpu_fence"
 echo "VPMU-VFP          $vpmu_vfp"
 echo "VPMU Use clang++  $vpmu_use_clang"
+echo "VPMU MANCOS       $vpmu_mancos"
+
 
 temp_vpmu_cxx_without_version=$(basename $cxx | awk -F"-" '{ print $1 }')
 temp_vpmu_cc_without_version=$(basename $cc | awk -F"-" '{ print $1 }')
@@ -6675,6 +6685,14 @@ case "$target_name" in
           symlink $source_path/$lib_elf_path/enum-print.py $target_dir/$lib_elf_path/enum-print.py
           symlink $source_path/$lib_elf_path/data.hh $target_dir/$lib_elf_path/data.hh
       fi
+
+      #CONFIG_VPMU_MANCOS
+      if test "$vpmu_mancos" = "yes" ; then
+          echo "CONFIG_VPMU_MANCOS=y" >> $config_target_mak
+          echo "CONFIG_VPMU_MANCOS=y" >> $config_host_mak
+      fi
+
+
 
       #Add directory for build
       mkdir -p $target_dir/vpmu
