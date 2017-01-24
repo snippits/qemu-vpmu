@@ -159,6 +159,13 @@ void Phase::dump_result(FILE* fp)
 
 void Phase::dump_metadata(FILE* fp)
 {
+    fprintf(fp, "0 ");
+    fprintf(fp, "1:%lf ", (double)counters.alu / counters.insn);
+    fprintf(fp, "2:%lf ", (double)counters.load / counters.insn);
+    fprintf(fp, "3:%lf ", (double)counters.branch / counters.insn);
+    fprintf(fp, "4:%lf ", (double)counters.bit / counters.insn);
+    fprintf(fp, "5:%lf ", (double)counters.store / counters.insn);
+    fprintf(fp, "\n\n");
 }
 
 void Phase::update_snapshot(VPMUSnapshot& process_snapshot)
@@ -185,11 +192,24 @@ inline void Window::update_vector(uint64_t pc)
     branch_vector[hashed_key]++;
 }
 
-void phasedet_ref(bool user_mode, uint64_t pc, const Insn_Counters counters)
+inline void Window::update_counter(const ExtraTBInfo* extra_tb_info)
+{
+    counters.insn += extra_tb_info->counters.total;
+    counters.load += extra_tb_info->counters.load;
+    counters.store += extra_tb_info->counters.store;
+    counters.alu += extra_tb_info->counters.alu;
+    counters.bit += extra_tb_info->counters.bit;
+    counters.branch += extra_tb_info->has_branch;
+}
+
+void phasedet_ref(bool user_mode, const ExtraTBInfo* extra_tb_info)
 {
 #ifdef CONFIG_VPMU_DEBUG_MSG
     static uint64_t window_cnt = 0;
 #endif
+    uint64_t pc     = extra_tb_info->start_addr;
+    uint64_t pc_end = pc + extra_tb_info->counters.total;
+
     // Only detect user mode program, exclude the kernel behavior
     if (user_mode == false) return;
     auto process = event_tracer.find_process(et_current_pid);
@@ -197,8 +217,10 @@ void phasedet_ref(bool user_mode, uint64_t pc, const Insn_Counters counters)
         // The process is being traced. Do phase detection.
         auto& current_window = process->current_window;
         current_window.update_vector(pc);
-        current_window.instruction_count += counters.total;
-        auto&& key = std::make_pair(pc, pc + counters.total);
+        current_window.update_counter(extra_tb_info);
+        current_window.instruction_count += extra_tb_info->counters.total;
+
+        auto&& key = std::make_pair(pc, pc_end);
         current_window.code_walk_count[key] += 1;
         if (current_window.instruction_count > phase_detect.get_window_size()) {
 #ifdef CONFIG_VPMU_DEBUG_MSG

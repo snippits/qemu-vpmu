@@ -427,7 +427,7 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
             }
         }
     }
-    fprintf(fp, "%s\n", j.dump(4).c_str());
+    fprintf(fp, "%s\n\n\n", j.dump(4).c_str());
 }
 
 void ET_Process::dump_phase_result(void)

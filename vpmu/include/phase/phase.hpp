@@ -14,18 +14,30 @@ extern "C" {
 
 using CodeRange = std::pair<uint64_t, uint64_t>;
 
+struct GPUFriendnessCounter
+{
+    uint64_t  insn;
+    uint64_t  load;
+    uint64_t  store;
+    uint64_t  alu;
+    uint64_t  bit; // shift, and, or, xor
+    uint64_t  branch;
+};
+
 class Window
 {
 public:
     Window() { branch_vector.resize(DEFAULT_VECTOR_SIZE); }
     Window(int  vector_length) { branch_vector.resize(vector_length); }
     inline void update_vector(uint64_t pc);
+    inline void update_counter(const ExtraTBInfo* extra_tb_info);
 
     void reset(void)
     {
         instruction_count = 0;
         memset(&branch_vector[0], 0, branch_vector.size() * sizeof(branch_vector[0]));
         code_walk_count.clear();
+        memset(&counters, 0, sizeof(counters));
     }
 
     // Eigen::VectorXd branch_vector;
@@ -33,6 +45,7 @@ public:
     // Instruction count
     uint64_t instruction_count = 0;
     std::map<CodeRange, uint32_t> code_walk_count;
+    GPUFriendnessCounter counters = {};
 };
 
 class Phase
@@ -49,6 +62,7 @@ public:
         num_windows = 1;
         snapshot.reset();
         code_walk_count = window.code_walk_count;
+        counters = window.counters;
     }
 
     void set_vector(std::vector<double>& vec)
@@ -69,6 +83,16 @@ public:
         }
     }
 
+    void update_counter(GPUFriendnessCounter w_counter)
+    {
+        counters.insn += w_counter.insn;
+        counters.load += w_counter.load;
+        counters.store += w_counter.store;
+        counters.alu += w_counter.alu;
+        counters.bit += w_counter.bit;
+        counters.branch += w_counter.branch;
+    }
+
     void update_walk_count(std::map<CodeRange, uint32_t>& new_walk_count)
     {
         for (auto&& wc : new_walk_count) {
@@ -79,6 +103,7 @@ public:
     void update(Window& window)
     {
         update_vector(window.branch_vector);
+        update_counter(window.counters);
         update_walk_count(window.code_walk_count);
         num_windows++;
     }
@@ -110,6 +135,8 @@ private:
     std::vector<double> branch_vector;
     std::vector<double> n_branch_vector;
     uint64_t            num_windows = 0;
+
+    GPUFriendnessCounter counters = {};
 
 public: // FIXME, make it private
     VPMUSnapshot snapshot = {};
