@@ -49,6 +49,19 @@ namespace math
 
 namespace utils
 {
+    std::string get_random_hash_name(uint32_t string_length)
+    {
+        std::string chars("ABCDEF1234567890");
+        std::string output = "";
+
+        srand(time(0));
+        for (int i = 0; i < string_length; i++) {
+            output += chars[rand() % chars.size()];
+        }
+
+        return output;
+    }
+
     void name_process(std::string new_name)
     {
         char process_name[LINUX_NAMELEN] = {0};
@@ -65,7 +78,7 @@ namespace utils
 
     void name_thread(std::string new_name)
     {
-        char  thread_name[LINUX_NAMELEN] = {0};
+        char thread_name[LINUX_NAMELEN] = {0};
 #ifdef CONFIG_VPMU_DEBUG_MSG
         if (new_name.size() >= LINUX_NAMELEN) {
             ERR_MSG(

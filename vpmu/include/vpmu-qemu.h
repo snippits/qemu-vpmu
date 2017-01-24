@@ -59,7 +59,7 @@ void VPMU_sync(void);
 void VPMU_sync_non_blocking(void);
 void VPMU_dump_result(void);
 void vpmu_dump_readable_message(void);
-void vpmu_simulator_status(VPMU_Struct *vpmu);
+void vpmu_print_status(VPMU_Struct *vpmu);
 uint64_t vpmu_target_time_ns(void);
 
 #endif

@@ -1,4 +1,10 @@
-// C headers
+// Libraries
+#include <boost/filesystem.hpp> // boost::filesystem
+#include "json.hpp"             // nlohmann::json
+// VPMU headers
+extern "C" {
+#include "vpmu-device.h" // Timing model definition
+}
 #include "vpmu.hpp"           // VPMU common header
 #include "vpmu-stream.hpp"    // VPMUStream, VPMUStream_T
 #include "vpmu-translate.hpp" // VPMUTranslate
@@ -7,19 +13,14 @@
 #include "vpmu-branch.hpp"    // BranchStream
 #include "event-tracing.hpp"  // EventTracer event_tracer
 
-#include <boost/filesystem.hpp> // boost::filesystem
-
-#include "json.hpp" // nlohmann::json
-using json = nlohmann::json;
-
 // The global variable that controls all the vpmu streams.
 std::vector<VPMUStream *> vpmu_streams = {};
 // File for VPMU to dump results
-FILE *vpmu_log_file = NULL;
+FILE *vpmu_log_file = nullptr;
 // The definition of the only one global variable passing data around.
-struct VPMU_Struct VPMU;
+struct VPMU_Struct VPMU = {};
 // A pointer to current Extra TB Info
-ExtraTBInfo *vpmu_current_extra_tb_info;
+ExtraTBInfo *vpmu_current_extra_tb_info = nullptr;
 // QEMU log system use these two variables
 #ifdef CONFIG_QEMU_VERSION_0_15
 extern FILE *logfile;
@@ -46,10 +47,10 @@ attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
     return;
 }
 
-static void vpmu_core_init(const char *vpmu_config_file)
+static void init_simulators(const char *vpmu_config_file)
 {
     try {
-        json vpmu_config = vpmu::utils::load_json(vpmu_config_file);
+        nlohmann::json vpmu_config = vpmu::utils::load_json(vpmu_config_file);
 
         attach_vpmu_stream(vpmu_insn_stream, vpmu_config, "cpu_models");
         attach_vpmu_stream(vpmu_branch_stream, vpmu_config, "branch_models");
@@ -72,19 +73,15 @@ static void vpmu_core_init(const char *vpmu_config_file)
     for (auto vs : vpmu_streams) {
         vs->build();
     }
-// TODO remove this test code
-// sleep(2);
-// for (auto vs: vpmu_streams) {
-//     vs->destroy();
-// }
-// vpmu_insn_stream.build(vpmu_config["cpu_models"]);
-// vpmu_branch_stream.build(vpmu_config["branch_models"]);
-// vpmu_cache_stream.build(vpmu_config["cache_models"]);
-// sleep(2);
-
-#ifdef CONFIG_VPMU_SET
-// vpmu_process_tracking_init();
-#endif
+    // TODO remove this test code
+    // sleep(2);
+    // for (auto vs: vpmu_streams) {
+    //     vs->destroy();
+    // }
+    // vpmu_insn_stream.build(vpmu_config["cpu_models"]);
+    // vpmu_branch_stream.build(vpmu_config["branch_models"]);
+    // vpmu_cache_stream.build(vpmu_config["cache_models"]);
+    // sleep(2);
 
     CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
     InstructionStream::Model cpu_model    = vpmu_insn_stream.get_model(0);
@@ -109,6 +106,18 @@ static void vpmu_core_init(const char *vpmu_config_file)
     // Showing message for one second.
     sleep(1);
     // exit(0);
+}
+
+static void prepare_for_logs(void)
+{
+    // Remove logs from last execution and create folders for current log
+    if (boost::filesystem::exists("/tmp/snippit")) {
+        boost::filesystem::remove_all("/tmp/snippit");
+    }
+    boost::filesystem::create_directories("/tmp/snippit");
+    boost::filesystem::create_directories("/tmp/snippit/phase");
+
+    if (vpmu_log_file == NULL) vpmu_log_file = fopen("/tmp/snippit/vpmu.log", "w");
 }
 
 void VPMU_sync_non_blocking(void)
@@ -182,6 +191,7 @@ void VPMU_init(int argc, char **argv)
     char config_file[1024] = {0};
     char kernel_file[1024] = {0};
 
+    // Parse arguments
     for (int i = 0; i < (argc - 1); i++) {
         if (std::string(argv[i]) == "-vpmu-config") strcpy(config_file, argv[i + 1]);
         if (std::string(argv[i]) == "-smp") VPMU.platform.cpu.cores = atoi(argv[i + 1]);
@@ -189,7 +199,8 @@ void VPMU_init(int argc, char **argv)
             strcpy(kernel_file, argv[i + 1]);
     }
 
-    // Set to 1 if (1) no -smp presents. (2) the argument after smp is not a number.
+    // Set arguments
+    // Set cores to 1 if (1)no -smp presents. (2)the argument after smp is not a number.
     if (VPMU.platform.cpu.cores == 0) VPMU.platform.cpu.cores = 1;
     if (strlen(config_file) == 0) {
         ERR_MSG("VPMU Config File Path is not set!!\n"
@@ -197,22 +208,19 @@ void VPMU_init(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
-    if (vpmu_log_file == NULL) vpmu_log_file = fopen("/tmp/vpmu.log", "w");
+    // Create folders and files for logging and output
+    prepare_for_logs();
 
 #ifdef CONFIG_VPMU_SET
     if (strlen(kernel_file) > 0) {
         event_tracer.parse_and_set_kernel_symbol(kernel_file);
     } else {
-        ERR_MSG("Path to vmlinux is not set!!\n"
-                "\tPlease specify '-vpmu-kernel-symbol <PATH>' when executing QEMU\n\n");
-        exit(EXIT_FAILURE);
+        CONSOLE_LOG(
+          "Path to vmlinux is not set. Boot time kernel tracking will be disabled.\n"
+          "\tPlease specify '-vpmu-kernel-symbol <PATH>' for boot time tracking.\n\n");
     }
-
-    if (boost::filesystem::exists("/tmp/vpmu")) {
-        boost::filesystem::remove_all("/tmp/vpmu");
-    }
-    boost::filesystem::create_directories("/tmp/vpmu/phase");
 #endif
+
     // this would let print system support comma.
     setlocale(LC_NUMERIC, "");
     // TODO add qemu_log_in_addr_range
@@ -220,7 +228,9 @@ void VPMU_init(int argc, char **argv)
     // TODO thread pools and callbacks
     // VPMU.thpool = thpool_init(1);
     DBG(STR_VPMU "Thread Pool Initialized\n");
-    vpmu_core_init(config_file);
+    // Initialize simulators for each stream
+    init_simulators(config_file);
+    // Done
     CONSOLE_LOG(STR_VPMU "Initialized\n");
 }
 
@@ -260,28 +270,36 @@ void vpmu_dump_readable_message(void)
     CONSOLE_TME("Emulation Time :", wall_clock_period());
     CONSOLE_LOG("MIPS           : %'0.2lf\n\n",
                 (double)vpmu_total_insn_count() / (wall_clock_period() / 1000.0));
-
-#if 0
-    CONSOLE_LOG("Memory:\n");
-    CONSOLE_U64("  ->System memory access       :", (vpmu_L1_dcache_miss_count()
-                                                 + vpmu_L1_icache_miss_count()));
-    CONSOLE_U64("  ->System memory cycles       :", vpmu_sys_mem_access_cycle_count());
-    CONSOLE_U64("  ->I/O memory access          :", vpmu->iomem_count);
-    CONSOLE_U64("  ->I/O memory cycles          :", vpmu_io_mem_access_cycle_count());
-    CONSOLE_U64("Total Cycle count              :", vpmu_cycle_count());
-    //Remember add these infos into L1I READ
-    CONSOLE_LOG("Model Selection:\n");
-    CONSOLE_U64("  ->JIT icache access          :", (vpmu->hot_icache_count));
-    CONSOLE_U64("  ->JIT dcache access          :", (vpmu->hot_dcache_read_count + vpmu->hot_dcache_write_count));
-    CONSOLE_U64("  ->VPMU icache access         :", vpmu_L1_icache_access_count());
-    CONSOLE_U64("  ->VPMU icache misses         :", vpmu_L1_icache_miss_count());
-    CONSOLE_U64("  ->VPMU dcache access         :", vpmu_L1_dcache_access_count());
-    CONSOLE_U64("  ->VPMU dcache read misses    :", vpmu_L1_dcache_read_miss_count());
-    CONSOLE_U64("  ->VPMU dcache write misses   :", vpmu_L1_dcache_write_miss_count());
-    CONSOLE_U64("  ->hotTB                      :", VPMU.hot_tb_visit_count);
-    CONSOLE_U64("  ->coldTB                     :", VPMU.cold_tb_visit_count);
-    */
-#endif
 #undef CONSOLE_TME
 #undef CONSOLE_U64
+}
+
+void vpmu_print_status(VPMU_Struct *vpmu)
+{
+    vpmu->timing_model &VPMU_WHOLE_SYSTEM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Whole System Profiling\n");
+
+    vpmu->timing_model &VPMU_INSN_COUNT_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Instruction Simulation\n");
+
+    vpmu->timing_model &VPMU_DCACHE_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Data Cache Simulation\n");
+
+    vpmu->timing_model &VPMU_ICACHE_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Insn Cache Simulation\n");
+
+    vpmu->timing_model &VPMU_BRANCH_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Branch Predictor Simulation\n");
+
+    vpmu->timing_model &VPMU_PIPELINE_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Pipeline Simulation\n");
+
+    vpmu->timing_model &VPMU_JIT_MODEL_SELECT ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("JIT Model Selection\n");
+
+    vpmu->timing_model &VPMU_EVENT_TRACE ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("VPMU Event Trace mechanism\n");
+
+    vpmu->timing_model &VPMU_PHASEDET ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
+    CONSOLE_LOG("Phase Detection and Profiling\n");
 }

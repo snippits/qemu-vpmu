@@ -1,6 +1,6 @@
 /*
  * Virtual Performance Monitor Unit
- * Copyright (c) 2016 PAS Lab, CSIE, National Taiwan University, Taiwan.
+ * Copyright (c) 2017 PAS Lab, CSIE, National Taiwan University, Taiwan.
  */
 #include "qemu/osdep.h"    // DeviceState, VMState, etc.
 #include "qemu/timer.h"    // QEMU_CLOCK_VIRTUAL, timer_new_ns()
@@ -39,35 +39,6 @@ static const VMStateDescription vpmu_vmstate = {
 // Saving QEMU's context for TLB and MMU use. (copy data from/to guest)
 static CPUArchState *vpmu_cpu_context[VPMU_MAX_CPU_CORES];
 
-void vpmu_simulator_status(VPMU_Struct *vpmu)
-{
-    vpmu->timing_model &VPMU_WHOLE_SYSTEM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("Whole System Profiling\n");
-
-    vpmu->timing_model &VPMU_INSN_COUNT_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("Instruction Simulation\n");
-
-    vpmu->timing_model &VPMU_DCACHE_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("Data Cache Simulation\n");
-
-    vpmu->timing_model &VPMU_ICACHE_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("Insn Cache Simulation\n");
-
-    vpmu->timing_model &VPMU_BRANCH_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("Branch Predictor Simulation\n");
-
-    vpmu->timing_model &VPMU_PIPELINE_SIM ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("Pipeline Simulation\n");
-
-    vpmu->timing_model &VPMU_JIT_MODEL_SELECT ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("JIT Model Selection\n");
-
-    vpmu->timing_model &VPMU_EVENT_TRACE ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("VPMU Event Trace mechanism\n");
-
-    vpmu->timing_model &VPMU_PHASEDET ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
-    CONSOLE_LOG("Phase Detection and Profiling\n");
-}
 static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 {
     uint64_t      ret    = 0;
@@ -109,7 +80,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         VPMU_reset();
         VPMU.enabled      = 1;
         VPMU.timing_model = value | VPMU_WHOLE_SYSTEM;
-        vpmu_simulator_status(&VPMU);
+        vpmu_print_status(&VPMU);
 
         tic(&(VPMU.start_time));
         break;
@@ -119,7 +90,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         toc(&(VPMU.start_time), &(VPMU.end_time));
 
 #ifdef CONFIG_VPMU_VFP
-        // FILE_LOG("Before print_vfp_count \n");
+        // TODO Finish the VFP tracking
         print_vfp_count();
 #endif
         break;
@@ -135,8 +106,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
 #ifdef CONFIG_VPMU_SET
     case VPMU_MMAP_ADD_PROC_NAME:
         if (value != 0) {
-            // Copy the whole CPU context including TLB Table and MMU registers for
-            // VPMU's use.
+            // Copy the whole CPU context including TLB Table and MMU registers
+            // for VPMU's use.
             vpmu_qemu_free_cpu_arch_state(vpmu_cpu_context[0]);
             vpmu_cpu_context[0] = vpmu_qemu_clone_cpu_arch_state(VPMU.cpu_arch_state);
             paddr               = vpmu_tlb_get_host_addr(vpmu_cpu_context[0], value);

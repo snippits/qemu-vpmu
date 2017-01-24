@@ -121,7 +121,7 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
                     et_current_pid);
                 tic(&(VPMU.start_time));
                 VPMU_reset();
-                vpmu_simulator_status(&VPMU);
+                vpmu_print_status(&VPMU);
                 VPMU.enabled = 1;
             }
 

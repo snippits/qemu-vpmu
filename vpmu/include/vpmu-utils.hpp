@@ -17,10 +17,7 @@ namespace math
     void normalize(const std::vector<double> &in_v, std::vector<double> &out_v);
     void normalize(std::vector<double> &vec);
 
-    inline uint64_t simple_hash(uint64_t key, uint64_t m)
-    {
-        return (key % m);
-    }
+    inline uint64_t simple_hash(uint64_t key, uint64_t m) { return (key % m); }
 
     // http://zimbry.blogspot.tw/2011/09/better-bit-mixing-improving-on.html
     inline uint64_t bitmix_hash(uint64_t key)
@@ -35,12 +32,12 @@ namespace math
 
 namespace utils
 {
+    std::string get_random_hash_name(uint32_t string_length);
 
     void name_process(std::string new_name);
     void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
     int32_t clog2(uint32_t x);
-
 
     inline std::string get_file_name_from_path(const char *path)
     {
