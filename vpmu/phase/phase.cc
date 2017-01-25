@@ -157,14 +157,15 @@ void Phase::dump_result(FILE* fp)
 #undef FILE_TME
 }
 
+// TODO Output better features for machine learning
 void Phase::dump_metadata(FILE* fp)
 {
     fprintf(fp, "0 ");
     fprintf(fp, "1:%lf ", (double)counters.alu / counters.insn);
-    fprintf(fp, "2:%lf ", (double)counters.load / counters.insn);
-    fprintf(fp, "3:%lf ", (double)counters.branch / counters.insn);
-    fprintf(fp, "4:%lf ", (double)counters.bit / counters.insn);
-    fprintf(fp, "5:%lf ", (double)counters.store / counters.insn);
+    fprintf(fp, "2:%lf ", (double)counters.bit / counters.insn);
+    fprintf(fp, "3:%lf ", (double)counters.load / counters.insn);
+    fprintf(fp, "4:%lf ", (double)counters.store / counters.insn);
+    fprintf(fp, "5:%lf ", (double)counters.branch / counters.insn);
     fprintf(fp, "\n\n");
 }
 
