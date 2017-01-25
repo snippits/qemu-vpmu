@@ -149,6 +149,13 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
         }
         break;
+        case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
+        case VPMU_MMAP_OFFSET_DENTRY_d_iname:
+        case VPMU_MMAP_OFFSET_DENTRY_d_parent:
+        case VPMU_MMAP_OFFSET_THREAD_INFO_task:
+        case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
+            et_set_linux_struct_offset(addr, value);
+            break;
 #endif
     default:
         CONSOLE_LOG(

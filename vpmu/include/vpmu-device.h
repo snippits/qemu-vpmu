@@ -20,6 +20,11 @@
 #define VPMU_MMAP_SET_PROC_SIZE     0x0050
 #define VPMU_MMAP_SET_PROC_BIN      0x0054
 // ... reserved
+#define VPMU_MMAP_OFFSET_FILE_f_path_dentry      0x0100
+#define VPMU_MMAP_OFFSET_DENTRY_d_iname          0x0108
+#define VPMU_MMAP_OFFSET_DENTRY_d_parent         0x0110
+#define VPMU_MMAP_OFFSET_THREAD_INFO_task        0x0118
+#define VPMU_MMAP_OFFSET_TASK_STRUCT_pid         0x0120
 
 // Mode selector
 #define VPMU_INSN_COUNT_SIM         0x1 << 0

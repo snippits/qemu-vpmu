@@ -15,6 +15,26 @@ enum ET_KERNEL_EVENT_TYPE {
     ET_KERNEL_EVENT_COUNT
 };
 
+typedef struct LinuxStructOffset {
+    struct file {
+        struct fpath {
+            uint64_t dentry;
+        } fpath;
+    } file;
+    struct dentry {
+        uint64_t d_iname;
+        uint64_t d_parent;
+    } dentry;
+    struct thread_info {
+        uint64_t task;
+    } thread_info;
+    struct task_struct {
+        uint64_t pid;
+    } task_struct;
+} LinuxStructOffset;
+
+extern LinuxStructOffset g_linux_offset;
+
 // NOTE: Due to some QEMU's function is limited in C compiler only,
 // we implemented some interface functions in C code and management in C++ code
 //
@@ -30,6 +50,9 @@ void et_check_function_call(CPUArchState* env,
                             uint64_t      return_addr);
 void et_check_mmap_return(CPUArchState* env, uint64_t start_addr);
 #endif
+
+void et_set_default_linux_struct_offset(const char* version);
+void et_set_linux_struct_offset(uint64_t type, uint64_t value);
 
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);
 

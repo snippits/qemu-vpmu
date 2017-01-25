@@ -4,6 +4,45 @@
 #include "vpmu/include/linux-mm.h"
 
 uint64_t et_current_pid = 0;
+// The global variable storing offsets of kernel struct types
+LinuxStructOffset g_linux_offset;
+
+void et_set_default_linux_struct_offset(const char *version)
+{
+    if (strcmp(version, "v4.4.0") == 0) {
+        // This is kernel v4.4.0
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 12);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 44);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
+    }
+}
+
+void et_set_linux_struct_offset(uint64_t type, uint64_t value)
+{
+    switch (type) {
+    case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
+        g_linux_offset.file.fpath.dentry = value;
+        break;
+    case VPMU_MMAP_OFFSET_DENTRY_d_iname:
+        g_linux_offset.dentry.d_iname = value;
+        break;
+    case VPMU_MMAP_OFFSET_DENTRY_d_parent:
+        g_linux_offset.dentry.d_parent = value;
+        break;
+    case VPMU_MMAP_OFFSET_THREAD_INFO_task:
+        g_linux_offset.thread_info.task = value;
+        break;
+    case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
+        g_linux_offset.task_struct.pid = value;
+        break;
+    default:
+        ERR_MSG("Undefined type of struct offset %" PRIu64 "\n", type);
+        break;
+    }
+}
+
 #if defined(TARGET_ARM)
 static inline void __append_str(char *buff, int *position, int size_buff, const char *str)
 {
@@ -29,16 +68,19 @@ static void parse_dentry_path(CPUArchState *env,
     if (env == NULL || buff == NULL || position == NULL || size_buff == 0) return;
     // Stop condition 1 (reach user defined limition or null pointer)
     if (max_levels == 0 || dentry_addr == 0) return;
-    name = (char *)vpmu_read_ptr_from_guest(env, dentry_addr, 44);
+    name =
+      (char *)vpmu_read_ptr_from_guest(env, dentry_addr, g_linux_offset.dentry.d_iname);
     // Stop condition 2 (reach root directory)
     if (name[0] == '\0') return;
     if (name[0] == '/' && name[1] == '\0') return;
 
     // Find parent node (dentry->d_parent)
-    parent_dentry_addr = vpmu_read_uintptr_from_guest(env, dentry_addr, 16);
+    parent_dentry_addr =
+      vpmu_read_uintptr_from_guest(env, dentry_addr, g_linux_offset.dentry.d_parent);
     parse_dentry_path(env, parent_dentry_addr, buff, position, size_buff, max_levels - 1);
     // Append path/name
-    name = (char *)vpmu_read_ptr_from_guest(env, dentry_addr, 44);
+    name =
+      (char *)vpmu_read_ptr_from_guest(env, dentry_addr, g_linux_offset.dentry.d_iname);
     __append_str(buff, position, size_buff, "/");
     __append_str(buff, position, size_buff, name);
 
@@ -88,7 +130,8 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         uintptr_t vaddr          = 0;
 
         if (env->regs[0] == 0) break; // vaddr is zero
-        dentry_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 12);
+        dentry_addr = vpmu_read_uintptr_from_guest(
+          env, env->regs[0], g_linux_offset.file.fpath.dentry);
         if (dentry_addr == 0) break; // pointer to dentry is zero
         parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
         mode  = env->regs[3];
@@ -148,10 +191,8 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     }
     case ET_KERNEL_WAKE_NEW_TASK: {
         // Linux Kernel: wake up the newly forked process
-        // This is kernel v3.6.11
-        // uint32_t target_pid = vpmu_read_uint32_from_guest(env, env->regs[0], 204);
-        // This is kernel v4.4.0
-        uint32_t target_pid = vpmu_read_uint32_from_guest(env, env->regs[0], 512);
+        uint32_t target_pid =
+          vpmu_read_uint32_from_guest(env, env->regs[0], g_linux_offset.task_struct.pid);
         if (et_current_pid != 0 && et_find_traced_pid(et_current_pid)) {
             et_attach_to_parent_pid(et_current_pid, target_pid);
         }
@@ -159,10 +200,8 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     }
     case ET_KERNEL_EXECV: {
         // Linux Kernel: New process creation
-        // This is kernel v3.6.11
-        // uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
         uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
-        // Remember this pointer gor mmap()
+        // Remember this pointer for mmap()
         bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
 
         // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
@@ -178,14 +217,13 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     case ET_KERNEL_CONTEXT_SWITCH: {
 // Linux Kernel: Context switch
 #if TARGET_LONG_BITS == 32
-        uint32_t task_ptr = vpmu_read_uint32_from_guest(env, env->regs[2], 12);
+        uint32_t task_ptr =
+          vpmu_read_uint32_from_guest(env, env->regs[2], g_linux_offset.thread_info.task);
 #else
 #pragma message("VPMU SET: 64 bits Not supported!!")
 #endif
-        // This is kernel v3.6.11
-        // et_current_pid = vpmu_read_uint32_from_guest(env, task_ptr, 204);
-        // This is kernel v4.4.0
-        et_current_pid = vpmu_read_uint32_from_guest(env, task_ptr, 512);
+        et_current_pid =
+          vpmu_read_uint32_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
         // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[2], et_current_pid);
 
         if (et_find_traced_pid(et_current_pid)) {

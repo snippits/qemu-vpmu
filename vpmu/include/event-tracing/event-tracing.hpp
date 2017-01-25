@@ -491,7 +491,7 @@ public:
 
     ET_Kernel& get_kernel(void) { return kernel; }
 
-    void parse_and_set_kernel_symbol(const char* filename);
+    void parse_and_set_kernel_symbol(const char* filename, const char* version);
 
     void clear_shared_libraries(void)
     {

@@ -83,7 +83,7 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
     }
 }
 
-void EventTracer::parse_and_set_kernel_symbol(const char* filename)
+void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* version)
 {
     int fd = open(filename, O_RDONLY);
     if (fd < 0) {
@@ -150,6 +150,9 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename)
             LOG_FATAL("Kernel event \"%s\" was not found!", "__switch_to");
         if (kernel.find_vaddr(ET_KERNEL_EXECV) == 0)
             LOG_FATAL("Kernel event \"%s\" was not found!", "do_execve");
+
+        // This must be done when kernel symbol is set, or emulation would hang or SEGV
+        et_set_default_linux_struct_offset(version);
     }
 }
 
