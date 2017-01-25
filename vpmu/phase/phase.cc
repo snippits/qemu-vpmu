@@ -232,24 +232,26 @@ void phasedet_ref(bool user_mode, const ExtraTBInfo* extra_tb_info)
             // Classify the window to phase
             auto& phase = phase_detect.classify(process->phase_list, current_window);
             if (phase == Phase::not_found) {
+                uint64_t phase_num = process->phase_list.size();
                 // Add a new phase to the process
                 DBG(STR_PHASE "pid: %" PRIu64 ", name: %s\n",
                     et_current_pid,
                     process->name.c_str());
-                DBG(STR_PHASE "Create new phase id %zu @ PC: %p\n",
-                    process->phase_list.size(),
-                    (void*)pc);
+                DBG(STR_PHASE "Create new phase id %zu @ PC: %p\n", phase_num, (void*)pc);
                 VPMU_sync();
                 // Construct the instance inside vector (save time)
                 process->phase_list.push_back(current_window);
                 // We must update the snapshot to get the correct result
                 auto&& new_phase = process->phase_list.back();
                 new_phase.update_snapshot(process->snapshot);
+                new_phase.id = phase_num;
+                process->phase_history.push_back(phase_num);
             } else {
-                // DBG(STR_PHASE "Update phase id %zu\n",
-                //     (&phase - &process->phase_list[0]));
+                uint64_t phase_num = (&phase - &process->phase_list[0]);
+                // DBG(STR_PHASE "Update phase id %zu\n", phase_num);
                 phase.update(current_window);
                 phase.update_snapshot(process->snapshot);
+                process->phase_history.push_back(phase_num);
             }
 
             // Reset all counters and vars of current window

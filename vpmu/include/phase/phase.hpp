@@ -141,6 +141,8 @@ private:
 public: // FIXME, make it private
     VPMUSnapshot snapshot = {};
     std::map<CodeRange, uint32_t> code_walk_count;
+    // An ID to identify the number of this phase
+    uint64_t id = 0;
 };
 
 class Classifier : public VPMULog
@@ -186,6 +188,7 @@ public:
         return classifier->classify(phase_list, window);
     }
 
+    void set_window_size(uint64_t new_size) { window_size = new_size; }
     inline uint64_t get_window_size(void) { return window_size; }
 
     void dump_data(FILE* fp, VPMU_Insn::Data data);

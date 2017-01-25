@@ -261,6 +261,7 @@ public:
 
     std::string find_code_line_number(uint64_t pc);
 
+    void dump_phase_history(void);
     void dump_phase_result(void);
     void dump_process_info(void);
     void dump_phase_code_mapping(FILE* fp, const Phase& phase);
@@ -277,6 +278,8 @@ public:
     std::vector<std::shared_ptr<ET_Process>> child_list;
 
     std::vector<Phase> phase_list;
+    // History records
+    std::vector<uint64_t> phase_history;
     Window             current_window;
     VPMUSnapshot       snapshot;
 

@@ -378,6 +378,23 @@ void ET_Process::dump_process_info(void)
     fclose(fp);
 }
 
+void ET_Process::dump_phase_history(void)
+{
+    char        file_path[512] = {0};
+    std::string output_path =
+      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
+    boost::filesystem::create_directory(output_path);
+
+    sprintf(file_path, "%s/phase_history", output_path.c_str());
+    FILE* fp = fopen(file_path, "wt");
+    std::vector<uint64_t> history;
+
+    nlohmann::json j(phase_history);
+    fprintf(fp, "%s\n", j.dump().c_str());
+
+    fclose(fp);
+}
+
 std::string ET_Program::find_code_line_number(uint64_t pc)
 {
     if (is_shared_library) {
@@ -447,8 +464,10 @@ void ET_Process::dump_phase_result(void)
       std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
 
     CONSOLE_LOG(STR_PHASE "Phase log path: %s\n", output_path.c_str());
-    dump_process_info();
     boost::filesystem::create_directory(output_path);
+
+    dump_process_info();
+    dump_phase_history();
     for (int idx = 0; idx < phase_list.size(); idx++) {
         sprintf(file_path, "%s/phase-%05d", output_path.c_str(), idx);
         FILE* fp = fopen(file_path, "wt");
