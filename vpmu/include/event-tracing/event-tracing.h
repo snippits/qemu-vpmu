@@ -50,13 +50,15 @@ void et_check_function_call(CPUArchState* env,
                             uint64_t      return_addr);
 void et_check_mmap_return(CPUArchState* env, uint64_t start_addr);
 #endif
-
-void et_set_default_linux_struct_offset(const char* version);
 void et_set_linux_struct_offset(uint64_t type, uint64_t value);
+void et_set_default_linux_struct_offset(const char* version);
+// End of implementation in C side
 
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);
 
-// Implemented in CPP side
+// Implemented in C++ side
+void et_set_linux_sym_addr(const char* sym_name, uint64_t addr);
+
 void et_add_program_to_list(const char* name);
 void et_remove_program_from_list(const char* name);
 bool et_find_program_in_list(const char* name);
@@ -72,4 +74,5 @@ void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mod
 void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath);
 
 void et_update_last_mmaped_binary(uint64_t pid, uint64_t vaddr, uint64_t len);
+// End of implementation in C++ side
 #endif // __VPMU_EVENT_TRACING_

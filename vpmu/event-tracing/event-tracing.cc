@@ -12,6 +12,11 @@ extern "C" {
 
 EventTracer event_tracer;
 
+void et_set_linux_sym_addr(const char* sym_name, uint64_t addr)
+{
+    event_tracer.get_kernel().set_symbol_address(sym_name, addr);
+}
+
 // TODO Implement updating dwarf as well.
 void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
                                    const char*                 file_name)
@@ -119,7 +124,7 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* 
                     kernel.set_event_address(ET_KERNEL_EXIT, d.value);
                 } else if (sym.get_name() == "wake_up_new_task") {
                     kernel.set_event_address(ET_KERNEL_WAKE_NEW_TASK, d.value);
-                } else if (sym.get_name() == "do_fork") {
+                } else if (sym.get_name() == "_do_fork") {
                     kernel.set_event_address(ET_KERNEL_FORK, d.value);
                 } else if (sym.get_name() == "mmap_region") {
                     kernel.set_event_address(ET_KERNEL_MMAP, d.value);
@@ -141,7 +146,7 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* 
         if (kernel.find_vaddr(ET_KERNEL_MMAP) == 0)
             LOG_FATAL("Kernel event \"%s\" was not found!", "mmap_region");
         if (kernel.find_vaddr(ET_KERNEL_FORK) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "do_fork");
+            LOG_FATAL("Kernel event \"%s\" was not found!", "_do_fork");
         if (kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) == 0)
             LOG_FATAL("Kernel event \"%s\" was not found!", "wake_up_new_task");
         if (kernel.find_vaddr(ET_KERNEL_EXIT) == 0)
@@ -154,6 +159,7 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* 
         // This must be done when kernel symbol is set, or emulation would hang or SEGV
         et_set_default_linux_struct_offset(version);
     }
+    close(fd);
 }
 
 void EventTracer::debug_dump_process_map(void)

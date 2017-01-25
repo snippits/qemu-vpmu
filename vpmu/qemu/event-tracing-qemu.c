@@ -7,18 +7,6 @@ uint64_t et_current_pid = 0;
 // The global variable storing offsets of kernel struct types
 LinuxStructOffset g_linux_offset;
 
-void et_set_default_linux_struct_offset(const char *version)
-{
-    if (strcmp(version, "v4.4.0") == 0) {
-        // This is kernel v4.4.0
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 12);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 44);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
-    }
-}
-
 void et_set_linux_struct_offset(uint64_t type, uint64_t value)
 {
     switch (type) {
@@ -40,6 +28,18 @@ void et_set_linux_struct_offset(uint64_t type, uint64_t value)
     default:
         ERR_MSG("Undefined type of struct offset %" PRIu64 "\n", type);
         break;
+    }
+}
+
+void et_set_default_linux_struct_offset(const char *version)
+{
+    if (strcmp(version, "v4.4.0") == 0) {
+        // This is kernel v4.4.0
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 12);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 44);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
     }
 }
 

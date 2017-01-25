@@ -52,16 +52,16 @@ static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
 {
 #ifdef CONFIG_VPMU_SET
-    static char *binary_name = NULL;
-    void *       paddr       = NULL;
-    char *       buffer;
-    static int   buffer_size = 0;
-    FILE *       fp;
+    static char *kallsym_name = NULL;
+    static char *binary_name  = NULL;
+    void *       paddr        = NULL;
+    char *       buffer       = NULL;
+    static int   buffer_size  = 0;
+    FILE *       fp           = NULL;
 #endif
 
-    DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
-
 #if 0
+    DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
     // This is a test code to read user data in guest virtual address from host
     if (addr == 100 * 4) {
         ERR_MSG("VA:%lx\n", value);
@@ -155,6 +155,13 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         case VPMU_MMAP_OFFSET_THREAD_INFO_task:
         case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
             et_set_linux_struct_offset(addr, value);
+            break;
+        case VPMU_MMAP_OFFSET_KERNEL_SYM_NAME:
+            paddr        = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
+            kallsym_name = (char *)paddr;
+            break;
+        case VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR:
+            et_set_linux_sym_addr(kallsym_name, value);
             break;
 #endif
     default:

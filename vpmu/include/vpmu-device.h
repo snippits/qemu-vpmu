@@ -25,6 +25,9 @@
 #define VPMU_MMAP_OFFSET_DENTRY_d_parent         0x0110
 #define VPMU_MMAP_OFFSET_THREAD_INFO_task        0x0118
 #define VPMU_MMAP_OFFSET_TASK_STRUCT_pid         0x0120
+// ... reserved
+#define VPMU_MMAP_OFFSET_KERNEL_SYM_NAME         0x0200
+#define VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR         0x0208
 
 // Mode selector
 #define VPMU_INSN_COUNT_SIM         0x1 << 0
