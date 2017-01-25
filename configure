@@ -6690,9 +6690,10 @@ case "$target_name" in
       if test "$vpmu_mancos" = "yes" ; then
           echo "CONFIG_VPMU_MANCOS=y" >> $config_target_mak
           echo "CONFIG_VPMU_MANCOS=y" >> $config_host_mak
+          mkdir -p $target_dir/mancos
+          symlink $source_path/mancos/Makefile $target_dir/mancos/Makefile
+          symlink $source_path/mancos/Makefile.objs $target_dir/mancos/Makefile.objs
       fi
-
-
 
       #Add directory for build
       mkdir -p $target_dir/vpmu

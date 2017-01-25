@@ -77,6 +77,11 @@
 #include "vpmu/include/vpmu-device.h"
 #endif
 
+#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
+#include"../vpmu/include/vpmu-qemu.h"
+#include"../mancos/mancos.h"
+#endif
+
 #ifdef DEBUG_IRQ
 #define DPRINTF(fmt, ...)                                       \
     do { printf("CPUIRQ: " fmt , ## __VA_ARGS__); } while (0)
@@ -1583,6 +1588,10 @@ void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
 
 #ifdef CONFIG_VPMU
     vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
+#endif
+    
+#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
+    scatter_engine_init( &scatter_engine );
 #endif
 
     qemu_register_boot_set(pc_boot_set, *rtc_state);

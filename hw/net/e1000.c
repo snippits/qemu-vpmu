@@ -38,6 +38,24 @@
 
 #include "e1000x_common.h"
 
+#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
+#include"../vpmu/include/vpmu-qemu.h"
+#include"../mancos/mancos.h"
+static uint64_t insns_pre=0;
+static inline uint8_t is_vpmu_enable(void){
+    if(!VPMU.enabled)
+        insns_pre = 0;
+    return VPMU.enabled;
+}
+static inline uint64_t get_vpmu_insns(void){
+    uint64_t insns_cur = mancos_get_insn_count();
+    uint64_t insns_delta = insns_cur - insns_pre;
+    insns_pre = insns_cur; 
+    return insns_delta; 
+}
+#endif
+
+
 static const uint8_t bcast[] = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 /* #define E1000_DEBUG */
@@ -584,6 +602,42 @@ xmit_seg(E1000State *s)
         putsum(tp->data, tp->size, tp->props.ipcso,
                tp->props.ipcss, tp->props.ipcse);
     }
+#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
+    if (tp->vlan_needed) {
+        memmove(tp->vlan, tp->data, 4);
+        memmove(tp->data, tp->data + 4, 8);
+        memcpy(tp->data + 8, tp->vlan_header, 4);
+    }
+        
+    if( is_vpmu_enable() && tp->size >= 37 ){ 
+        if(tp->data[23]==6){// It is a TCP-frame
+            SimActivity activity;
+            activity.type = NETWORK_SEND;
+            activity.ip_src[3] = tp->data[26];
+            activity.ip_src[2] = tp->data[27];
+            activity.ip_src[1] = tp->data[28];
+            activity.ip_src[0] = tp->data[29];
+            activity.ip_dst[3] = tp->data[30];
+            activity.ip_dst[2] = tp->data[31];
+            activity.ip_dst[1] = tp->data[32];
+            activity.ip_dst[0] = tp->data[33];
+            activity.port_src = (tp->data[34] << 8)  + tp->data[35];
+            activity.port_dst = (tp->data[36] << 8) + tp->data[37];
+            activity.flag = (uint32_t)( tp->data[46] + (tp->data[47] << 8) );          
+            activity.seq = (tp->data[41] << 24) + (tp->data[40] << 16) + (tp->data[39] << 8) + tp->data[38] ; 
+            activity.ack = (tp->data[45] << 24) + (tp->data[44] << 16) + (tp->data[43] << 8) + tp->data[42] ; 
+            activity.payload = tp->size;
+            activity.insns = get_vpmu_insns();
+            scatter_commit(&scatter_engine, activity);
+        }
+    }
+
+    if (tp->vlan_needed) {
+        e1000_send_packet(s, tp->vlan, tp->size + 4);
+    } else {
+        e1000_send_packet(s, tp->data, tp->size);
+    }
+#else
     if (tp->vlan_needed) {
         memmove(tp->vlan, tp->data, 4);
         memmove(tp->data, tp->data + 4, 8);
@@ -592,7 +646,7 @@ xmit_seg(E1000State *s)
     } else {
         e1000_send_packet(s, tp->data, tp->size);
     }
-
+#endif
     e1000x_inc_reg_if_not_full(s->mac_reg, TPT);
     e1000x_grow_8reg_if_not_full(s->mac_reg, TOTL, s->tx.size);
     s->mac_reg[GPTC] = s->mac_reg[TPT];
@@ -977,6 +1031,32 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
         n |= E1000_ICS_RXDMT0;
 
     set_ics(s, 0, n);
+
+#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
+    if( is_vpmu_enable() && size>=37 ){
+        if( filter_buf[23]==6 ){            
+            SimActivity activity;
+            activity.type = NETWORK_RECV;
+            activity.ip_src[3] = filter_buf[26];
+            activity.ip_src[2] = filter_buf[27];
+            activity.ip_src[1] = filter_buf[28];
+            activity.ip_src[0] = filter_buf[29];
+            activity.ip_dst[3] = filter_buf[30];
+            activity.ip_dst[2] = filter_buf[31];
+            activity.ip_dst[1] = filter_buf[32];
+            activity.ip_dst[0] = filter_buf[33];
+            activity.port_src = (filter_buf[34] << 8) + filter_buf[35];
+            activity.port_dst = (filter_buf[36] << 8) + filter_buf[37];
+            activity.flag = (uint32_t)( filter_buf[46] + (filter_buf[47] << 8) );          
+            activity.seq = (filter_buf[41]<<24) + (filter_buf[40]<<16) + (filter_buf[39]<<8) + filter_buf[38] ; 
+            activity.ack = (filter_buf[45]<<24) + (filter_buf[44]<<16) + (filter_buf[43]<<8) + filter_buf[42] ; 
+            activity.insns = get_vpmu_insns();
+            activity.payload = size;
+            printf("insn:%lu\n",activity.insns);
+            scatter_commit(&scatter_engine, activity);
+        }
+    }
+#endif
 
     return size;
 }

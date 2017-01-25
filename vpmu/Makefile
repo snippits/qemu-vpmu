@@ -55,7 +55,7 @@ endif
 	@echo "  LINK    $@"
 	@ar -rcs $@ $^
 
-libvpmu_x86_64.a libvpmu_i386.a	:	$(VPMU_OBJS)
+libvpmu_x86_64.a libvpmu_i386.a	:	$(VPMU_OBJS)   
 ifeq ($(vpmu_doxygen_found),)
 	@echo "  No doxygen in PATH, skip building documents"
 else
@@ -65,6 +65,7 @@ endif
 	@echo "  BUILD VPMU for $(TARGET_NAME) with compiler: $(CC)"
 	@echo "  LINK    $@"
 	@ar -rcs $@ $^
+
 
 ifeq ($(CONFIG_VPMU_SET),y)
 vpmu/libs/libelfin/elf/libelf++.a	:
@@ -79,6 +80,7 @@ vpmu/libs/libelfin/dwarf/libdwarf++.a	:
 		CXXFLAGS=-I$(SRC_PATH)/vpmu/libs/libelfin/dwarf \
 		-C ./libs/libelfin/dwarf all
 endif
+
 
 %.o	:	%.c
 	@echo "  CC      $@"

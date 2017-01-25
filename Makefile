@@ -358,6 +358,10 @@ ifeq ($(CONFIG_VPMU),y)
 	ALL_SUBDIRS+=$(addsuffix /vpmu, $(TARGET_DIRS))
 endif
 
+ifeq ($(CONFIG_VPMU_MANCOS),y)
+	ALL_SUBDIRS+=$(addsuffix /mancos, $(TARGET_DIRS))
+endif
+
 recurse-all: $(SUBDIR_RULES) $(ROMSUBDIR_RULES)
 
 $(BUILD_DIR)/version.o: $(SRC_PATH)/version.rc config-host.h
