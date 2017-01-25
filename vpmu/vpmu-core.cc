@@ -110,14 +110,18 @@ static void init_simulators(const char *vpmu_config_file)
 
 static void prepare_for_logs(void)
 {
-    // Remove logs from last execution and create folders for current log
-    if (boost::filesystem::exists("/tmp/snippit")) {
-        boost::filesystem::remove_all("/tmp/snippit");
-    }
-    boost::filesystem::create_directories("/tmp/snippit");
-    boost::filesystem::create_directories("/tmp/snippit/phase");
+    std::string output_path   = std::string(VPMU.output_path);
+    std::string log_file_path = output_path + "/vpmu.log";
 
-    if (vpmu_log_file == NULL) vpmu_log_file = fopen("/tmp/snippit/vpmu.log", "w");
+    // Remove logs from last execution and create folders for current log
+    if (boost::filesystem::exists(output_path)) {
+        boost::filesystem::remove_all(output_path);
+    }
+    boost::filesystem::create_directories(output_path);
+    boost::filesystem::create_directories(output_path + "/phase");
+
+    if (vpmu_log_file == NULL) vpmu_log_file = fopen(log_file_path.c_str(), "w");
+    CONSOLE_LOG(STR_VPMU "Output path for logs and files: %s\n\n", VPMU.output_path);
 }
 
 void VPMU_sync_non_blocking(void)
@@ -191,12 +195,21 @@ void VPMU_init(int argc, char **argv)
     char config_file[1024] = {0};
     char kernel_file[1024] = {0};
 
+    // Initialize the path to empty string
+    VPMU.output_path[0] = 0;
+
     // Parse arguments
     for (int i = 0; i < (argc - 1); i++) {
         if (std::string(argv[i]) == "-vpmu-config") strcpy(config_file, argv[i + 1]);
         if (std::string(argv[i]) == "-smp") VPMU.platform.cpu.cores = atoi(argv[i + 1]);
         if (std::string(argv[i]) == "-vpmu-kernel-symbol")
             strcpy(kernel_file, argv[i + 1]);
+        if (std::string(argv[i]) == "-vpmu-output") strcpy(VPMU.output_path, argv[i + 1]);
+    }
+
+    // Set default path if it's not set
+    if (strlen(VPMU.output_path) == 0) {
+        strcpy(VPMU.output_path, "/tmp/snippit");
     }
 
     // Set arguments

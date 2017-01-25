@@ -335,7 +335,8 @@ void ET_Process::dump_process_info(void)
 {
     char        file_path[512] = {0};
     char        temp_str[512]  = {0};
-    std::string output_path    = "/tmp/vpmu/phase/" + std::to_string(pid);
+    std::string output_path =
+      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
     boost::filesystem::create_directory(output_path);
 
     sprintf(file_path, "%s/process_info", output_path.c_str());
@@ -433,7 +434,8 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
 void ET_Process::dump_phase_result(void)
 {
     char        file_path[512] = {0};
-    std::string output_path    = "/tmp/vpmu/phase/" + std::to_string(pid);
+    std::string output_path =
+      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
 
     CONSOLE_LOG(STR_PHASE "Phase log path: %s\n", output_path.c_str());
     dump_process_info();

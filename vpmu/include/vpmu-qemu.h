@@ -13,6 +13,8 @@ typedef struct VPMUPlatformInfo {
 } VPMUPlatformInfo;
 
 typedef struct VPMU_Struct {
+    // The path for outputing files and logs
+    char output_path[1024];
     // A flag that indicate whether VPMU is enabled
     bool enabled;
     bool all_cpu_idle_flag;
