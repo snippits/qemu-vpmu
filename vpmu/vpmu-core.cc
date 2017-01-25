@@ -160,7 +160,14 @@ void VPMU_dump_result(void)
     VPMU_sync();
 
     CONSOLE_LOG("==== Program Profile ====\n\n");
+#if defined(TARGET_ARM)
     CONSOLE_LOG("   === QEMU/ARM ===\n");
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    CONSOLE_LOG("   === QEMU/X86 ===\n");
+#else
+    CONSOLE_LOG("   === QEMU/NOARCH ===\n");
+#endif
+
     vpmu_dump_readable_message();
 }
 

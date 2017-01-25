@@ -217,7 +217,7 @@ $(VPMU_EXTERNAL_LIBS)	:
 
 ifeq ($(CONFIG_VPMU_MANCOS),y)
 LIBS += -lmancos-scatter
-endif #CONFIG_VPMU_MANCOS
+endif
 
 endif # CONFIG_VPMU
 
