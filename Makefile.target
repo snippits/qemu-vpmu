@@ -215,22 +215,11 @@ vpmu/libvpmu_$(TARGET_NAME).a	:
 $(VPMU_EXTERNAL_LIBS)	:
 	$(call quiet-command,$(MAKE) $(VPMU_MAKE_ARG) -C ./vpmu $@)
 
-endif # CONFIG_VPMU
-
 ifeq ($(CONFIG_VPMU_MANCOS),y)
-include mancos/Makefile.objs
-# Ensure the dependency of vpmu-device.o here...
--include mancos-device.d
-all-obj-$(CONFIG_VPMU_MANCOS) += mancos/libmancos.a
-.PHONY: mancos/libmancos.a
-#TODO : add specific link library path
 LIBS += -lmancos-scatter
-mancos/libmancos.a  :	
-	$(call quiet-command,$(MAKE) TARGET_NAME=$(TARGET_NAME) -C ./mancos libmancos.a)
-#LINKPROG=$(VPMU_CC)
-endif
+endif #CONFIG_VPMU_MANCOS
 
-
+endif # CONFIG_VPMU
 
 # build either PROG or PROGW
 $(QEMU_PROG_BUILD): $(all-obj-y) $(COMMON_LDADDS)

@@ -40,15 +40,18 @@
 
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
 #include"../vpmu/include/vpmu-qemu.h"
-#include"../mancos/mancos.h"
+#include"/opt/mancos/include/scatter.h"
+static ScatterEngine scatter_engine;
 static uint64_t insns_pre=0;
+static bool bScatterEngineInit=false;
+
 static inline uint8_t is_vpmu_enable(void){
     if(!VPMU.enabled)
         insns_pre = 0;
     return VPMU.enabled;
 }
 static inline uint64_t get_vpmu_insns(void){
-    uint64_t insns_cur = mancos_get_insn_count();
+    uint64_t insns_cur = 0;
     uint64_t insns_delta = insns_cur - insns_pre;
     insns_pre = insns_cur; 
     return insns_delta; 
@@ -603,6 +606,11 @@ xmit_seg(E1000State *s)
                tp->props.ipcss, tp->props.ipcse);
     }
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
+    if(bScatterEngineInit){
+        bScatterEngineInit = true;     
+        scatter_engine_init( &scatter_engine );
+    }
+    
     if (tp->vlan_needed) {
         memmove(tp->vlan, tp->data, 4);
         memmove(tp->data, tp->data + 4, 8);
@@ -1034,6 +1042,11 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
 
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
     if( is_vpmu_enable() && size>=37 ){
+        if(bScatterEngineInit){
+            bScatterEngineInit = true;     
+            scatter_engine_init( &scatter_engine );
+        }
+
         if( filter_buf[23]==6 ){            
             SimActivity activity;
             activity.type = NETWORK_RECV;

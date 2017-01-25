@@ -79,7 +79,7 @@
 
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
 #include"../vpmu/include/vpmu-qemu.h"
-#include"../mancos/mancos.h"
+#include"/opt/mancos/include/scatter.h"
 #endif
 
 #ifdef DEBUG_IRQ
@@ -1590,10 +1590,6 @@ void pc_basic_device_init(ISABus *isa_bus, qemu_irq *gsi,
     vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
 #endif
     
-#if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
-    scatter_engine_init( &scatter_engine );
-#endif
-
     qemu_register_boot_set(pc_boot_set, *rtc_state);
 
     if (!xen_enabled() && has_pit) {

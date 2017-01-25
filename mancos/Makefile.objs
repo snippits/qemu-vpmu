@@ -1,7 +1,0 @@
-VPATH+=:$(SRC_PATH)/mancos
-all-obj-$(CONFIG_VPMU_MANCOS) += mancos-device.c
-#Please add your MANCOS_HELPER source code here
-MANCOS_SRCS=mancos.c
-MANCOS_OBJS=$(patsubst %.c,%.o,$(MANCOS_SRCS))
-MANCOS_DEPS=$(patsubst %.c,%.d,$(MANCOS_SRCS))
-
