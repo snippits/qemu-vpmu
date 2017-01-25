@@ -41,6 +41,8 @@
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
 #include"../vpmu/include/vpmu-qemu.h"
 #include"/opt/mancos/include/scatter.h"
+uint64_t vpmu_total_insn_count(void);
+
 static ScatterEngine scatter_engine;
 static uint64_t insns_pre=0;
 static bool bScatterEngineInit=false;
@@ -51,7 +53,7 @@ static inline uint8_t is_vpmu_enable(void){
     return VPMU.enabled;
 }
 static inline uint64_t get_vpmu_insns(void){
-    uint64_t insns_cur = 0;
+    uint64_t insns_cur = vpmu_total_insn_count();
     uint64_t insns_delta = insns_cur - insns_pre;
     insns_pre = insns_cur; 
     return insns_delta; 
