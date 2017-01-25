@@ -385,13 +385,13 @@ void ET_Process::dump_phase_history(void)
       std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
     boost::filesystem::create_directory(output_path);
 
+    // Output in plain text format
     sprintf(file_path, "%s/phase_history", output_path.c_str());
     FILE* fp = fopen(file_path, "wt");
-    std::vector<uint64_t> history;
-
-    nlohmann::json j(phase_history);
-    fprintf(fp, "%s\n", j.dump().c_str());
-
+    for (int i = 0; i < phase_history.size() - 1; i++) {
+        fprintf(fp, "%" PRIu64 ",", phase_history[i]);
+    }
+    fprintf(fp, "%" PRIu64, phase_history.back());
     fclose(fp);
 }
 
