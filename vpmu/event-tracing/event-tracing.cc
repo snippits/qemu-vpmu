@@ -394,6 +394,7 @@ void ET_Process::dump_phase_history(void)
 
     // Output in plain text format
     sprintf(file_path, "%s/phase_history", output_path.c_str());
+    if (phase_history.size() == 0) return;
     FILE* fp = fopen(file_path, "wt");
     for (int i = 0; i < phase_history.size() - 1; i++) {
         fprintf(fp, "%" PRIu64 ",", phase_history[i]);
