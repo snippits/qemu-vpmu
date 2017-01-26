@@ -253,6 +253,13 @@ void VPMU_init(int argc, char **argv)
           "\tPlease specify '-vpmu-kernel-symbol <PATH>' for boot time tracking.\n\n");
     }
 #endif
+    char *env_window_size_str = getenv("PHASE_WINDOW_SIZE");
+    if (env_window_size_str != nullptr) {
+        int env_window_size = atoi(env_window_size_str);
+        if (env_window_size != 0) {
+            phase_detect.set_window_size(env_window_size * 1000);
+        }
+    }
 
     // this would let print system support comma.
     setlocale(LC_NUMERIC, "");
