@@ -819,10 +819,10 @@ endif
 ifdef CONFIG_VPMU
 
 execute	:	subdir-arm-softmmu
-	@../../qemu_arm_image/runQEMU.sh vexpress
+	@../../qemu_image/runQEMU.sh vexpress
 
 execute_x86_64	:	subdir-x86_64-softmmu
-	@../../qemu_arm_image/runQEMU.sh x86_64
+	@../../qemu_image/runQEMU.sh x86_64
 
 endif
 
