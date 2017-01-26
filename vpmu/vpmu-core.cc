@@ -108,8 +108,21 @@ static void init_simulators(const char *vpmu_config_file)
     // exit(0);
 }
 
+// TODO This would make escape word not functional
+static void remove_qemu_quotation(char *path)
+{
+    int len = strlen(path);
+    for (int i = 0; i < len - 1; i++) {
+        path[i] = path[i + 1];
+    }
+    path[len - 2] = '\0';
+}
+
 static void prepare_for_logs(void)
 {
+    if (VPMU.output_path[0] == '\'') {
+        remove_qemu_quotation(VPMU.output_path);
+    }
     std::string output_path   = std::string(VPMU.output_path);
     std::string log_file_path = output_path + "/vpmu.log";
 
