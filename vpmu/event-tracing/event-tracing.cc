@@ -31,9 +31,16 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
     log_debug("Loading symbol table to %s", program->name.c_str());
     elf::elf ef(elf::create_mmap_loader(fd));
     for (auto& sec : ef.sections()) {
+        { // Read section information
+            auto& hdr = sec.get_hdr();
+            // Updata section map table
+            program->section_table[sec.get_name()].beg = hdr.addr;
+            program->section_table[sec.get_name()].end = hdr.addr + hdr.size;
+        }
         if (sec.get_hdr().type != elf::sht::symtab
             && sec.get_hdr().type != elf::sht::dynsym)
             continue;
+// Read only symbol sections
 #if 0
         log_debug("Symbol table '%s':", sec.get_name().c_str());
         log_debug("%-16s %-5s %-7s %-7s %-5s %s",
@@ -400,6 +407,10 @@ std::string ET_Program::find_code_line_number(uint64_t pc)
     if (is_shared_library) {
         pc -= address_start;
     }
+    if (pc < section_table[".text"].beg || pc > section_table[".text"].end) {
+        // Return not found to all non-text sections
+        return "";
+    }
     auto low = line_table.lower_bound(pc);
     if (low == line_table.end()) {
         // Not found
@@ -429,6 +440,11 @@ std::string ET_Process::find_code_line_number(uint64_t pc)
 void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
 {
     nlohmann::json j;
+
+    // Reset this walk count vector for counting current phase only
+    for (auto& binary : binary_list) {
+        binary->reset_walk_count();
+    }
 
     for (auto&& wc : phase.code_walk_count) {
         auto&& key   = wc.first;

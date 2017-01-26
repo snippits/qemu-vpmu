@@ -170,13 +170,23 @@ public:
         walk_count_vector.resize(address_end - address_start);
     }
 
+    void reset_walk_count(void)
+    {
+        // Reset all elements to zeros
+        std::fill(walk_count_vector.begin(), walk_count_vector.end(), 0);
+    }
+
 public:
     // Caution! All the data should be process independent!!!
     // An ET_Program instance could be shared by multiple processes.
     // All process dependent information should be stored in ET_Process
-
+    struct beg_end_pair {
+        uint64_t beg, end;
+    };
     // The timing model bind to this program
     uint64_t timing_model;
+    // The section address table
+    std::map<std::string, struct beg_end_pair> section_table;
     // The function address table
     std::map<std::string, uint64_t> sym_table;
     // The dwarf file and line table
@@ -280,8 +290,8 @@ public:
     std::vector<Phase> phase_list;
     // History records
     std::vector<uint64_t> phase_history;
-    Window             current_window;
-    VPMUSnapshot       snapshot;
+    Window                current_window;
+    VPMUSnapshot          snapshot;
 
 private:
     void* cpu_state = nullptr; // CPUState *
