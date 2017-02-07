@@ -2073,6 +2073,17 @@ static void gen_ldst_modrm(CPUX86State *env, DisasContext *s, int modrm,
 {
     int mod, rm;
 
+#ifdef CONFIG_VPMU
+    if (!is_store) {
+        //X86_count[2]++;
+        gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(0), tcg_const_i64(4));
+        // printf("modrm_store insn : reg%d, its accumulated count = %u\n", reg,
+        // X86_count[2]);
+    } else {
+        gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(1), tcg_const_i64(4));
+        // printf("modrm insn : reg%d, its accumulated count = %u\n", reg, X86_count[3]);
+    }
+#endif
     mod = (modrm >> 6) & 3;
     rm = (modrm & 7) | REX_B(s);
     if (mod == 3) {
