@@ -23,7 +23,7 @@ class Cache_MemHigh : public VPMUSimulator<VPMU_Cache>
                     "|   Store Count      "
                     "|\n");
         // Memory
-        CONSOLE_LOG("|--------------------|--------------------|--------------------|\n");
+        //CONSOLE_LOG("|--------------------|--------------------|--------------------|\n");
         CONSOLE_LOG("    -> L1-D          |%'20" PRIu64 "|%'20" PRIu64 "|\n",
                     (uint64_t)load_count,
                     (uint64_t)store_count);
