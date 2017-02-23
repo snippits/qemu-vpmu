@@ -32,7 +32,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
 
     if (likely(env && VPMU.enabled)) {
         if (vpmu_model_has(VPMU_INSN_COUNT_SIM, VPMU)) {
-            vpmu_insn_ref(cs->cpu_index, mode, extra_tb_info);
+            vpmu_insn_ref(cs->cpu_index, mode, extra_tb_info); 
         } // End of VPMU_INSN_COUNT_SIM
     }
 }
@@ -60,8 +60,16 @@ void HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, ui
     }
 
     if (likely(env && VPMU.enabled)) {
-        CONSOLE_LOG("cpu_index=%d mode=%d\n", cs->cpu_index, mode );
-        // TODO memory access counting 
+        // CONSOLE_LOG("cpu_index=%d mode=%d\n", cs->cpu_index, mode);
+        if( mode == 0x13 ){
+            if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
+                cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
+            }
+        }
+        else if( mode == 0x10 ){
+            if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
+                cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
+            }
+        }
     }
-
 }

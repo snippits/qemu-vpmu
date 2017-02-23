@@ -31,6 +31,12 @@
 #include "trace-tcg.h"
 #include "exec/log.h"
 
+#ifdef CONFIG_VPMU
+#include "../vpmu/include/vpmu-extratb.h"                // Extra TB Information
+#include "../vpmu/include/packet/vpmu-packet.h"          // CACHE_PACKET_{READ,WRITE,etc.}
+#include "../vpmu/include/vpmu-log.h"                    // ERR_MSG
+#include "../vpmu/include/arch/i386/vpmu-i386-insnset.h" // timing functions
+#endif
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -418,11 +424,22 @@ static inline void gen_op_add_reg_T0(TCGMemOp size, int reg)
 
 static inline void gen_op_ld_v(DisasContext *s, int idx, TCGv t0, TCGv a0)
 {
+#ifdef CONFIG_VPMU
+    gen_helper_vpmu_memory_access(cpu_env, a0, tcg_const_i64(CACHE_PACKET_READ), tcg_const_i64(4));
+    //gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(0), tcg_const_i64(4));
+    // printf("modrm_store insn : reg%d, its accumulated count = %u\n", reg,
+#endif 
     tcg_gen_qemu_ld_tl(t0, a0, s->mem_index, idx | MO_LE);
 }
 
 static inline void gen_op_st_v(DisasContext *s, int idx, TCGv t0, TCGv a0)
 {
+#ifdef CONFIG_VPMU
+    gen_helper_vpmu_memory_access(cpu_env, a0, tcg_const_i64(CACHE_PACKET_WRITE), tcg_const_i64(4));
+    //gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(1), tcg_const_i64(4));
+    // printf("modrm insn : reg%d, its accumulated count = %u\n", reg, X86_count[3]);
+#endif
+
     tcg_gen_qemu_st_tl(t0, a0, s->mem_index, idx | MO_LE);
 }
 
@@ -2073,17 +2090,6 @@ static void gen_ldst_modrm(CPUX86State *env, DisasContext *s, int modrm,
 {
     int mod, rm;
 
-#ifdef CONFIG_VPMU
-    if (!is_store) {
-        //X86_count[2]++;
-        gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(0), tcg_const_i64(4));
-        // printf("modrm_store insn : reg%d, its accumulated count = %u\n", reg,
-        // X86_count[2]);
-    } else {
-        gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(1), tcg_const_i64(4));
-        // printf("modrm insn : reg%d, its accumulated count = %u\n", reg, X86_count[3]);
-    }
-#endif
     mod = (modrm >> 6) & 3;
     rm = (modrm & 7) | REX_B(s);
     if (mod == 3) {
@@ -8554,9 +8560,6 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
 done_generating:
     gen_tb_end(tb, num_insns);
 
-#ifdef DEBUG_DISAS
-    if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)
-        && qemu_log_in_addr_range(pc_start)) {
         int disas_flags;
         qemu_log_lock();
         qemu_log("----------------\n");
@@ -8570,8 +8573,6 @@ done_generating:
         log_target_disas(cs, pc_start, pc_ptr - pc_start, disas_flags);
         qemu_log("\n");
         qemu_log_unlock();
-    }
-#endif
 
     tb->size = pc_ptr - pc_start;
     tb->icount = num_insns;

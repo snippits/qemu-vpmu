@@ -6,6 +6,8 @@ CacheStream vpmu_cache_stream;
 
 // Put your own timing simulator below
 #include "simulator/dinero.hpp"
+#include "simulator/memhigh.hpp"
+
 // Put you own timing simulator above
 CacheStream::Sim_ptr CacheStream::create_sim(std::string sim_name)
 {
@@ -13,6 +15,8 @@ CacheStream::Sim_ptr CacheStream::create_sim(std::string sim_name)
     // The return will use "move semantics" automatically.
     if (sim_name == "dinero")
         return std::make_unique<Cache_Dinero>();
+    else if(sim_name == "memhigh")
+        return std::make_unique<Cache_MemHigh>();
     else
         return nullptr;
 }

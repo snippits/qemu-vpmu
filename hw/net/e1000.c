@@ -1067,7 +1067,7 @@ e1000_receive_iov(NetClientState *nc, const struct iovec *iov, int iovcnt)
             activity.ack = (filter_buf[45]<<24) + (filter_buf[44]<<16) + (filter_buf[43]<<8) + filter_buf[42] ; 
             activity.insns = get_vpmu_insns();
             activity.payload = size;
-            printf("insn:%lu\n",activity.insns);
+            //printf("insn:%lu\n",activity.insns);
             scatter_commit(&scatter_engine, activity);
         }
     }

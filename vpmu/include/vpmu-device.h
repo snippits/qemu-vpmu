@@ -39,6 +39,7 @@
 #define VPMU_EVENT_TRACE            0x1 << 6
 #define VPMU_WHOLE_SYSTEM           0x1 << 7
 #define VPMU_PHASEDET               0x1 << 8
+#define VPMU_VMS_SIM                0x1 << 9
 
 #define vpmu_model_has(model, vpmu) (vpmu.timing_model & (model))
 

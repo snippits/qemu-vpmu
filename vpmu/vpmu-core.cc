@@ -264,7 +264,7 @@ void VPMU_init(int argc, char **argv)
     // this would let print system support comma.
     setlocale(LC_NUMERIC, "");
     // TODO add qemu_log_in_addr_range
-    // enable_QEMU_log();
+    enable_QEMU_log();
     // TODO thread pools and callbacks
     // VPMU.thpool = thpool_init(1);
     DBG(STR_VPMU "Thread Pool Initialized\n");
