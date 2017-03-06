@@ -17,7 +17,10 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
     ExtraTBInfo *extra_tb_info = (ExtraTBInfo *)opaque;
     int     cpl  = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
     uint8_t mode = VCM_NON;
-    
+#ifdef CONFIG_VPMU_SET
+    VPMU.cpu_arch_state = env;
+#endif
+
     vpmu_current_extra_tb_info = extra_tb_info;
 
     if (likely(env && VPMU.enabled)) {

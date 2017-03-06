@@ -52,14 +52,12 @@ static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned size)
 {
 #ifdef CONFIG_VPMU_SET
-#ifdef TARGET_ARM
     static char *kallsym_name = NULL;
     static char *binary_name  = NULL;
     void *       paddr        = NULL;
     char *       buffer       = NULL;
     static int   buffer_size  = 0;
     FILE *       fp           = NULL;
-#endif
 #endif
 
 #if TARGET_LONG_BITS == 64
@@ -122,7 +120,6 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         tic(&(VPMU.start_time));
         break;
 #ifdef CONFIG_VPMU_SET
-#ifdef TARGET_ARM
     case VPMU_MMAP_ADD_PROC_NAME:
         if (value != 0) {
             // Copy the whole CPU context including TLB Table and MMU registers
@@ -182,7 +179,6 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         case VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR:
             et_set_linux_sym_addr(kallsym_name, value);
             break;
-#endif
 #endif
     default:
         CONSOLE_LOG(
