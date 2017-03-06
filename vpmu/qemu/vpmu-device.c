@@ -62,6 +62,22 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
 #endif
 #endif
 
+#if TARGET_LONG_BITS == 64
+    // All VPMU MMAP addresses are aligned to 64 bits
+    // But we still need to handle the problem of QEMU generating two accesses
+    // when emulating 64 bits platform which passes the data in 64 bits.
+    // This is just a walk-around to make the rest of code act like
+    // receiving 64 bits of data with a single access to addr.
+    static uint64_t value_lower_bytes = 0;
+    if ((addr & 0x04) == 0) {
+        value_lower_bytes = value;
+        return;
+    } else {
+        value = (value << 32) | value_lower_bytes;
+        addr  = addr & (~0x04);
+    }
+#endif
+
 #if 0
     DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
     // This is a test code to read user data in guest virtual address from host
@@ -170,7 +186,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
 #endif
     default:
         CONSOLE_LOG(
-          STR_VPMU "write 0x%ld to unknown address 0x%lx of vpd\n", value, addr);
+          STR_VPMU "write 0x%lx to unknown address 0x%lx of vpd\n", value, addr);
     }
 
     // Preventing unused warnings
