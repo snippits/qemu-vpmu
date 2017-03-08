@@ -8,5 +8,5 @@
 // TODO support multi-model??
 // Interface Functions for Instruction Timing.
 // It should be stateless and reentry-able for thread safe!!!
-void vpmu_accumulate_x86_ticks(ExtraTBInfo* ex_tb, uint64_t insn);
+void vpmu_accumulate_x86_64_ticks(ExtraTBInfo* ex_tb, uint64_t insn);
 #endif

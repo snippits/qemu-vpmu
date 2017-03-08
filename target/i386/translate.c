@@ -35,7 +35,11 @@
 #include "../vpmu/include/vpmu-extratb.h"                // Extra TB Information
 #include "../vpmu/include/packet/vpmu-packet.h"          // CACHE_PACKET_{READ,WRITE,etc.}
 #include "../vpmu/include/vpmu-log.h"                    // ERR_MSG
-#include "../vpmu/include/arch/i386/vpmu-i386-insnset.h" // timing functions
+#include "../vpmu/include/arch/i386/vpmu-i386-translate.h" // timing functions
+
+static uint64_t *pc = NULL;
+// Branch filter, not a branch instruction
+bool vpmu_branch_from_store = false;
 #endif
 
 #define PREFIX_REPZ   0x01
@@ -4603,6 +4607,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     s->dflag = dflag;
 
     /* now check op code */
+#ifdef CONFIG_VPMU
+    vpmu_accumulate_x86_64_ticks(&(s->tb->extra_tb_info), (uint64_t)b);
+#endif
  reswitch:
     switch(b) {
     case 0x0f:
@@ -8487,6 +8494,8 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     }
 
 #ifdef CONFIG_VPMU
+    pc = &dc->pc;
+    vpmu_branch_from_store = false;
     memset(&(tb->extra_tb_info), 0, sizeof(ExtraTBInfo));
     gen_helper_vpmu_accumulate_tb_info(cpu_env, tcg_const_ptr((uint64_t)&(tb->extra_tb_info)));
 #endif

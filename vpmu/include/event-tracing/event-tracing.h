@@ -49,6 +49,11 @@ void et_check_function_call(CPUArchState* env,
                             uint64_t      target_addr,
                             uint64_t      return_addr);
 void et_check_mmap_return(CPUArchState* env, uint64_t start_addr);
+void et_x86_check_function_call(CPUArchState* env,
+                            uint64_t      target_addr,
+                            uint64_t      return_addr);
+void et_x86_check_mmap_return(CPUArchState* env, uint64_t start_addr);
+
 #endif
 void et_set_linux_struct_offset(uint64_t type, uint64_t value);
 void et_set_default_linux_struct_offset(const char* version);
