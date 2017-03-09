@@ -5016,6 +5016,10 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             if (dflag == MO_16) {
                 tcg_gen_ext16u_tl(cpu_T0, cpu_T0);
             }
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.has_branch = 1;
+            //gen_helper_et_call(cpu_env, var, tcg_const_i32(s->pc));
+#endif
             next_eip = s->pc - s->cs_base;
             tcg_gen_movi_tl(cpu_T1, next_eip);
             gen_push_v(s, cpu_T1);
@@ -8568,9 +8572,10 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
         gen_io_end();
 done_generating:
     gen_tb_end(tb, num_insns);
-
+#ifdef DEBUG_DISAS
+    if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)
+        && qemu_log_in_addr_range(pc_start)) {
         int disas_flags;
-        qemu_log_lock();
         qemu_log("----------------\n");
         qemu_log("IN: %s\n", lookup_symbol(pc_start));
 #ifdef TARGET_X86_64
@@ -8581,8 +8586,8 @@ done_generating:
             disas_flags = !dc->code32;
         log_target_disas(cs, pc_start, pc_ptr - pc_start, disas_flags);
         qemu_log("\n");
-        qemu_log_unlock();
-
+    }
+#endif
     tb->size = pc_ptr - pc_start;
     tb->icount = num_insns;
 
