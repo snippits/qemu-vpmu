@@ -199,10 +199,21 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         break;
     }
     case ET_KERNEL_EXECV: {
-        // Linux Kernel: New process creation
-        uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
-        // Remember this pointer for mmap()
-        bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
+        const char *_test = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
+        bool        _char_flag = true;
+        // TODO Use kernel version in the future
+        for (int i = 0; i < 4; i++) {
+            if (_test[0] < 0x20 || _test[1] >= 127) _char_flag = false;
+        }
+        if (_char_flag) {
+            // Old linux pass filename directly as a char*
+            bash_path = _test;
+        } else {
+            // Newer linux pass filename as a struct file *, containing char*
+            uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
+            // Remember this pointer for mmap()
+            bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
+        }
 
         // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
         // Let another kernel event handle. It can find the absolute path.
@@ -308,12 +319,14 @@ void et_x86_check_mmap_return(CPUArchState *env, uint64_t start_addr)
             (uint64_t)env->regs[0],
             (uint64_t)env->regs[0] + last_mmap_len);
         // TODO Find a better way
-        
+
         et_update_last_mmaped_binary(et_current_pid, env->regs[0], last_mmap_len);
     }
 }
 
-void et_x86_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t return_addr)
+void et_x86_check_function_call(CPUArchState *env,
+                                uint64_t      target_addr,
+                                uint64_t      return_addr)
 {
     // TODO make this thread safe and need to check branch!!!!!!!
     VPMU.cpu_arch_state = env;
@@ -402,9 +415,21 @@ void et_x86_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_
     }
     case ET_KERNEL_EXECV: {
         // Linux Kernel: New process creation
-        uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
-        // Remember this pointer for mmap()
-        bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
+        const char *_test = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
+        bool        _char_flag = true;
+        // TODO Use kernel version in the future
+        for (int i = 0; i < 4; i++) {
+            if (_test[0] < 0x20 || _test[1] >= 127) _char_flag = false;
+        }
+        if (_char_flag) {
+            // Old linux pass filename directly as a char*
+            bash_path = _test;
+        } else {
+            // Newer linux pass filename as a struct file *, containing char*
+            uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
+            // Remember this pointer for mmap()
+            bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
+        }
 
         // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
         // Let another kernel event handle. It can find the absolute path.
@@ -417,7 +442,7 @@ void et_x86_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_
         break;
     }
     case ET_KERNEL_CONTEXT_SWITCH: {
-// Linux Kernel: Context switch
+        // Linux Kernel: Context switch
         uint64_t task_ptr =
           vpmu_read_uint64_from_guest(env, env->regs[2], g_linux_offset.thread_info.task);
 
