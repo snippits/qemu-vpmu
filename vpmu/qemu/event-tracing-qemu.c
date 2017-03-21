@@ -199,6 +199,7 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         break;
     }
     case ET_KERNEL_EXECV: {
+        // Linux Kernel: New process creation
         const char *_test = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
         bool        _char_flag = true;
         // TODO Use kernel version in the future
