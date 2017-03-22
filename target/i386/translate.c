@@ -5016,13 +5016,14 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             if (dflag == MO_16) {
                 tcg_gen_ext16u_tl(cpu_T0, cpu_T0);
             }
-#ifdef CONFIG_VPMU
-            s->tb->extra_tb_info.has_branch = 1;
-            //gen_helper_et_call(cpu_env, var, tcg_const_i32(s->pc));
-#endif
             next_eip = s->pc - s->cs_base;
             tcg_gen_movi_tl(cpu_T1, next_eip);
             gen_push_v(s, cpu_T1);
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.has_branch = 1;
+            gen_helper_vpmu_et_call(cpu_env, cpu_T0, cpu_T1);
+            //            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tcg_const_i64(next_eip));
+#endif
             gen_op_jmp_v(cpu_T0);
             gen_bnd_jmp(s);
             gen_jr(s, cpu_T0);
@@ -5032,6 +5033,10 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_add_A0_im(s, 1 << ot);
             gen_op_ld_v(s, MO_16, cpu_T0, cpu_A0);
         do_lcall:
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.has_branch = 1;
+            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tcg_const_i64(s->pc - s->cs_base));
+#endif
             if (s->pe && !s->vm86) {
                 tcg_gen_trunc_tl_i32(cpu_tmp2_i32, cpu_T0);
                 gen_helper_lcall_protected(cpu_env, cpu_tmp2_i32, cpu_T1,
@@ -6521,6 +6526,10 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tval &= 0xffffffff;
             }
             tcg_gen_movi_tl(cpu_T0, next_eip);
+#ifdef CONFIG_VPMU
+            s->tb->extra_tb_info.has_branch = 1;
+            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tcg_const_i64(next_eip));
+#endif
             gen_push_v(s, cpu_T0);
             gen_bnd_jmp(s);
             gen_jmp(s, tval);

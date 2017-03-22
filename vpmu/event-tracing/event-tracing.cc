@@ -131,7 +131,7 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* 
                     kernel.set_event_address(ET_KERNEL_EXIT, d.value);
                 } else if (sym.get_name() == "wake_up_new_task") {
                     kernel.set_event_address(ET_KERNEL_WAKE_NEW_TASK, d.value);
-                } else if (sym.get_name() == "_do_fork") {
+                } else if (sym.get_name() == "_do_fork" || sym.get_name() == "do_fork") {
                     kernel.set_event_address(ET_KERNEL_FORK, d.value);
                 } else if (sym.get_name() == "mmap_region") {
                     kernel.set_event_address(ET_KERNEL_MMAP, d.value);
@@ -243,7 +243,7 @@ void EventTracer::debug_dump_program_map(std::shared_ptr<ET_Program> marked_prog
 #ifdef CONFIG_VPMU_DEBUG_MSG
     char indent_space[16] = "    ";
 
-    log_debug("Printing all traced program with its information"
+    log_debug("Printing all traced program(marked) with its information"
               "(first level of dependent libraries only)");
     for (auto& program : program_list) {
         if (program == marked_program) {

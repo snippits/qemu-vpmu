@@ -18,7 +18,7 @@
 #define VPMU_MMAP_ADD_PROC_NAME     0x0040
 #define VPMU_MMAP_REMOVE_PROC_NAME  0x0048
 #define VPMU_MMAP_SET_PROC_SIZE     0x0050
-#define VPMU_MMAP_SET_PROC_BIN      0x0054
+#define VPMU_MMAP_SET_PROC_BIN      0x0058
 // ... reserved
 #define VPMU_MMAP_OFFSET_FILE_f_path_dentry      0x0100
 #define VPMU_MMAP_OFFSET_DENTRY_d_iname          0x0108

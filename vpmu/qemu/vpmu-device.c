@@ -76,7 +76,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     }
 #endif
 
-#if 0
+#if 1
     DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
     // This is a test code to read user data in guest virtual address from host
     if (addr == 100 * 4) {
@@ -128,9 +128,10 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             vpmu_cpu_context[0] = vpmu_qemu_clone_cpu_arch_state(VPMU.cpu_arch_state);
             paddr               = vpmu_tlb_get_host_addr(vpmu_cpu_context[0], value);
             binary_name         = (char *)paddr;
-            DBG(STR_VPMU "trace process name: %s\n", (char *)paddr);
+            DBG(STR_VPMU "Trace process name: %s\n", (char *)paddr);
             if (!et_find_program_in_list((const char *)paddr)) {
                 // Only push to the list when it's not duplicated
+                DBG(STR_VPMU "Push process:%s into list\n", (char *)paddr);
                 et_add_program_to_list((const char *)paddr);
             }
         }
@@ -138,7 +139,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     case VPMU_MMAP_REMOVE_PROC_NAME:
         if (value != 0) {
             paddr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
-            DBG(STR_VPMU "remove traced process: %s\n", (char *)paddr);
+            DBG(STR_VPMU "Remove traced process: %s\n", (char *)paddr);
             et_remove_program_from_list((const char *)paddr);
         }
         break;
@@ -161,8 +162,10 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             free(buffer);
             buffer_size = 0;
             buffer      = NULL;
-            if (binary_name != NULL)
-            et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
+            DBG(STR_VPMU "Try to copy process: %s as /tmp/vpmu-traced-bin\n", (char *)paddr);
+            if (binary_name != NULL){
+                et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
+            }
         }
         break;
         case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
