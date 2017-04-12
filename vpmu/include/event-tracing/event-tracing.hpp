@@ -304,32 +304,9 @@ public:
 
     ET_KERNEL_EVENT_TYPE find_event(uint64_t vaddr)
     {
-#if 0
-            if(true)
-            {
-                switch(vaddr){
-                case 0xffffffff811b18b0:
-                    DBG(STR_VPMU "do_execve_common.isra.23:");
-                    goto matched;
-                    break;
-                case 0xffffffff81172190: 
-                    DBG(STR_VPMU "mmap_region:");
-                    goto matched;
-                    break;
-                case 0xffffffff8109f530: 
-                    DBG(STR_VPMU "task_fork_fair");
-                    goto matched;
-                    break;
-                matched:
-                    DBG(": at vaddr %lx\n", vaddr);
-                default:
-                    ;
-                }
-            }
-#endif
         for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
             if (kernel_event_table[i] == vaddr){
-                DBG(STR_VPMU "Found event-%d \n",i);
+                //DBG(STR_VPMU "Found event-%d \n",i);
                 return (ET_KERNEL_EVENT_TYPE)i;
             }
         }

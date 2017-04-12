@@ -105,18 +105,15 @@ void HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, ui
 void HELPER(vpmu_et_call)(CPUX86State *env, uint64_t target_addr, uint64_t return_addr)
 {
 #ifdef CONFIG_VPMU_SET
+    //TODO: No kernel function reaches here.
     et_x86_check_function_call(env, target_addr, return_addr);
 #endif
-
-    if (likely(VPMU.enabled)) {
-        CONSOLE_LOG("pc: return:%lx -> target:%lx\n", return_addr, target_addr);
-    }
 }
 
 // helper function for ET and other usage.
-void HELPER(vpmu_et_ret)(CPUX86State *env, uint64_t return_addr)
+void HELPER(vpmu_et_jmp)(CPUX86State *env, uint64_t vaddr)
 {
-    if (likely(VPMU.enabled)) {
-        // CONSOLE_LOG("return to pc: %x\n", return_addr);
-    }
+#ifdef CONFIG_VPMU_SET
+    //et_x86_check_function_call(env, vaddr, vaddr);
+#endif
 }

@@ -18,6 +18,10 @@
 #include "hw/loader.h"
 #include "hw/arm/arm.h"
 #include "sysemu/sysemu.h"
+#ifdef CONFIG_VPMU
+#include "vpmu/include/vpmu-device.h"
+#endif
+
 
 #define SMPBOOT_ADDR    0x300 /* this should leave enough space for ATAGS */
 #define MVBAR_ADDR      0x400 /* secure vectors */
@@ -168,5 +172,10 @@ static void raspi2_machine_init(MachineClass *mc)
     mc->no_cdrom = 1;
     mc->max_cpus = BCM2836_NCPUS;
     mc->default_ram_size = 1024 * 1024 * 1024;
+
+#ifdef CONFIG_VPMU
+    vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
+#endif
+
 };
 DEFINE_MACHINE("raspi2", raspi2_machine_init)

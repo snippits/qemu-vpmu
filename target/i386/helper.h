@@ -3,7 +3,7 @@
 DEF_HELPER_2(vpmu_accumulate_tb_info, void, env, ptr)
 DEF_HELPER_4(vpmu_memory_access, void, env, i64, i64, i64)
 DEF_HELPER_3(vpmu_et_call, void, env, i64, i64)
-DEF_HELPER_2(vpmu_et_ret, void, env, i64)
+DEF_HELPER_2(vpmu_et_jmp, void, env, i64)
 #endif
 
 

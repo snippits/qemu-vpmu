@@ -411,6 +411,9 @@ static void gen_add_A0_im(DisasContext *s, int val)
 
 static inline void gen_op_jmp_v(TCGv dest)
 {
+#ifdef CONFIG_VPMU
+    gen_helper_vpmu_et_jmp(cpu_env, dest);
+#endif
     tcg_gen_st_tl(dest, cpu_env, offsetof(CPUX86State, eip));
 }
 
