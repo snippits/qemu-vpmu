@@ -223,6 +223,7 @@ void VPMU_init(int argc, char **argv)
     for (int i = 0; i < (argc - 1); i++) {
         if (std::string(argv[i]) == "-vpmu-config") strcpy(config_file, argv[i + 1]);
         if (std::string(argv[i]) == "-smp") VPMU.platform.cpu.cores = atoi(argv[i + 1]);
+        if (std::string(argv[i]) == "-enable-kvm") VPMU.platform.kvm_enabled = true;
         if (std::string(argv[i]) == "-vpmu-kernel-symbol")
             strcpy(kernel_file, argv[i + 1]);
         if (std::string(argv[i]) == "-vpmu-output") strcpy(VPMU.output_path, argv[i + 1]);

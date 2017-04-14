@@ -76,14 +76,15 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     }
 #endif
 
-#if 1
+#if 0
     DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
     // This is a test code to read user data in guest virtual address from host
     if (addr == 100 * 4) {
         ERR_MSG("VA:%lx\n", value);
         void *guest_addr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
         ERR_MSG("PA:%p\n", (void *)guest_addr);
-        ERR_MSG("value:%lx\n", *(unsigned long int *)guest_addr);
+        if (guest_addr)
+            ERR_MSG("value:%lx\n", *(unsigned long int *)guest_addr);
         return;
     }
 #endif
@@ -121,6 +122,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         break;
 #ifdef CONFIG_VPMU_SET
     case VPMU_MMAP_ADD_PROC_NAME:
+        if (VPMU.platform.kvm_enabled) break;
         if (value != 0) {
             // Copy the whole CPU context including TLB Table and MMU registers
             // for VPMU's use.
@@ -137,6 +139,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         }
         break;
     case VPMU_MMAP_REMOVE_PROC_NAME:
+        if (VPMU.platform.kvm_enabled) break;
         if (value != 0) {
             paddr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
             DBG(STR_VPMU "Remove traced process: %s\n", (char *)paddr);
@@ -144,9 +147,11 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         }
         break;
     case VPMU_MMAP_SET_PROC_SIZE:
+        if (VPMU.platform.kvm_enabled) break;
         buffer_size = value;
         break;
     case VPMU_MMAP_SET_PROC_BIN:
+        if (VPMU.platform.kvm_enabled) break;
         if (buffer_size != 0) {
             buffer = (char *)malloc(buffer_size);
             if (buffer == NULL) {
@@ -174,13 +179,16 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     case VPMU_MMAP_OFFSET_DENTRY_d_parent:
     case VPMU_MMAP_OFFSET_THREAD_INFO_task:
     case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
+        if (VPMU.platform.kvm_enabled) break;
         et_set_linux_struct_offset(addr, value);
         break;
     case VPMU_MMAP_OFFSET_KERNEL_SYM_NAME:
+        if (VPMU.platform.kvm_enabled) break;
         paddr        = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
         kallsym_name = (char *)paddr;
         break;
     case VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR:
+        if (VPMU.platform.kvm_enabled) break;
         et_set_linux_sym_addr(kallsym_name, value);
         break;
 #endif

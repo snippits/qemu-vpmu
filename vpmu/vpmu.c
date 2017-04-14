@@ -19,6 +19,8 @@ void *vpmu_tlb_get_host_addr(void *env, uintptr_t vaddr)
     int           index;
     target_ulong  tlb_addr;
 
+    // If KVM is enabled, softMMU will not work
+    if (VPMU.platform.kvm_enabled) return NULL;
     index = (vaddr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
 redo:
     retry++;
