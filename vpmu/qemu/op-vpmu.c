@@ -95,7 +95,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 
 #ifdef CONFIG_VPMU_SET
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
-        phasedet_ref((mode == ARM_CPU_MODE_USR), extra_tb_info);
+        phasedet_ref((mode == ARM_CPU_MODE_USR), extra_tb_info, env->regs[13]);
     } // End of VPMU_PHASEDET
 
     et_check_mmap_return(env, extra_tb_info->start_addr);

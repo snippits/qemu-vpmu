@@ -9,6 +9,32 @@ extern "C" {
 class NearestCluster : public Classifier
 {
 public:
+    Phase &classify(std::vector<Phase> &phase_list, const Phase &phase) override
+    {
+        double min_d = similarity_threshold;
+        int    idx   = -1;
+        uint64_t phase_num = (&phase - &phase_list[0]);
+
+        std::vector<double> n_vector(phase.get_vector());
+        vpmu::math::normalize(n_vector);
+
+        for (int i = 0; i < phase_list.size(); i++) {
+            // Exclude self comparison
+            if (i == phase_num) continue;
+            auto &phase_n_vector = phase_list[i].get_normalized_vector();
+            // Calaulate the distance between a phase and the window
+            double d = manhatten_distance(phase_n_vector, n_vector);
+            if (d < min_d) {
+                min_d = d;
+                idx   = i;
+            }
+        }
+
+        if (idx == -1) return Phase::not_found;
+        return phase_list[idx];
+    }
+
+
     Phase &classify(std::vector<Phase> &phase_list, const Window &window) override
     {
         double min_d = similarity_threshold;

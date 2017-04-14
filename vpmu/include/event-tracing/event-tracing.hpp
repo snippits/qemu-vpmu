@@ -289,9 +289,10 @@ public:
 
     std::vector<Phase> phase_list;
     // History records
-    std::vector<uint64_t> phase_history;
-    Window                current_window;
-    VPMUSnapshot          snapshot;
+    std::vector<std::pair<uint64_t, uint64_t>> phase_history;
+    Window       current_window;
+    VPMUSnapshot snapshot;
+    uint64_t     stack_ptr = 0;
 
 private:
     void* cpu_state = nullptr; // CPUState *

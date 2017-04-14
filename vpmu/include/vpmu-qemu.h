@@ -24,6 +24,7 @@ typedef struct VPMU_Struct {
     uint64_t timer_interrupt_return_pc;
 
     struct timespec start_time, end_time;
+    struct timespec program_start_time;
 
     uint64_t cpu_idle_time_ns;
     uint64_t ticks;
@@ -54,6 +55,7 @@ extern struct VPMU_Struct VPMU;
 uint64_t h_time_difference(struct timespec *t1, struct timespec *t2);
 void tic(struct timespec *t1);
 uint64_t toc(struct timespec *t1, struct timespec *t2);
+uint64_t vpmu_get_timestamp_us(void);
 
 void VPMU_init(int argc, char **argv);
 void VPMU_reset(void);

@@ -397,9 +397,18 @@ void ET_Process::dump_phase_history(void)
     if (phase_history.size() == 0) return;
     FILE* fp = fopen(file_path, "wt");
     for (int i = 0; i < phase_history.size() - 1; i++) {
-        fprintf(fp, "%" PRIu64 ",", phase_history[i]);
+        fprintf(fp, "%" PRIu64 ",", phase_history[i].second);
     }
-    fprintf(fp, "%" PRIu64, phase_history.back());
+    fprintf(fp, "%" PRIu64, phase_history.back().second);
+    fclose(fp);
+
+    sprintf(file_path, "%s/phase_timestamp", output_path.c_str());
+    if (phase_history.size() == 0) return;
+    fp = fopen(file_path, "wt");
+    for (int i = 0; i < phase_history.size() - 1; i++) {
+        fprintf(fp, "%" PRIu64 ",", phase_history[i].first);
+    }
+    fprintf(fp, "%" PRIu64, phase_history.back().first);
     fclose(fp);
 }
 

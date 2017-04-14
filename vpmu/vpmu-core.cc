@@ -218,6 +218,7 @@ void VPMU_init(int argc, char **argv)
     // Initialize the path to empty string
     VPMU.output_path[0] = 0;
 
+    tic(&VPMU.program_start_time);
     // Parse arguments
     for (int i = 0; i < (argc - 1); i++) {
         if (std::string(argv[i]) == "-vpmu-config") strcpy(config_file, argv[i + 1]);

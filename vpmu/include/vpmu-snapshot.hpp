@@ -134,6 +134,21 @@ public:
         _time_ns[5] += vpmu::target::time_ns() - time_ns[5];
     }
 
+    void add(VPMUSnapshot& another_snapshot)
+    {
+        VPMU_Insn::Data   _insn_data   = {};
+        VPMU_Branch::Data _branch_data = {};
+        VPMU_Cache::Data  _cache_data  = {};
+
+        accumulate_counter(_insn_data, another_snapshot.insn_data, insn_data);
+        accumulate_counter(_branch_data, another_snapshot.branch_data, branch_data);
+        accumulate_counter(_cache_data, another_snapshot.cache_data, cache_data);
+
+        for (int i = 0; i < sizeof(time_ns) / sizeof(time_ns[0]); i++) {
+            time_ns[i] += another_snapshot.time_ns[i];
+        }
+    }
+
     VPMU_Insn::Data   insn_data   = {};
     VPMU_Branch::Data branch_data = {};
     VPMU_Cache::Data  cache_data  = {};

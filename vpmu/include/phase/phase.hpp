@@ -14,14 +14,13 @@ extern "C" {
 
 using CodeRange = std::pair<uint64_t, uint64_t>;
 
-struct GPUFriendnessCounter
-{
-    uint64_t  insn;
-    uint64_t  load;
-    uint64_t  store;
-    uint64_t  alu;
-    uint64_t  bit; // shift, and, or, xor
-    uint64_t  branch;
+struct GPUFriendnessCounter {
+    uint64_t insn;
+    uint64_t load;
+    uint64_t store;
+    uint64_t alu;
+    uint64_t bit; // shift, and, or, xor
+    uint64_t branch;
 };
 
 class Window
@@ -31,15 +30,19 @@ public:
     Window(int  vector_length) { branch_vector.resize(vector_length); }
     inline void update_vector(uint64_t pc);
     inline void update_counter(const ExtraTBInfo* extra_tb_info);
+    inline void update(const ExtraTBInfo* extra_tb_info);
 
     void reset(void)
     {
+        timestamp         = 0;
         instruction_count = 0;
         memset(&branch_vector[0], 0, branch_vector.size() * sizeof(branch_vector[0]));
         code_walk_count.clear();
         memset(&counters, 0, sizeof(counters));
     }
 
+    // The timestamp of begining of this window
+    uint64_t timestamp = 0;
     // Eigen::VectorXd branch_vector;
     std::vector<double> branch_vector;
     // Instruction count
@@ -62,7 +65,7 @@ public:
         num_windows = 1;
         snapshot.reset();
         code_walk_count = window.code_walk_count;
-        counters = window.counters;
+        counters        = window.counters;
     }
 
     void set_vector(std::vector<double>& vec)
@@ -71,7 +74,7 @@ public:
         branch_vector  = vec;
     }
 
-    void update_vector(std::vector<double>& vec)
+    void update_vector(const std::vector<double>& vec)
     {
         m_vector_dirty = true;
         if (vec.size() != branch_vector.size()) {
@@ -93,6 +96,8 @@ public:
         counters.branch += w_counter.branch;
     }
 
+    uint64_t get_insn_count(void) { return counters.insn; }
+
     void update_walk_count(std::map<CodeRange, uint32_t>& new_walk_count)
     {
         for (auto&& wc : new_walk_count) {
@@ -108,8 +113,20 @@ public:
         num_windows++;
     }
 
-    const std::vector<double>& get_vector(void) { return branch_vector; }
-    std::vector<double>&       get_normalized_vector(void)
+    void update(Phase& phase)
+    {
+        update_vector(phase.get_vector());
+        update_counter(phase.get_counters());
+        update_walk_count(phase.code_walk_count);
+        snapshot.add(phase.snapshot);
+        num_windows += phase.get_num_windows();
+    }
+
+    const uint64_t&             get_num_windows(void) { return num_windows; }
+    const GPUFriendnessCounter& get_counters(void) { return counters; }
+    const std::vector<double>&  get_vector(void) const { return branch_vector; }
+
+    const std::vector<double>& get_normalized_vector(void)
     {
         if (m_vector_dirty) {
             // Update normalized vector only when it's dirty
@@ -142,7 +159,8 @@ public: // FIXME, make it private
     VPMUSnapshot snapshot = {};
     std::map<CodeRange, uint32_t> code_walk_count;
     // An ID to identify the number of this phase
-    uint64_t id = 0;
+    uint64_t id             = 0;
+    bool     sub_phase_flag = false;
 };
 
 class Classifier : public VPMULog
@@ -153,6 +171,12 @@ public:
     void set_similarity_threshold(uint64_t new_threshold)
     {
         similarity_threshold = new_threshold;
+    }
+
+    virtual Phase& classify(std::vector<Phase>& phase_list, const Phase& phase)
+    {
+        log_fatal("classify() is not implemented");
+        return Phase::not_found;
     }
 
     virtual Phase& classify(std::vector<Phase>& phase_list, const Window& window)
@@ -188,8 +212,13 @@ public:
         return classifier->classify(phase_list, window);
     }
 
+    inline Phase& classify(std::vector<Phase>& phase_list, const Phase& phase)
+    {
+        return classifier->classify(phase_list, phase);
+    }
+
     void set_window_size(uint64_t new_size) { window_size = new_size; }
-    inline uint64_t get_window_size(void) { return window_size; }
+    inline uint64_t               get_window_size(void) { return window_size; }
 
     void dump_data(FILE* fp, VPMU_Insn::Data data);
     void dump_data(FILE* fp, VPMU_Cache::Data data);
