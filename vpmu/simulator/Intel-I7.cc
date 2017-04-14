@@ -7,8 +7,6 @@ extern "C" {
 #include "Intel-I7.hpp"
 #include "vpmu-utils.hpp"
 
-
-
 // Compute the number of cycles that this instruction will take,
 // not including any I-cache or D-cache misses. This function
 // is called for each instruction in a basic block when that
@@ -23,7 +21,7 @@ int CPU_IntelI7::Translation::_get_insn_ticks(uint32_t insn)
 uint32_t CPU_IntelI7::Translation::_get_x86_64_ticks(uint64_t insn)
 {
     return 1;
-} 
+}
 
 void CPU_IntelI7::build(VPMU_Insn::Model& model)
 {
@@ -41,8 +39,8 @@ void CPU_IntelI7::build(VPMU_Insn::Model& model)
 }
 
 void CPU_IntelI7::packet_processor(int                         id,
-                                    const VPMU_Insn::Reference& ref,
-                                    VPMU_Insn::Data&            data)
+                                   const VPMU_Insn::Reference& ref,
+                                   VPMU_Insn::Data&            data)
 {
 #define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
 #define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
@@ -62,7 +60,7 @@ void CPU_IntelI7::packet_processor(int                         id,
         data.cycles[0]   = cycles[0];
         break;
     case VPMU_PACKET_DUMP_INFO:
-        CONSOLE_LOG("  [%d] type : Cortex A9\n", id);
+        CONSOLE_LOG("  [%d] type : Intel I7\n", id);
         CONSOLE_U64(" Total instruction count       :", vpmu_total_insn_count(data));
         CONSOLE_U64("  ->User mode insn count       :", data.user.total_insn);
         CONSOLE_U64("  ->Supervisor mode insn count :", data.system.total_insn);
@@ -208,5 +206,3 @@ uint16_t CPU_IntelI7::Translation::get_x86_64_ticks(uint64_t insn)
     (void)_get_insn_ticks(insn);
     return ticks;
 }
-
-
