@@ -13,9 +13,6 @@ class Cache_MemHigh : public VPMUSimulator<VPMU_Cache>
 
     void dump_info(int id)
     {
-        int i;
-
-
         CONSOLE_LOG("  [%d] type : memhigh\n", id);
         // Dump info
         CONSOLE_LOG("      Statics        "
@@ -108,7 +105,6 @@ private:
     uint64_t store_count = 0;
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
-    VPMU_Cache::Model cache_model;
 };
 
 #endif

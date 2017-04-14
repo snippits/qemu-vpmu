@@ -249,6 +249,7 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
     }
 }
 
+/*
 static void
 push_new_sub_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
 {
@@ -265,6 +266,7 @@ push_new_sub_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& wi
     // process->name.c_str());
     // DBG(STR_PHASE "Create new sub-phase @ PC: %p\n", (void*)pc);
 }
+*/
 
 static void
 update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr)
@@ -278,7 +280,7 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
     if (process != nullptr) {
         // The process is being traced. Do phase detection.
         auto&    current_window = process->current_window;
-        uint64_t last_sp        = process->stack_ptr;
+        // uint64_t last_sp        = process->stack_ptr;
         current_window.update(extra_tb_info);
 
         if (current_window.instruction_count > phase_detect.get_window_size()) {
