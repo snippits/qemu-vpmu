@@ -325,13 +325,15 @@ static bool     linux_3          = false;
 
 void et_x86_check_mmap_return(CPUArchState *env, uint64_t start_addr)
 {
-    if (mmap_update_flag == true && start_addr == mmap_ret_addr) {
+    // TODO This 0xffffffff should be properly solved across all x86 SET
+    // TODO Sometimes this condition misses some mmap return
+    if (mmap_update_flag == true && start_addr == (0xffffffff00000000 | mmap_ret_addr)) {
         DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
-            (uint64_t)env->regs[0],
-            (uint64_t)env->regs[0] + last_mmap_len);
+            (uint64_t)env->regs[R_EAX],
+            (uint64_t)env->regs[R_EAX] + last_mmap_len);
         // TODO Find a better way
 
-        et_update_last_mmaped_binary(et_current_pid, env->regs[0], last_mmap_len);
+        et_update_last_mmaped_binary(et_current_pid, env->regs[R_EAX], last_mmap_len);
     }
 }
 
@@ -355,9 +357,9 @@ void et_x86_check_function_call(CPUArchState *env,
         uintptr_t mode           = 0;
         uintptr_t vaddr          = 0;
 
-        if (env->regs[0] == 0) break; // vaddr is zero
+        if (env->regs[R_EDI] == 0) break; // vaddr is zero
         dentry_addr = vpmu_read_uintptr_from_guest(
-          env, env->regs[0], g_linux_offset.file.fpath.dentry);
+          env, env->regs[R_EDI], g_linux_offset.file.fpath.dentry);
         if (dentry_addr == 0) break; // pointer to dentry is zero
         parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
         if (linux_3) {
@@ -365,12 +367,12 @@ void et_x86_check_function_call(CPUArchState *env,
             mode = vpmu_read_uintptr_from_guest(env, env->regs[13], 0);
             //#error "Find out how to retrieve the fifth argument"
         } else {
-            mode = env->regs[3];
+            mode = env->regs[10];
         }
-        vaddr = env->regs[1];
+        vaddr = env->regs[R_ESI];
 
         mmap_ret_addr    = return_addr;
-        last_mmap_len    = env->regs[2];
+        last_mmap_len    = env->regs[R_EDX];
         mmap_update_flag = false;
         DBG(STR_VPMU "mmap file: %s @ %lx mode: (%lx) ", fullpath, vaddr, mode);
 #ifdef CONFIG_VPMU_DEBUG_MSG
@@ -381,10 +383,11 @@ void et_x86_check_function_call(CPUArchState *env,
         print_mode(mode, VM_IO, " IO");
         print_mode(mode, VM_HUGETLB, " HUGETLB");
         print_mode(mode, VM_DONTCOPY, " DONTCOPY");
+        DBG("  %lu %lu", et_current_pid, exec_event_pid);
 #endif
         DBG("\n");
 
-        if (et_current_pid == exec_event_pid && (mode & VM_EXEC)) {
+        if (et_current_pid == exec_event_pid && (mode & VM_READ)) {
             // Mapping executable page for main program
             if (et_find_program_in_list(bash_path)) {
                 et_add_new_process(fullpath, bash_path, et_current_pid);
@@ -397,9 +400,6 @@ void et_x86_check_function_call(CPUArchState *env,
                 vpmu_print_status(&VPMU);
                 VPMU.enabled = 1;
             }
-
-            // The current mapped file is the main program, push it to process anyway
-            et_add_process_mapped_file(et_current_pid, fullpath, mode);
             exec_event_pid   = -1;
             mmap_update_flag = true;
         } else {
@@ -422,8 +422,8 @@ void et_x86_check_function_call(CPUArchState *env,
     case ET_KERNEL_WAKE_NEW_TASK: {
         // Linux Kernel: wake up the newly forked process
         // DBG(STR_VPMU "wake_new_task from %lu\n", et_current_pid);
-        uint32_t target_pid =
-          vpmu_read_uint32_from_guest(env, env->regs[0], g_linux_offset.task_struct.pid);
+        uint32_t target_pid = vpmu_read_uint32_from_guest(
+          env, env->regs[R_EDI], g_linux_offset.task_struct.pid);
         if (et_current_pid != 0 && et_find_traced_pid(et_current_pid)) {
             et_attach_to_parent_pid(et_current_pid, target_pid);
         }
@@ -433,9 +433,10 @@ void et_x86_check_function_call(CPUArchState *env,
     case ET_KERNEL_EXECV: {
         // Linux Kernel: New process creation
         // DBG(STR_VPMU "execve from %lu\n", et_current_pid);
-        const char *_test = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
-        bool        _char_flag = true;
-        int         i;
+        const char *_test =
+          (const char *)vpmu_read_ptr_from_guest(env, env->regs[R_ESI], 0);
+        bool _char_flag = true;
+        int  i;
         // TODO Use kernel version in the future
         for (i = 0; i < 4; i++) {
             if (_test[0] < 0x20 || _test[1] >= 127) _char_flag = false;
@@ -446,12 +447,12 @@ void et_x86_check_function_call(CPUArchState *env,
             linux_3   = true;
         } else {
             // Newer linux pass filename as a struct file *, containing char*
-            uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
+            uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[R_ESI], 0);
             // Remember this pointer for mmap()
             bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
         }
 
-        // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
+        DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
         // Let another kernel event handle. It can find the absolute path.
         exec_event_pid = et_current_pid;
         // DBG(STR_VPMU "end of execve from %lu\n", et_current_pid);
@@ -467,12 +468,9 @@ void et_x86_check_function_call(CPUArchState *env,
     case ET_KERNEL_CONTEXT_SWITCH: {
         // Linux Kernel: Context switch
         // DBG(STR_VPMU "__switch_to from %lu\n", et_current_pid);
-        uint64_t task_ptr = vpmu_read_uint64_from_guest(
-          env, env->regs[R_ESI], g_linux_offset.thread_info.task);
-
-        et_current_pid =
-          vpmu_read_uint64_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
-        // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[2], et_current_pid);
+        et_current_pid = vpmu_read_uint32_from_guest(
+          env, env->regs[R_ESI], g_linux_offset.task_struct.pid);
+        // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[R_ESI], et_current_pid);
 
         if (et_find_traced_pid(et_current_pid)) {
             et_set_process_cpu_state(et_current_pid, env);

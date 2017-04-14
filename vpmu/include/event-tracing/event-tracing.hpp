@@ -306,8 +306,8 @@ public:
     ET_KERNEL_EVENT_TYPE find_event(uint64_t vaddr)
     {
         for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
-            if (kernel_event_table[i] == vaddr){
-                //DBG(STR_VPMU "Found event-%d \n",i);
+            if (kernel_event_table[i] == vaddr) {
+                // DBG(STR_VPMU "Found event-%d \n",i);
                 return (ET_KERNEL_EVENT_TYPE)i;
             }
         }
@@ -330,7 +330,7 @@ public:
     void set_symbol_address(std::string sym_name, uint64_t address)
     {
         DBG(STR_VPMU "Set Linux symbol %s @ %lx\n", sym_name.c_str(), address);
-        if (sym_name == "do_execve") {
+        if (sym_name.find("do_execveat_common") != std::string::npos) {
             set_event_address(ET_KERNEL_EXECV, address);
         } else if (sym_name == "__switch_to") {
             set_event_address(ET_KERNEL_CONTEXT_SWITCH, address);
@@ -338,7 +338,7 @@ public:
             set_event_address(ET_KERNEL_EXIT, address);
         } else if (sym_name == "wake_up_new_task") {
             set_event_address(ET_KERNEL_WAKE_NEW_TASK, address);
-        } else if (sym_name == "_do_fork" || sym_name == "do_fork" ) {
+        } else if (sym_name == "_do_fork" || sym_name == "do_fork") {
             set_event_address(ET_KERNEL_FORK, address);
         } else if (sym_name == "mmap_region") {
             set_event_address(ET_KERNEL_MMAP, address);
