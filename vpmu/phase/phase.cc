@@ -288,10 +288,12 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
                 DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n", window_cnt);
 #endif
             auto& last_phase = process->phase_list.back();
-            if (process->phase_list.size() == 0 || last_phase.sub_phase_flag == true) {
+            if (process->phase_list.size() != 0 && last_phase.sub_phase_flag == true) {
                 last_phase.sub_phase_flag = false;
             }
             update_phase(pc, process, current_window);
+            // Reset all counters and vars of current window
+            current_window.reset();
         } else {
             if (stack_ptr < last_sp) {
                 auto& last_phase = process->phase_list.back();
@@ -334,11 +336,11 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
                         }
                     }
                 }
+                // Reset all counters and vars of current window
+                current_window.reset();
             }
         }
 
-        // Reset all counters and vars of current window
-        current_window.reset();
         process->stack_ptr = stack_ptr;
     }
 }
