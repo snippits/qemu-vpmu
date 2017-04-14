@@ -89,9 +89,9 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
     vpmu_current_extra_tb_info = extra_tb_info;
     extra_tb_info->cpu_mode    = mode;
 
-    //    static uint32_t return_addr = 0;
-    //    static uint32_t last_issue_time = 0;
-    //    char *state = &(VPMU.state);
+//    static uint32_t return_addr = 0;
+//    static uint32_t last_issue_time = 0;
+//    char *state = &(VPMU.state);
 
 #ifdef CONFIG_VPMU_SET
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {

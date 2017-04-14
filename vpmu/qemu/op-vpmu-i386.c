@@ -6,19 +6,18 @@
 #include "vpmu/include/arch/vpmu-branch.h"   // vpmu_branch_ref
 #include "vpmu/include/phase/phase.h"        // phasedet_ref
 
-
-enum VPMU_X86_CPU_MODE{
-       X86_CPU_MODE_USR = 0x10,
-       X86_CPU_MODE_SVC = 0x13,
-       X86_CPU_MODE_NON = 0x00
+enum VPMU_X86_CPU_MODE {
+    X86_CPU_MODE_USR = 0x10,
+    X86_CPU_MODE_SVC = 0x13,
+    X86_CPU_MODE_NON = 0x00
 };
 
 void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
 {
     CPUState *   cs            = CPU(ENV_GET_CPU(env));
     ExtraTBInfo *extra_tb_info = (ExtraTBInfo *)opaque;
-    int     cpl  = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
-    uint8_t mode = X86_CPU_MODE_NON;
+    int cpl = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
+    uint8_t             mode               = X86_CPU_MODE_NON;
     static unsigned int last_tb_pc         = 0;
     static unsigned int last_tb_has_branch = 0;
 
@@ -73,10 +72,11 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
     }
 }
 
-void HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, uint64_t size)
+void
+  HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, uint64_t size)
 {
-    CPUState *   cs            = CPU(ENV_GET_CPU(env));
-    int     cpl  = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
+    CPUState *cs = CPU(ENV_GET_CPU(env));
+    int cpl = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
     uint8_t mode = X86_CPU_MODE_NON;
 
     if (likely(env && VPMU.enabled)) {
@@ -89,12 +89,11 @@ void HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, ui
         }
 
         // CONSOLE_LOG("cpu_index=%d mode=%d\n", cs->cpu_index, mode);
-        if( mode == X86_CPU_MODE_SVC ){
+        if (mode == X86_CPU_MODE_SVC) {
             if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
                 cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
             }
-        }
-        else if( mode == X86_CPU_MODE_USR ){
+        } else if (mode == X86_CPU_MODE_USR) {
             if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
                 cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
             }
@@ -106,7 +105,7 @@ void HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, ui
 void HELPER(vpmu_et_call)(CPUX86State *env, uint64_t target_addr, uint64_t return_addr)
 {
 #ifdef CONFIG_VPMU_SET
-    //TODO: No kernel function reaches here.
+    // TODO: No kernel function reaches here.
     et_x86_check_function_call(env, target_addr, return_addr);
 #endif
 }
@@ -115,6 +114,6 @@ void HELPER(vpmu_et_call)(CPUX86State *env, uint64_t target_addr, uint64_t retur
 void HELPER(vpmu_et_jmp)(CPUX86State *env, uint64_t vaddr)
 {
 #ifdef CONFIG_VPMU_SET
-    //et_x86_check_function_call(env, vaddr, vaddr);
+// et_x86_check_function_call(env, vaddr, vaddr);
 #endif
 }

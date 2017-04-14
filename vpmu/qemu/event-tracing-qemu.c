@@ -347,7 +347,7 @@ void et_x86_check_function_call(CPUArchState *env,
     switch (et_find_kernel_event(target_addr)) {
     case ET_KERNEL_MMAP: {
         // Linux Kernel: Mmap a file or shared library
-        //DBG(STR_VPMU "fork from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "fork from %lu\n", et_current_pid);
         char      fullpath[1024] = {0};
         int       position       = 0;
         uintptr_t dentry_addr    = 0;
@@ -415,26 +415,26 @@ void et_x86_check_function_call(CPUArchState *env,
     }
     case ET_KERNEL_FORK: {
         // Linux Kernel: Fork a process
-        //DBG(STR_VPMU "fork from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "fork from %lu\n", et_current_pid);
         break;
     }
     case ET_KERNEL_WAKE_NEW_TASK: {
         // Linux Kernel: wake up the newly forked process
-        //DBG(STR_VPMU "wake_new_task from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "wake_new_task from %lu\n", et_current_pid);
         uint32_t target_pid =
           vpmu_read_uint32_from_guest(env, env->regs[0], g_linux_offset.task_struct.pid);
         if (et_current_pid != 0 && et_find_traced_pid(et_current_pid)) {
             et_attach_to_parent_pid(et_current_pid, target_pid);
         }
-        //DBG(STR_VPMU "end of wake_new_task from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "end of wake_new_task from %lu\n", et_current_pid);
         break;
     }
     case ET_KERNEL_EXECV: {
         // Linux Kernel: New process creation
-        //DBG(STR_VPMU "execve from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "execve from %lu\n", et_current_pid);
         const char *_test = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
         bool        _char_flag = true;
-        int i;
+        int         i;
         // TODO Use kernel version in the future
         for (i = 0; i < 4; i++) {
             if (_test[0] < 0x20 || _test[1] >= 127) _char_flag = false;
@@ -450,24 +450,24 @@ void et_x86_check_function_call(CPUArchState *env,
             bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
         }
 
-        //DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
+        // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
         // Let another kernel event handle. It can find the absolute path.
         exec_event_pid = et_current_pid;
-        //DBG(STR_VPMU "end of execve from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "end of execve from %lu\n", et_current_pid);
         break;
     }
     case ET_KERNEL_EXIT: {
         // Linux Kernel: Process End
-        //DBG(STR_VPMU "do_exit from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "do_exit from %lu\n", et_current_pid);
         et_remove_process(et_current_pid);
-        //DBG(STR_VPMU "end of do_exit from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "end of do_exit from %lu\n", et_current_pid);
         break;
     }
     case ET_KERNEL_CONTEXT_SWITCH: {
         // Linux Kernel: Context switch
-        //DBG(STR_VPMU "__switch_to from %lu\n", et_current_pid);
-        uint64_t task_ptr =
-          vpmu_read_uint64_from_guest(env, env->regs[R_ESI], g_linux_offset.thread_info.task);
+        // DBG(STR_VPMU "__switch_to from %lu\n", et_current_pid);
+        uint64_t task_ptr = vpmu_read_uint64_from_guest(
+          env, env->regs[R_ESI], g_linux_offset.thread_info.task);
 
         et_current_pid =
           vpmu_read_uint64_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
@@ -483,7 +483,7 @@ void et_x86_check_function_call(CPUArchState *env,
             else
                 VPMU.enabled = false;
         }
-        //DBG(STR_VPMU "end of __switch_to from %lu\n", et_current_pid);
+        // DBG(STR_VPMU "end of __switch_to from %lu\n", et_current_pid);
         break;
     }
     default:

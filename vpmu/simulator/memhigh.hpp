@@ -20,14 +20,14 @@ class Cache_MemHigh : public VPMUSimulator<VPMU_Cache>
                     "|   Store Count      "
                     "|\n");
         // Memory
-        //CONSOLE_LOG("|--------------------|--------------------|--------------------|\n");
+        // CONSOLE_LOG("|--------------------|--------------------|--------------------|\n");
         CONSOLE_LOG("    -> L1-D          |%'20" PRIu64 "|%'20" PRIu64 "|\n",
                     (uint64_t)load_count,
                     (uint64_t)store_count);
         CONSOLE_LOG("    -> L1-I          |%'20" PRIu64 "|%'20" PRIu64 "|\n",
                     (uint64_t)0,
                     (uint64_t)0);
-        
+
         /*
         CONSOLE_LOG("    -> memory (%0.2lf) |%'20" PRIu64 "|%'20" PRIu64 "|%'20" PRIu64
                     "|\n",
@@ -38,21 +38,18 @@ class Cache_MemHigh : public VPMUSimulator<VPMU_Cache>
         */
     }
 
-    
 public:
     Cache_MemHigh() : VPMUSimulator("MemHigh") {}
     ~Cache_MemHigh() {}
 
-    void destroy() override
-    {
-            }
+    void destroy() override {}
 
     void build(VPMU_Cache::Model &model) override
     {
         log_debug("Initializing");
 
         log_debug(json_config.dump().c_str());
-        
+
         log_debug("Initialized");
     }
 
@@ -68,19 +65,19 @@ public:
             debug_packet_num_cnt = 0;
         }
 #endif
-       switch (ref.type) {
+        switch (ref.type) {
         case VPMU_PACKET_BARRIER:
             break;
         case VPMU_PACKET_SYNC_DATA:
             break;
         case VPMU_PACKET_DUMP_INFO:
             dump_info(id);
-            load_count=0;
-            store_count=0;
+            load_count  = 0;
+            store_count = 0;
             break;
         case VPMU_PACKET_RESET:
-            load_count=0;
-            store_count=0;
+            load_count  = 0;
+            store_count = 0;
             break;
         case CACHE_PACKET_READ:
             load_count++;
@@ -95,13 +92,12 @@ public:
         }
     }
 
-
 private:
 #ifdef CONFIG_VPMU_DEBUG_MSG
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;
 #endif
-    uint64_t load_count = 0;
+    uint64_t load_count  = 0;
     uint64_t store_count = 0;
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;

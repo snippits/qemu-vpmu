@@ -162,26 +162,27 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             free(buffer);
             buffer_size = 0;
             buffer      = NULL;
-            DBG(STR_VPMU "Try to copy process: %s as /tmp/vpmu-traced-bin\n", (char *)paddr);
-            if (binary_name != NULL){
+            DBG(STR_VPMU "Try to copy process: %s as /tmp/vpmu-traced-bin\n",
+                (char *)paddr);
+            if (binary_name != NULL) {
                 et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
             }
         }
         break;
-        case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
-        case VPMU_MMAP_OFFSET_DENTRY_d_iname:
-        case VPMU_MMAP_OFFSET_DENTRY_d_parent:
-        case VPMU_MMAP_OFFSET_THREAD_INFO_task:
-        case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
-            et_set_linux_struct_offset(addr, value);
-            break;
-        case VPMU_MMAP_OFFSET_KERNEL_SYM_NAME:
-            paddr        = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
-            kallsym_name = (char *)paddr;
-            break;
-        case VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR:
-            et_set_linux_sym_addr(kallsym_name, value);
-            break;
+    case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
+    case VPMU_MMAP_OFFSET_DENTRY_d_iname:
+    case VPMU_MMAP_OFFSET_DENTRY_d_parent:
+    case VPMU_MMAP_OFFSET_THREAD_INFO_task:
+    case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
+        et_set_linux_struct_offset(addr, value);
+        break;
+    case VPMU_MMAP_OFFSET_KERNEL_SYM_NAME:
+        paddr        = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
+        kallsym_name = (char *)paddr;
+        break;
+    case VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR:
+        et_set_linux_sym_addr(kallsym_name, value);
+        break;
 #endif
     default:
         CONSOLE_LOG(

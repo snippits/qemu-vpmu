@@ -279,7 +279,7 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
     auto process = event_tracer.find_process(pid);
     if (process != nullptr) {
         // The process is being traced. Do phase detection.
-        auto&    current_window = process->current_window;
+        auto& current_window = process->current_window;
         // uint64_t last_sp        = process->stack_ptr;
         current_window.update(extra_tb_info);
 

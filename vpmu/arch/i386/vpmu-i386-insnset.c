@@ -1,6 +1,6 @@
-#include "vpmu.h"             // VPMU common headers
+#include "vpmu.h"              // VPMU common headers
 #include "vpmu-i386-insnset.h" // X86 Instruction SET
-#include "vpmu-log.h"         // ERR_MSG
+#include "vpmu-log.h"          // ERR_MSG
 
 // Return array length if not found
 X86_Instructions get_index_of_x86_insn(const char *s)

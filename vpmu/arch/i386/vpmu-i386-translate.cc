@@ -22,4 +22,3 @@ void vpmu_accumulate_x86_64_ticks(ExtraTBInfo* ex_tb, uint64_t insn)
 {
     ex_tb->ticks += vpmu_insn_stream.get_translator(0).get_x86_64_ticks(insn);
 }
-
