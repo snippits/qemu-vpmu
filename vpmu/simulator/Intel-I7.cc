@@ -7,6 +7,8 @@ extern "C" {
 #include "Intel-I7.hpp"
 #include "vpmu-utils.hpp"
 
+
+
 // Compute the number of cycles that this instruction will take,
 // not including any I-cache or D-cache misses. This function
 // is called for each instruction in a basic block when that
@@ -20,25 +22,8 @@ int CPU_IntelI7::Translation::_get_insn_ticks(uint32_t insn)
 
 uint32_t CPU_IntelI7::Translation::_get_x86_64_ticks(uint64_t insn)
 {
-    // Copy the codes about decoding which locates at disas_insn() in
-    // qemu_vpmu/target-i386/translate.c
-    switch (insn) {
-    /* arith & logic */
-    case 0x00 ... 0x05:
-    case 0x08 ... 0x0d:
-    case 0x10 ... 0x15:
-        return 1;
-    default:
-    illegal_op:
-        /*Christine ADD*/
-        // Attemp to know the number of missing instructions.
-        // arm_count[ARM_INSTRUCTION_UNKNOWN]+=1;
-        // TODO Needs to be uncomment and check unimplementd instructions
-        // ERR_MSG("Unknown instruction\n");
-        break;
-    }
     return 1;
-}
+} 
 
 void CPU_IntelI7::build(VPMU_Insn::Model& model)
 {
@@ -56,8 +41,8 @@ void CPU_IntelI7::build(VPMU_Insn::Model& model)
 }
 
 void CPU_IntelI7::packet_processor(int                         id,
-                                   const VPMU_Insn::Reference& ref,
-                                   VPMU_Insn::Data&            data)
+                                    const VPMU_Insn::Reference& ref,
+                                    VPMU_Insn::Data&            data)
 {
 #define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
 #define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
@@ -223,3 +208,5 @@ uint16_t CPU_IntelI7::Translation::get_x86_64_ticks(uint64_t insn)
     (void)_get_insn_ticks(insn);
     return ticks;
 }
+
+

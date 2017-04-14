@@ -10,7 +10,7 @@
 enum VPMU_X86_CPU_MODE{
        X86_CPU_MODE_USR = 0x10,
        X86_CPU_MODE_SVC = 0x13,
-       X86_CPU_MODE_NON = 0x00 
+       X86_CPU_MODE_NON = 0x00
 };
 
 void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
@@ -33,12 +33,13 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
     }
 #ifdef CONFIG_VPMU_SET
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
-        phasedet_ref((mode == X86_CPU_MODE_USR), extra_tb_info);
+        // TODO use stack pointer, this must be the wrong one
+        phasedet_ref((mode == X86_CPU_MODE_USR), extra_tb_info, env->regs[13]);
     } // End of VPMU_PHASEDET
 
     et_x86_check_mmap_return(env, extra_tb_info->start_addr);
-#endif 
-    
+#endif
+
     if (likely(env && VPMU.enabled)) {
 
         if (vpmu_model_has(VPMU_INSN_COUNT_SIM, VPMU)) {
@@ -77,7 +78,7 @@ void HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, ui
     CPUState *   cs            = CPU(ENV_GET_CPU(env));
     int     cpl  = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
     uint8_t mode = X86_CPU_MODE_NON;
- 
+
     if (likely(env && VPMU.enabled)) {
         if (cpl == 0) {
             mode = X86_CPU_MODE_SVC;

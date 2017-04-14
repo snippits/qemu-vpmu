@@ -7,6 +7,8 @@ BranchStream vpmu_branch_stream;
 // Put your own timing simulator below
 #include "simulator/branch-one-bit.hpp"
 #include "simulator/branch-two-bits.hpp"
+#include "simulator/branch-ght.hpp"
+#include "simulator/branch-alpha21264.hpp"
 // Put you own timing simulator above
 BranchStream::Sim_ptr BranchStream::create_sim(std::string sim_name)
 {
@@ -16,6 +18,10 @@ BranchStream::Sim_ptr BranchStream::create_sim(std::string sim_name)
         return std::make_unique<Branch_One_Bit>();
     else if (sim_name == "two bits")
         return std::make_unique<Branch_Two_Bits>();
+    else if (sim_name == "ght")
+        return std::make_unique<Branch_GHT>();
+    else if (sim_name == "alpha")
+        return std::make_unique<Branch_ALPHA>();
     else
         return nullptr;
 }
@@ -35,4 +41,3 @@ void branch_ref(uint8_t core, uint32_t pc, uint32_t taken)
 {
     vpmu_branch_stream.send(core, pc, taken);
 }
-

@@ -104,6 +104,22 @@ namespace utils
         exit(EXIT_FAILURE);
     }
 
+    template <typename T>
+    auto get_json(nlohmann::json &j, const char *key, T default_value)
+    {
+        if (j == nullptr || j[key] == nullptr) {
+            return default_value;
+        }
+
+        try {
+            return j[key].get<T>();
+        } catch (std::domain_error e) {
+            ERR_MSG("In field: \"%s\", %s\n", key, e.what());
+        }
+        // Should only reach here when there is something wrong.
+        exit(EXIT_FAILURE);
+    }
+
     std::ifstream::pos_type get_file_size(const char *filename);
     std::string read_text_content(const char *filename);
     std::unique_ptr<char> read_binary_content(const char *filename);
