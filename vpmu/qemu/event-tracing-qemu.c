@@ -208,9 +208,10 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         // Linux Kernel: New process creation
         const char *_test = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
         bool        _char_flag = true;
+        int         i;
 
         // TODO Use kernel version in the future
-        for (int i = 0; i < 4; i++) {
+        for (i = 0; i < 4; i++) {
             if (_test[0] < 0x20 || _test[1] >= 127) _char_flag = false;
         }
         if (_char_flag) {
