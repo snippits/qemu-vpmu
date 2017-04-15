@@ -49,6 +49,67 @@ namespace math
 
 namespace utils
 {
+    std::vector<std::string> str_split(std::string const &input)
+    {
+        std::istringstream       buffer(input);
+        std::vector<std::string> ret((std::istream_iterator<std::string>(buffer)),
+                                     std::istream_iterator<std::string>());
+        return ret;
+    }
+
+    std::vector<std::string> str_split(std::string const &input, const char *ch)
+    {
+        char *txt = strdup(input.c_str());
+        std::vector<std::string> ret;
+
+        char *pch;
+        pch = strtok(txt, ch);
+        while (pch != NULL) {
+            if (pch[0] == 0) continue;
+            ret.push_back(pch);
+            pch = strtok(NULL, ch);
+        }
+
+        free(txt);
+        return ret;
+    }
+
+    std::string get_version_from_vmlinux(const char *file_path)
+    {
+        char version_string[1024] = {};
+        int fd = open(file_path, O_RDONLY);
+        struct stat s;
+
+        if (fd < 0) {
+            ERR_MSG("File %s not found!\n", file_path);
+            return "";
+        }
+        fstat(fd, &s);
+
+        char *content = (char *)mmap(0, s.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+        char *str_beg = NULL;
+        for (int i = 0; i < s.st_size; i++) {
+            if ((strncmp(&content[i], "Linux version", strlen("Linux version")) == 0)) {
+                str_beg = &content[i];
+                break;
+            }
+        }
+        if (str_beg == NULL) return "";
+        for (int i = 0; i < sizeof(version_string); i++) {
+            if (str_beg[i] < ' ') {
+                version_string[i] = 0;
+                break;
+            }
+            version_string[i] = str_beg[i];
+        }
+        DBG(STR_VPMU "Loading Kernel version: %s\n", version_string);
+
+        close(fd);
+
+        return std::string(version_string);
+    }
+
     std::string get_random_hash_name(uint32_t string_length)
     {
         std::string chars("ABCDEF1234567890");

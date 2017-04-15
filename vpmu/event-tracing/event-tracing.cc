@@ -95,12 +95,20 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
     }
 }
 
-void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* version)
+uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
 {
+    std::string version     = vpmu::utils::get_version_from_vmlinux(filename);
+    auto        s_strs      = vpmu::utils::str_split(version);
+    uint64_t    version_num = 0;
+
+    auto v = vpmu::utils::str_split(s_strs[2], ".");
+    version_num =
+      KERNEL_VERSION(atoi(v[0].c_str()), atoi(v[1].c_str()), atoi(v[2].c_str()));
+
     int fd = open(filename, O_RDONLY);
     if (fd < 0) {
         LOG_FATAL("Kernel File %s not found!", filename);
-        return;
+        return 0;
     }
 
     elf::elf f(elf::create_mmap_loader(fd));
@@ -123,7 +131,7 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* 
                 kernel.add_symbol(sym.get_name(), d.value);
 
                 bool print_content_flag = true;
-                if (sym.get_name() == "do_execve") {
+                if (sym.get_name().find("do_execveat_common") != std::string::npos) {
                     kernel.set_event_address(ET_KERNEL_EXECV, d.value);
                 } else if (sym.get_name() == "__switch_to") {
                     kernel.set_event_address(ET_KERNEL_CONTEXT_SWITCH, d.value);
@@ -161,12 +169,16 @@ void EventTracer::parse_and_set_kernel_symbol(const char* filename, const char* 
         if (kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH) == 0)
             LOG_FATAL("Kernel event \"%s\" was not found!", "__switch_to");
         if (kernel.find_vaddr(ET_KERNEL_EXECV) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "do_execve");
+            LOG_FATAL("Kernel event \"%s\" was not found!", "do_execveat_common");
 
+        // TODO Make some functions work without setting structure offset
         // This must be done when kernel symbol is set, or emulation would hang or SEGV
-        et_set_default_linux_struct_offset(version);
+        // TODO This should be written in x86/ARM protable and use KERNEL_VERSION macro
+        et_set_default_linux_struct_offset(version.c_str());
     }
     close(fd);
+    // TODO load kernel elf,dwarf information to an appropriate place.
+    return version_num;
 }
 
 void EventTracer::debug_dump_process_map(void)

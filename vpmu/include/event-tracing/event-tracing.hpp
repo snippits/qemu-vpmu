@@ -526,7 +526,8 @@ public:
 
     ET_Kernel& get_kernel(void) { return kernel; }
 
-    void parse_and_set_kernel_symbol(const char* filename, const char* version);
+    // Return 0 when parse fail, return linux version number when succeed
+    uint64_t parse_and_set_kernel_symbol(const char* filename);
 
     void clear_shared_libraries(void)
     {

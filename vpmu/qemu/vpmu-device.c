@@ -183,6 +183,13 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         if (VPMU.platform.kvm_enabled) break;
         et_set_linux_struct_offset(addr, value);
         break;
+    case VPMU_MMAP_OFFSET_LINUX_VERSION:
+        VPMU.platform.linux_version = value;
+        DBG(STR_VPMU "Running with Linux version %lu.%lu.%lu\n",
+               (VPMU.platform.linux_version >> 16) & 0xff,
+               (VPMU.platform.linux_version >> 8) & 0xff,
+               (VPMU.platform.linux_version >> 0) & 0xff);
+        break;
     case VPMU_MMAP_OFFSET_KERNEL_SYM_NAME:
         if (VPMU.platform.kvm_enabled) break;
         paddr        = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);

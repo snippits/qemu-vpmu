@@ -10,7 +10,8 @@ typedef struct VPMUPlatformInfo {
         uint32_t cores;
         uint64_t frequency;
     } cpu, gpu;
-    bool kvm_enabled;
+    bool     kvm_enabled;
+    uint64_t linux_version;
 } VPMUPlatformInfo;
 
 typedef struct VPMU_Struct {

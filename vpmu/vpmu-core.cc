@@ -248,7 +248,12 @@ void VPMU_init(int argc, char **argv)
 
 #ifdef CONFIG_VPMU_SET
     if (strlen(kernel_file) > 0) {
-        event_tracer.parse_and_set_kernel_symbol(kernel_file, "v4.4.0");
+        VPMU.platform.linux_version =
+          event_tracer.parse_and_set_kernel_symbol(kernel_file);
+        DBG(STR_VPMU "Running with Linux version %lu.%lu.%lu\n",
+            (VPMU.platform.linux_version >> 16) & 0xff,
+            (VPMU.platform.linux_version >> 8) & 0xff,
+            (VPMU.platform.linux_version >> 0) & 0xff);
     } else {
         CONSOLE_LOG(
           "Path to vmlinux is not set. Boot time kernel tracking will be disabled.\n"

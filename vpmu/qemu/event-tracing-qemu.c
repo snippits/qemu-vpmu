@@ -111,7 +111,6 @@ void et_check_mmap_return(CPUArchState *env, uint64_t start_addr)
     }
 }
 
-static bool linux_3 = false;
 void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t return_addr)
 {
     // TODO make this thread safe and need to check branch!!!!!!!
@@ -135,7 +134,7 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
           env, env->regs[0], g_linux_offset.file.fpath.dentry);
         if (dentry_addr == 0) break; // pointer to dentry is zero
         parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
-        if (linux_3) {
+        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 9, 0)) {
             // 4th argument
             mode = vpmu_read_uintptr_from_guest(env, env->regs[13], 0);
         } else {
@@ -206,18 +205,9 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     }
     case ET_KERNEL_EXECV: {
         // Linux Kernel: New process creation
-        const char *_test = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
-        bool        _char_flag = true;
-        int         i;
-
-        // TODO Use kernel version in the future
-        for (i = 0; i < 4; i++) {
-            if (_test[0] < 0x20 || _test[1] >= 127) _char_flag = false;
-        }
-        if (_char_flag) {
+        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
-            bash_path = _test;
-            linux_3   = true;
+            bash_path = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
         } else {
             // Newer linux pass filename as a struct file *, containing char*
             uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
@@ -321,7 +311,6 @@ static inline void print_mode(uint64_t mode, uint64_t mask, const char *message)
 // TODO Find a better way
 static uint64_t mmap_ret_addr = 0, last_mmap_len = 0;
 static bool     mmap_update_flag = false;
-static bool     linux_3          = false;
 
 void et_x86_check_mmap_return(CPUArchState *env, uint64_t start_addr)
 {
@@ -362,7 +351,7 @@ void et_x86_check_function_call(CPUArchState *env,
           env, env->regs[R_EDI], g_linux_offset.file.fpath.dentry);
         if (dentry_addr == 0) break; // pointer to dentry is zero
         parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
-        if (linux_3) {
+        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 9, 0)) {
             // 4th argument
             mode = vpmu_read_uintptr_from_guest(env, env->regs[13], 0);
             //#error "Find out how to retrieve the fifth argument"
@@ -433,25 +422,15 @@ void et_x86_check_function_call(CPUArchState *env,
     case ET_KERNEL_EXECV: {
         // Linux Kernel: New process creation
         // DBG(STR_VPMU "execve from %lu\n", et_current_pid);
-        const char *_test =
-          (const char *)vpmu_read_ptr_from_guest(env, env->regs[R_ESI], 0);
-        bool _char_flag = true;
-        int  i;
-        // TODO Use kernel version in the future
-        for (i = 0; i < 4; i++) {
-            if (_test[0] < 0x20 || _test[1] >= 127) _char_flag = false;
-        }
-        if (_char_flag) {
+        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
-            bash_path = _test;
-            linux_3   = true;
+            bash_path = (const char *)vpmu_read_ptr_from_guest(env, env->regs[R_ESI], 0);
         } else {
             // Newer linux pass filename as a struct file *, containing char*
             uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[R_ESI], 0);
             // Remember this pointer for mmap()
             bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
         }
-
         DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
         // Let another kernel event handle. It can find the absolute path.
         exec_event_pid = et_current_pid;

@@ -32,6 +32,9 @@ namespace math
 
 namespace utils
 {
+    std::vector<std::string> str_split(std::string const &input);
+    std::vector<std::string> str_split(std::string const &input, const char *ch);
+    std::string get_version_from_vmlinux(const char *file_path);
     std::string get_random_hash_name(uint32_t string_length);
 
     void name_process(std::string new_name);
