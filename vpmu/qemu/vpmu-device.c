@@ -8,6 +8,7 @@
 #include "hw/sysbus.h"     // SysBusDevice
 #include "exec/exec-all.h" // tlb_fill()
 
+#include "vpmu/include/vpmu-common.h" // Common headers and macros
 #include "vpmu/include/vpmu-device.h" // VPMU Device mapping and macros
 #include "vpmu/include/vpmu.h"        // Import the common configurations
 #include "vpmu/include/event-tracing/event-tracing.h"

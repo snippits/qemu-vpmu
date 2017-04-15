@@ -1,8 +1,6 @@
 #ifndef __VPMU_DEVICE_H_
 #define __VPMU_DEVICE_H_
 
-#include "vpmu-common.h" // Common headers and macros
-
 #define VPMU_DEVICE_MAJOR_NUM       0x7A //122
 #define VPMU_DEVICE_MINOR_NUM       0
 #define VPMU_DEVICE_NAME            "VPMU"
@@ -26,8 +24,9 @@
 #define VPMU_MMAP_OFFSET_THREAD_INFO_task        0x0118
 #define VPMU_MMAP_OFFSET_TASK_STRUCT_pid         0x0120
 // ... reserved
-#define VPMU_MMAP_OFFSET_KERNEL_SYM_NAME         0x0200
-#define VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR         0x0208
+#define VPMU_MMAP_OFFSET_LINUX_VERSION           0x0200
+#define VPMU_MMAP_OFFSET_KERNEL_SYM_NAME         0x0208
+#define VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR         0x0210
 
 // Mode selector
 #define VPMU_INSN_COUNT_SIM         0x1 << 0
