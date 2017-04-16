@@ -207,10 +207,10 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         // Linux Kernel: New process creation
         if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
-            bash_path = (const char *)vpmu_read_ptr_from_guest(env, env->regs[0], 0);
+            bash_path = (const char *)vpmu_read_ptr_from_guest(env, env->regs[1], 0);
         } else {
             // Newer linux pass filename as a struct file *, containing char*
-            uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[0], 0);
+            uintptr_t name_addr = vpmu_read_uintptr_from_guest(env, env->regs[1], 0);
             // Remember this pointer for mmap()
             bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
         }
