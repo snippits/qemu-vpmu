@@ -174,7 +174,7 @@ uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
         // TODO Make some functions work without setting structure offset
         // This must be done when kernel symbol is set, or emulation would hang or SEGV
         // TODO This should be written in x86/ARM protable and use KERNEL_VERSION macro
-        et_set_default_linux_struct_offset(version.c_str());
+        et_set_default_linux_struct_offset(version_num);
     }
     close(fd);
     // TODO load kernel elf,dwarf information to an appropriate place.

@@ -56,7 +56,7 @@ void et_x86_check_mmap_return(CPUArchState* env, uint64_t start_addr);
 
 #endif
 void et_set_linux_struct_offset(uint64_t type, uint64_t value);
-void et_set_default_linux_struct_offset(const char* version);
+void et_set_default_linux_struct_offset(uint64_t version);
 // End of implementation in C side
 
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);

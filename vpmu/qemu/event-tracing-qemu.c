@@ -116,16 +116,30 @@ void et_set_linux_struct_offset(uint64_t type, uint64_t value)
     }
 }
 
-void et_set_default_linux_struct_offset(const char *version)
+void et_set_default_linux_struct_offset(uint64_t version)
 {
-    if (strcmp(version, "v4.4.0") == 0) {
+#if defined(TARGET_ARM)
+    if (version == KERNEL_VERSION(4, 4, 0)) {
         // This is kernel v4.4.0
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 12);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 44);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
+        return ;
     }
+#elif defined(TARGET_X86_64)
+    if (version == KERNEL_VERSION(4, 4, 0)) {
+        // This is kernel v4.4.0
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 24);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 24);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 24);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 0);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 1040);
+        return ;
+    }
+#endif
+    ERR_MSG("This kernel version is not supported for boot time profiling");
 }
 
 static inline void __append_str(char *buff, int *position, int size_buff, const char *str)
@@ -211,6 +225,8 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     switch (et_find_kernel_event(target_addr)) {
     // Linux Kernel: Mmap a file or shared library
     case ET_KERNEL_MMAP: {
+        // Do nothing if the value is not initialized
+        if (g_linux_offset.dentry.d_iname == 0) break;
         // DBG(STR_VPMU "fork from %lu\n", et_current_pid);
         char      fullpath[1024] = {0};
         int       position       = 0;
@@ -284,6 +300,8 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     }
     // Linux Kernel: wake up the newly forked process
     case ET_KERNEL_WAKE_NEW_TASK: {
+        // Do nothing if the value is not initialized
+        if (g_linux_offset.task_struct.pid == 0) break;
         uint32_t target_pid = vpmu_read_uint32_from_guest(
           env, get_input_arg(env, 1), g_linux_offset.task_struct.pid);
         if (et_current_pid != 0 && et_find_traced_pid(et_current_pid)) {
@@ -312,26 +330,28 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     }
     // Linux Kernel: Process End
     case ET_KERNEL_EXIT: {
+        // Do nothing if the value is not initialized
+        if (g_linux_offset.task_struct.pid == 0) break;
         et_remove_process(et_current_pid);
         break;
     }
     // Linux Kernel: Context switch
     case ET_KERNEL_CONTEXT_SWITCH: {
+        // Do nothing if the value is not initialized
+        if (g_linux_offset.task_struct.pid == 0) break;
 #if defined(TARGET_ARM) && (TARGET_LONG_BITS == 32)
+        // Only ARM 32 bits has a different arrangement of arguments
+        // Refer to "arch/arm/include/asm/switch_to.h"
         uint32_t task_ptr = vpmu_read_uint32_from_guest(
           env, get_input_arg(env, 3), g_linux_offset.thread_info.task);
-        // A simple detection to separate the type of pointer/pid
-        if (task_ptr < 0x10000) {
-            et_current_pid = task_ptr;
-        } else {
-            et_current_pid =
-              vpmu_read_uint32_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
-        }
+        et_current_pid =
+          vpmu_read_uint32_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
 #else
+        // Refer to "arch/x86/include/asm/switch_to.h"
         et_current_pid = vpmu_read_uint32_from_guest(
           env, get_input_arg(env, 2), g_linux_offset.task_struct.pid);
 #endif
-        // ERR_MSG("pid = %lu @ %lx\n", et_current_pid, (uint64_t)get_input_arg(env, 3));
+        // ERR_MSG("switch pid to %lu\n", et_current_pid);
 
         if (et_find_traced_pid(et_current_pid)) {
             et_set_process_cpu_state(et_current_pid, env);
@@ -343,7 +363,6 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
             else
                 VPMU.enabled = false;
         }
-
         break;
     }
     default:
