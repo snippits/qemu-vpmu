@@ -23,7 +23,7 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
         return env->regs[3];
     else if (num >= 5) {
         // Use stack pointer
-        return env->regs[13] + (num - 5) * 4;
+        return env->regs[13] + (num - 5) * TARGET_LONG_SIZE;
     }
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
     if (num == 1)
@@ -34,9 +34,13 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
         return env->regs[R_EDX];
     else if (num == 4)
         return env->regs[R_ECX];
-    else if (num >= 5) {
+    else if (num == 5)
+        return env->regs[8];
+    else if (num == 6)
+        return env->regs[9];
+    else if (num >= 7) {
         // Use stack pointer
-        return env->regs[R_ESP] + (num - 5) * 4;
+        return env->regs[R_ESP] + (num - 7) * TARGET_LONG_SIZE;
     }
 #endif
     return 0;
