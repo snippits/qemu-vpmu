@@ -227,15 +227,21 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
     }
     case ET_KERNEL_CONTEXT_SWITCH: {
 // Linux Kernel: Context switch
-#if TARGET_LONG_BITS == 32
+#if defined(TARGET_ARM) && (TARGET_LONG_BITS == 32)
         uint32_t task_ptr =
           vpmu_read_uint32_from_guest(env, env->regs[2], g_linux_offset.thread_info.task);
+        // A simple detection to separate the type of pointer/pid
+        if (task_ptr < 0x10000) {
+            et_current_pid = task_ptr;
+        } else {
+            et_current_pid =
+              vpmu_read_uint32_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
+        }
 #else
-#pragma message("VPMU SET: 64 bits Not supported!!")
-#endif
         et_current_pid =
-          vpmu_read_uint32_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
-        // ERR_MSG("pid = %lx %lu\n", (uint64_t)env->regs[2], et_current_pid);
+          vpmu_read_uint32_from_guest(env, env->regs[2], g_linux_offset.task_struct.pid);
+#endif
+        // ERR_MSG("pid = %lu @ %lx\n", et_current_pid, (uint64_t)env->regs[2]);
 
         if (et_find_traced_pid(et_current_pid)) {
             et_set_process_cpu_state(et_current_pid, env);
