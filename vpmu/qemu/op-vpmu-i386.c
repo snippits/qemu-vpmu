@@ -31,7 +31,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
         CONSOLE_LOG("unhandled privilege : %d\n", cpl);
     }
 #ifdef CONFIG_VPMU_SET
-    et_check_function_call(env, extra_tb_info->start_addr, last_tb_pc);
+    et_check_function_call(env, extra_tb_info->start_addr);
     et_check_mmap_return(env, extra_tb_info->start_addr);
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
         // TODO use stack pointer, this must be the wrong one

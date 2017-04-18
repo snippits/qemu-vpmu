@@ -60,6 +60,15 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
     return 0;
 }
 
+static inline target_ulong get_ret_addr(CPUArchState *env)
+{
+#if defined(TARGET_ARM)
+    return (env->regs[14] / 2) * 2; // Clean LSB to 0
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    return vpmu_read_uintptr_from_guest(env, env->regs[4], 0 * TARGET_LONG_SIZE);
+#endif
+}
+
 static inline target_ulong get_ret_value(CPUArchState *env)
 {
 #if defined(TARGET_ARM)
@@ -144,7 +153,7 @@ void et_set_default_linux_struct_offset(uint64_t version)
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
-        return ;
+        return;
     }
 #elif defined(TARGET_X86_64)
     if (version == KERNEL_VERSION(4, 4, 0)) {
@@ -154,7 +163,7 @@ void et_set_default_linux_struct_offset(uint64_t version)
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 24);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 0);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 1040);
-        return ;
+        return;
     }
 #endif
     ERR_MSG("This kernel version is not supported for boot time profiling");
@@ -216,11 +225,6 @@ static bool     mmap_update_flag = false;
 
 void et_check_mmap_return(CPUArchState *env, uint64_t start_addr)
 {
-// TODO This 0xffffffff should be properly solved across all x86 SET
-// TODO Sometimes this condition misses some mmap return
-#if defined(TARGET_X86_64)
-    mmap_ret_addr |= 0xffffffff00000000;
-#endif
     if (mmap_update_flag && start_addr == mmap_ret_addr) {
         /*
         DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
@@ -232,7 +236,7 @@ void et_check_mmap_return(CPUArchState *env, uint64_t start_addr)
     }
 }
 
-void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t return_addr)
+void et_check_function_call(CPUArchState *env, uint64_t target_addr)
 {
     // TODO make this thread safe and need to check branch!!!!!!!
     VPMU.cpu_arch_state = env;
@@ -264,7 +268,7 @@ void et_check_function_call(CPUArchState *env, uint64_t target_addr, uint64_t re
         }
         vaddr = get_input_arg(env, 2);
 
-        mmap_ret_addr    = return_addr;
+        mmap_ret_addr    = get_ret_addr(env);
         last_mmap_len    = get_input_arg(env, 3);
         mmap_update_flag = false;
         /*

@@ -66,7 +66,7 @@ void HELPER(vpmu_branch)(CPUARMState *env, uint64_t target_addr, uint64_t return
 #endif
 {
 #ifdef CONFIG_VPMU_SET
-    et_check_function_call(env, target_addr, return_addr);
+    et_check_function_call(env, target_addr);
 #endif
 
     if (likely(VPMU.enabled)) {

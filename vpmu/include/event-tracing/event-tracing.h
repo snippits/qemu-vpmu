@@ -45,9 +45,7 @@ extern LinuxStructOffset g_linux_offset;
 #include "exec/exec-all.h" // tlb_fill()
 
 // Implemented in C side
-void et_check_function_call(CPUArchState* env,
-                            uint64_t      target_addr,
-                            uint64_t      return_addr);
+void et_check_function_call(CPUArchState* env, uint64_t target_addr);
 void et_check_mmap_return(CPUArchState* env, uint64_t start_addr);
 void et_x86_check_function_call(CPUArchState* env,
                             uint64_t      target_addr,
