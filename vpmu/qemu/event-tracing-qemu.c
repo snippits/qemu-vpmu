@@ -232,7 +232,7 @@ void et_check_mmap_return(CPUArchState *env, uint64_t start_addr)
             (uint64_t)get_ret_value(env) + last_mmap_len);
         */
         // TODO Find a better way
-        et_update_last_mmaped_binary(et_current_pid, env->regs[0], last_mmap_len);
+        et_update_last_mmaped_binary(et_current_pid, get_ret_value(env), last_mmap_len);
     }
 }
 
