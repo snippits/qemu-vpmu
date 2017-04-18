@@ -65,10 +65,6 @@ void HELPER(vpmu_branch)(CPUARMState *env, uint64_t target_addr, uint64_t return
 #error Unhandled TARGET_LONG_BITS value
 #endif
 {
-#ifdef CONFIG_VPMU_SET
-    et_check_function_call(env, target_addr);
-#endif
-
     if (likely(VPMU.enabled)) {
         // CONSOLE_LOG("pc: %x->%x\n", return_addr, target_addr);
     }
@@ -94,11 +90,12 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 //    char *state = &(VPMU.state);
 
 #ifdef CONFIG_VPMU_SET
+    et_check_function_call(env, extra_tb_info->start_addr);
+    et_check_mmap_return(env, extra_tb_info->start_addr);
+
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
         phasedet_ref((mode == ARM_CPU_MODE_USR), extra_tb_info, env->regs[13]);
     } // End of VPMU_PHASEDET
-
-    et_check_mmap_return(env, extra_tb_info->start_addr);
 #endif
 
     if (likely(env && VPMU.enabled)) {
