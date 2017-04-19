@@ -32,10 +32,9 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
     }
 #ifdef CONFIG_VPMU_SET
     et_check_function_call(env, extra_tb_info->start_addr);
-    et_check_mmap_return(env, extra_tb_info->start_addr);
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
-        // TODO use stack pointer, this must be the wrong one
-        phasedet_ref((mode == X86_CPU_MODE_USR), extra_tb_info, env->regs[13]);
+        phasedet_ref(
+          (mode == X86_CPU_MODE_USR), extra_tb_info, env->regs[R_ESP], cs->cpu_index);
     } // End of VPMU_PHASEDET
 #endif
 

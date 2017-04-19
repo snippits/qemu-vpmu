@@ -300,6 +300,8 @@ private:
 
 class ET_Kernel : public ET_Program
 {
+    using fun_callback = std::function<void(void* env, KernelState& state)>;
+
 public:
     ET_Kernel() : ET_Program("kernel") {}
 
@@ -312,6 +314,27 @@ public:
             }
         }
         return ET_KERNEL_NONE;
+    }
+
+    bool call_event(uint64_t vaddr, void* env, uint64_t core_id)
+    {
+        for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
+            if (kernel_event_table[i] == vaddr) {
+                // DBG(STR_VPMU "Found event-%d \n",i);
+                cb[i].fun(env, k_state[core_id]);
+                if (cb[i].fun_ret)
+                    event_return_table[core_id].push_back(
+                      {et_get_ret_addr(env), cb[i].fun_ret});
+                return true;
+            }
+            if (event_return_table[core_id].size() > 0
+                && event_return_table[core_id].back().first == vaddr) {
+                auto& r = event_return_table[core_id].back();
+                r.second(env, k_state[core_id]);
+                event_return_table[core_id].pop_back();
+            }
+        }
+        return false;
     }
 
     uint64_t find_vaddr(ET_KERNEL_EVENT_TYPE event)
@@ -345,8 +368,28 @@ public:
         }
     }
 
+    void register_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f, int n_args)
+    {
+        cb[event].fun    = f;
+        cb[event].n_args = n_args;
+    }
+
+    void register_return_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f)
+    {
+        cb[event].fun_ret = f;
+    }
+
+    uint64_t get_current_pid(uint64_t core_id) { return k_state[core_id].current_pid; }
+
 private:
     uint64_t kernel_event_table[ET_KERNEL_EVENT_COUNT] = {0};
+    std::vector<std::pair<uint64_t, fun_callback>> event_return_table[VPMU_MAX_CPU_CORES];
+    struct {
+        fun_callback fun;
+        fun_callback fun_ret;
+        int          n_args;
+    } cb[ET_KERNEL_EVENT_COUNT]             = {};
+    KernelState k_state[VPMU_MAX_CPU_CORES] = {};
 };
 
 class EventTracer : VPMULog
@@ -561,6 +604,5 @@ private:
 };
 
 extern EventTracer event_tracer;
-extern uint64_t    et_current_pid;
 
 #endif // __VPMU_EVENT_TRACING_HPP_

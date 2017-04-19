@@ -3,7 +3,6 @@
 #include "vpmu/include/event-tracing/event-tracing.h"
 #include "vpmu/include/linux-mm.h"
 
-uint64_t et_current_pid = 0;
 // The global variable storing offsets of kernel struct types
 LinuxStructOffset g_linux_offset;
 
@@ -119,6 +118,27 @@ static inline target_ulong get_syscall_input_arg(CPUArchState *env, int num)
     return 0;
 }
 
+uint64_t et_get_input_arg(void *env, int num)
+{
+    return get_input_arg(env, num);
+}
+uint64_t et_get_ret_addr(void *env)
+{
+    return get_ret_addr(env);
+}
+uint64_t et_get_ret_value(void *env)
+{
+    return get_ret_value(env);
+}
+uint64_t et_get_syscall_num(void *env)
+{
+    return get_syscall_num(env);
+}
+uint64_t et_get_syscall_input_arg(void *env, int num)
+{
+    return get_syscall_input_arg(env, num);
+}
+
 void et_set_linux_struct_offset(uint64_t type, uint64_t value)
 {
     switch (type) {
@@ -212,6 +232,16 @@ static void parse_dentry_path(CPUArchState *env,
     return;
 }
 
+void et_parse_dentry_path(void *    env,
+                          uintptr_t dentry_addr,
+                          char *    buff,
+                          int *     position,
+                          int       size_buff,
+                          int       max_levels)
+{
+    parse_dentry_path(env, dentry_addr, buff, position, size_buff, max_levels);
+}
+
 static inline void print_mode(uint64_t mode, uint64_t mask, const char *message)
 {
     if (mode & mask) {
@@ -219,175 +249,11 @@ static inline void print_mode(uint64_t mode, uint64_t mask, const char *message)
     }
 }
 
-// TODO Find a better way
-static uint64_t mmap_ret_addr = 0, last_mmap_len = 0;
-static bool     mmap_update_flag = false;
-
-void et_check_mmap_return(CPUArchState *env, uint64_t start_addr)
-{
-    if (mmap_update_flag && start_addr == mmap_ret_addr) {
-        /*
-        DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
-            (uint64_t)get_ret_value(env),
-            (uint64_t)get_ret_value(env) + last_mmap_len);
-        */
-        // TODO Find a better way
-        et_update_last_mmaped_binary(et_current_pid, get_ret_value(env), last_mmap_len);
-    }
-}
-
 void et_check_function_call(CPUArchState *env, uint64_t target_addr)
 {
+    CPUState *cs = CPU(ENV_GET_CPU(env));
     // TODO make this thread safe and need to check branch!!!!!!!
     VPMU.cpu_arch_state = env;
-    // TODO Maybe there's a better way?
-    static uint64_t    exec_event_pid = -1;
-    static const char *bash_path      = NULL;
-
-    switch (et_find_kernel_event(target_addr)) {
-    // Linux Kernel: Mmap a file or shared library
-    case ET_KERNEL_MMAP: {
-        // Do nothing if the value is not initialized
-        if (g_linux_offset.dentry.d_iname == 0) break;
-        // DBG(STR_VPMU "fork from %lu\n", et_current_pid);
-        char      fullpath[1024] = {0};
-        int       position       = 0;
-        uintptr_t dentry_addr    = 0;
-        uintptr_t mode           = 0;
-        uintptr_t vaddr          = 0;
-
-        if (get_input_arg(env, 1) == 0) break; // vaddr is zero
-        dentry_addr = vpmu_read_uintptr_from_guest(
-          env, get_input_arg(env, 1), g_linux_offset.file.fpath.dentry);
-        if (dentry_addr == 0) break; // pointer to dentry is zero
-        parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
-        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 9, 0)) {
-            mode = vpmu_read_uintptr_from_guest(env, get_input_arg(env, 5), 0);
-        } else {
-            mode = get_input_arg(env, 4);
-        }
-        vaddr = get_input_arg(env, 2);
-
-        mmap_ret_addr    = get_ret_addr(env);
-        last_mmap_len    = get_input_arg(env, 3);
-        mmap_update_flag = false;
-        /*
-        DBG(STR_VPMU "mmap file: %s @ %lx mode: (%lx) ", fullpath, vaddr, mode);
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        print_mode(mode, VM_READ, " READ");
-        print_mode(mode, VM_WRITE, " WRITE");
-        print_mode(mode, VM_EXEC, " EXEC");
-        print_mode(mode, VM_SHARED, " SHARED");
-        print_mode(mode, VM_IO, " IO");
-        print_mode(mode, VM_HUGETLB, " HUGETLB");
-        print_mode(mode, VM_DONTCOPY, " DONTCOPY");
-#endif
-        DBG("\n");
-        */
-
-        if (et_current_pid == exec_event_pid && (mode & VM_READ)) {
-            // Mapping executable page for main program
-            if (et_find_program_in_list(bash_path)) {
-                et_add_new_process(fullpath, bash_path, et_current_pid);
-                DBG(STR_VPMU "Start tracing %s, File: %s (pid=%lu)\n",
-                    bash_path,
-                    fullpath,
-                    et_current_pid);
-                tic(&(VPMU.start_time));
-                VPMU_reset();
-                vpmu_print_status(&VPMU);
-                VPMU.enabled = 1;
-            }
-
-            // The current mapped file is the main program, push it to process anyway
-            et_add_process_mapped_file(et_current_pid, fullpath, mode);
-            exec_event_pid   = -1;
-            mmap_update_flag = true;
-        } else {
-            // Records all mapped files, including shared library
-            if (et_find_traced_pid(et_current_pid)) {
-                // Update the mapped vadder for only exec pages
-                if (mode & VM_EXEC) mmap_update_flag = true;
-                et_add_process_mapped_file(et_current_pid, fullpath, mode);
-            }
-        }
-
-        (void)vaddr;
-        break;
-    }
-    // Linux Kernel: Fork a process
-    case ET_KERNEL_FORK: {
-        // DBG(STR_VPMU "fork from %lu\n", et_current_pid);
-        break;
-    }
-    // Linux Kernel: wake up the newly forked process
-    case ET_KERNEL_WAKE_NEW_TASK: {
-        // Do nothing if the value is not initialized
-        if (g_linux_offset.task_struct.pid == 0) break;
-        uint32_t target_pid = vpmu_read_uint32_from_guest(
-          env, get_input_arg(env, 1), g_linux_offset.task_struct.pid);
-        if (et_current_pid != 0 && et_find_traced_pid(et_current_pid)) {
-            et_attach_to_parent_pid(et_current_pid, target_pid);
-        }
-        break;
-    }
-    // Linux Kernel: New process creation
-    case ET_KERNEL_EXECV: {
-        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
-            // Old linux pass filename directly as a char*
-            bash_path =
-              (const char *)vpmu_read_ptr_from_guest(env, get_input_arg(env, 2), 0);
-        } else {
-            // Newer linux pass filename as a struct file *, containing char*
-            uintptr_t name_addr =
-              vpmu_read_uintptr_from_guest(env, get_input_arg(env, 2), 0);
-            // Remember this pointer for mmap()
-            bash_path = (const char *)vpmu_read_ptr_from_guest(env, name_addr, 0);
-        }
-
-        // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", bash_path, et_current_pid);
-        // Let another kernel event handle. It can find the absolute path.
-        exec_event_pid = et_current_pid;
-        break;
-    }
-    // Linux Kernel: Process End
-    case ET_KERNEL_EXIT: {
-        // Do nothing if the value is not initialized
-        if (g_linux_offset.task_struct.pid == 0) break;
-        et_remove_process(et_current_pid);
-        break;
-    }
-    // Linux Kernel: Context switch
-    case ET_KERNEL_CONTEXT_SWITCH: {
-        // Do nothing if the value is not initialized
-        if (g_linux_offset.task_struct.pid == 0) break;
-#if defined(TARGET_ARM) && (TARGET_LONG_BITS == 32)
-        // Only ARM 32 bits has a different arrangement of arguments
-        // Refer to "arch/arm/include/asm/switch_to.h"
-        uint32_t task_ptr = vpmu_read_uint32_from_guest(
-          env, get_input_arg(env, 3), g_linux_offset.thread_info.task);
-        et_current_pid =
-          vpmu_read_uint32_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
-#else
-        // Refer to "arch/x86/include/asm/switch_to.h"
-        et_current_pid = vpmu_read_uint32_from_guest(
-          env, get_input_arg(env, 2), g_linux_offset.task_struct.pid);
-#endif
-        // ERR_MSG("switch pid to %lu\n", et_current_pid);
-
-        if (et_find_traced_pid(et_current_pid)) {
-            et_set_process_cpu_state(et_current_pid, env);
-            VPMU.enabled = true;
-        } else {
-            // Switching VPMU when current process is traced
-            if (vpmu_model_has(VPMU_WHOLE_SYSTEM, VPMU))
-                VPMU.enabled = true;
-            else
-                VPMU.enabled = false;
-        }
-        break;
-    }
-    default:
-        break;
-    }
+    et_kernel_call_event(target_addr, env, cs->cpu_index);
+    return;
 }

@@ -277,6 +277,7 @@ void VPMU_init(int argc, char **argv)
     DBG(STR_VPMU "Thread Pool Initialized\n");
     // Initialize simulators for each stream
     init_simulators(config_file);
+    register_callbacks_kernel_events();
     // Done
     CONSOLE_LOG(STR_VPMU "Initialized\n");
 }

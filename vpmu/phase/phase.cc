@@ -350,7 +350,10 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
     }
 }
 
-void phasedet_ref(bool user_mode, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr)
+void phasedet_ref(bool               user_mode,
+                  const ExtraTBInfo* extra_tb_info,
+                  uint64_t           stack_ptr,
+                  uint64_t           core_id)
 {
     // TODO This won't apply to multi-core emulation
     static bool last_tb_is_user = false;
@@ -358,6 +361,7 @@ void phasedet_ref(bool user_mode, const ExtraTBInfo* extra_tb_info, uint64_t sta
         // kernel_phasedet_ref((last_tb_is_user == true), extra_tb_info);
         last_tb_is_user = false;
     } else {
+        uint64_t pid = event_tracer.get_kernel().get_current_pid(core_id);
         if (last_tb_is_user == false) {
             // Kernel IRQ to User mode
             // auto process = event_tracer.find_process((uint64_t)0);
@@ -366,7 +370,7 @@ void phasedet_ref(bool user_mode, const ExtraTBInfo* extra_tb_info, uint64_t sta
             //    -1));
         }
         last_tb_is_user = user_mode;
-        update_window(et_current_pid, extra_tb_info, stack_ptr);
+        update_window(pid, extra_tb_info, stack_ptr);
     }
 
     return;
