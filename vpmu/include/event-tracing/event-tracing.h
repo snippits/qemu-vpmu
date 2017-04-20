@@ -40,7 +40,6 @@ typedef struct {
     uint64_t    last_mmap_len;
     uint64_t    exec_event_pid;
     const char* bash_path;
-    uint64_t    current_pid;
     uint8_t     padding[64];
 } KernelState;
 

@@ -204,8 +204,6 @@ void et_parse_dentry_path(void *    env,
 void et_check_function_call(CPUArchState *env, uint64_t target_addr)
 {
     CPUState *cs = CPU(ENV_GET_CPU(env));
-    // TODO make this thread safe and need to check branch!!!!!!!
-    VPMU.cpu_arch_state = env;
     et_kernel_call_event(target_addr, env, cs->cpu_index);
     return;
 }

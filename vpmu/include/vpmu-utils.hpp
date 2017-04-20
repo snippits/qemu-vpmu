@@ -8,8 +8,20 @@
 #include "json.hpp"     // nlohmann::json
 #include "vpmu-log.hpp" // VPMULog
 
+// A thread local storage for saving the running core id of each thread
+extern thread_local uint64_t vpmu_running_core_id;
+
 namespace vpmu
 {
+inline uint64_t get_core_id(void)
+{
+    return vpmu_running_core_id;
+}
+
+inline void set_core_id(uint64_t core_id)
+{
+    vpmu_running_core_id = core_id;
+}
 
 namespace math
 {

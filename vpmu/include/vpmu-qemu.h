@@ -2,6 +2,7 @@
 #define __VPMU_QEMU_H_
 
 #include "vpmu-common.h" // Common headers and macros
+#include "vpmu-conf.h"   // Common definitions of macros
 
 enum VPMU_CPU_MODE { VPMU_CPU_MODE_ARM, VPMU_CPU_MODE_THUMB };
 
@@ -22,6 +23,7 @@ typedef struct VPMU_Struct {
     bool all_cpu_idle_flag;
     bool iomem_access_flag;
     bool swi_fired_flag;
+    bool threaded_tcg_flag;
     /* for timer interrupt */
     uint64_t timer_interrupt_return_pc;
 
@@ -37,7 +39,8 @@ typedef struct VPMU_Struct {
 
     // TODO Is there a better way for multi-core execution env?
     // Should be set for vpmu device only.
-    void *cpu_arch_state; // This is for identifying MMU table
+    void *   cpu_arch_state; // This is for identifying MMU table
+    uint64_t current_pid[VPMU_MAX_CPU_CORES];
 
     struct {
         uint64_t total_tb_visit_count;
@@ -67,5 +70,9 @@ void VPMU_dump_result(void);
 void vpmu_dump_readable_message(void);
 void vpmu_print_status(VPMU_Struct *vpmu);
 uint64_t vpmu_target_time_ns(void);
+
+// These two are thread local values which could be used in multi-threaded tcg
+uint64_t vpmu_get_core_id(void);
+void     vpmu_set_core_id(uint64_t);
 
 #endif

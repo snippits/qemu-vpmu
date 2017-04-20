@@ -368,10 +368,9 @@ public:
         }
     }
 
-    void register_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f, int n_args)
+    void register_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f)
     {
-        cb[event].fun    = f;
-        cb[event].n_args = n_args;
+        cb[event].fun = f;
     }
 
     void register_return_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f)
@@ -379,7 +378,9 @@ public:
         cb[event].fun_ret = f;
     }
 
-    uint64_t get_current_pid(uint64_t core_id) { return k_state[core_id].current_pid; }
+    uint64_t get_running_pid() { return VPMU.current_pid[vpmu::get_core_id()]; }
+
+    uint64_t get_running_pid(uint64_t core_id) { return VPMU.current_pid[core_id]; }
 
 private:
     uint64_t kernel_event_table[ET_KERNEL_EVENT_COUNT] = {0};
@@ -387,7 +388,6 @@ private:
     struct {
         fun_callback fun;
         fun_callback fun_ret;
-        int          n_args;
     } cb[ET_KERNEL_EVENT_COUNT]             = {};
     KernelState k_state[VPMU_MAX_CPU_CORES] = {};
 };

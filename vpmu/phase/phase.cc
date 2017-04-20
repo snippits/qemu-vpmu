@@ -361,7 +361,7 @@ void phasedet_ref(bool               user_mode,
         // kernel_phasedet_ref((last_tb_is_user == true), extra_tb_info);
         last_tb_is_user = false;
     } else {
-        uint64_t pid = event_tracer.get_kernel().get_current_pid(core_id);
+        uint64_t pid = VPMU.current_pid[core_id];
         if (last_tb_is_user == false) {
             // Kernel IRQ to User mode
             // auto process = event_tracer.find_process((uint64_t)0);

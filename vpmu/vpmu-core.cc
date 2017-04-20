@@ -21,6 +21,8 @@ FILE *vpmu_log_file = nullptr;
 struct VPMU_Struct VPMU = {};
 // A pointer to current Extra TB Info
 ExtraTBInfo *vpmu_current_extra_tb_info = nullptr;
+// A thread local storage for saving the running core id of each thread
+thread_local uint64_t vpmu_running_core_id = 0;
 // QEMU log system use these two variables
 #ifdef CONFIG_QEMU_VERSION_0_15
 extern FILE *logfile;
@@ -350,4 +352,14 @@ void vpmu_print_status(VPMU_Struct *vpmu)
 
     vpmu->timing_model &VPMU_PHASEDET ? CONSOLE_LOG("o : ") : CONSOLE_LOG("x : ");
     CONSOLE_LOG("Phase Detection and Profiling\n");
+}
+
+uint64_t vpmu_get_core_id(void)
+{
+    return vpmu_running_core_id;
+}
+
+void vpmu_set_core_id(uint64_t core_id)
+{
+    vpmu_running_core_id = core_id;
 }

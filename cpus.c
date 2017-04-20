@@ -1393,6 +1393,11 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
 
     /* process any pending work */
     cpu->exit_request = 1;
+#ifdef CONFIG_VPMU
+    // Set core id for each thread
+    vpmu_set_core_id(cpu->cpu_index);
+    VPMU.threaded_tcg_flag = qemu_tcg_mttcg_enabled();
+#endif
 
     while (1) {
         /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */
@@ -1414,6 +1419,12 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
 
             qemu_clock_enable(QEMU_CLOCK_VIRTUAL,
                               (cpu->singlestep_enabled & SSTEP_NOTIMER) == 0);
+
+#ifdef CONFIG_VPMU
+            // Update core id if it's running on single thread
+            if (!VPMU.threaded_tcg_flag)
+                vpmu_set_core_id(cpu->cpu_index);
+#endif
 
             if (cpu_can_run(cpu)) {
                 int r;
