@@ -8,8 +8,66 @@ extern "C" {
 #include "json.hpp"          // nlohmann::json
 #include "vpmu-device.h"     // VPMU related definitions
 
+// The global variable storing offsets of kernel struct types
+LinuxStructOffset g_linux_offset;
+
+// A helper to print message of mmap
+#define print_mode(_mode, _mask, _message)                                               \
+    if (_mode & _mask) CONSOLE_LOG("%s", _message);
+
+void et_set_default_linux_struct_offset(uint64_t version)
+{
+#if defined(TARGET_ARM)
+    if (version == KERNEL_VERSION(4, 4, 0)) {
+        // This is kernel v4.4.0
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 12);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 44);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
+        return;
+    }
+#elif defined(TARGET_X86_64)
+    if (version == KERNEL_VERSION(4, 4, 0)) {
+        // This is kernel v4.4.0
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 24);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 24);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 24);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 0);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 1040);
+        return;
+    }
+#endif
+    ERR_MSG("This kernel version is not supported for boot time profiling");
+}
+
+void et_set_linux_struct_offset(uint64_t type, uint64_t value)
+{
+    switch (type) {
+    case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
+        g_linux_offset.file.fpath.dentry = value;
+        break;
+    case VPMU_MMAP_OFFSET_DENTRY_d_iname:
+        g_linux_offset.dentry.d_iname = value;
+        break;
+    case VPMU_MMAP_OFFSET_DENTRY_d_parent:
+        g_linux_offset.dentry.d_parent = value;
+        break;
+    case VPMU_MMAP_OFFSET_THREAD_INFO_task:
+        g_linux_offset.thread_info.task = value;
+        break;
+    case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
+        g_linux_offset.task_struct.pid = value;
+        break;
+    default:
+        ERR_MSG("Undefined type of struct offset %" PRIu64 "\n", type);
+        break;
+    }
+}
+
 void register_callbacks_kernel_events(void)
 {
+// A lambda can only be converted to a function pointer if it does not capture
 #define _CB(_EVENT_NAME_, cb, _n_args_)                                                  \
     event_tracer.get_kernel().register_callback(                                         \
       _EVENT_NAME_, [](void* env, KernelState& state) { cb }, _n_args_);
@@ -20,7 +78,6 @@ void register_callbacks_kernel_events(void)
 
     // TODO Make this call back variable length of args in order to have
     // compile time check of the number of input args
-    // A lambda can only be converted to a function pointer if it does not capture
 
     // Linux Kernel: New process creation
     _CB(ET_KERNEL_EXECV,

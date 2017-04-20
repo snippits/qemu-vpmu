@@ -3,8 +3,13 @@
 #include "vpmu/include/event-tracing/event-tracing.h"
 #include "vpmu/include/linux-mm.h"
 
-// The global variable storing offsets of kernel struct types
-LinuxStructOffset g_linux_offset;
+/***  This is where QEMU helpers of event tracing are implemented
+ * in order to retrieve architecture specific/dependent values.
+ *
+ * The implementation of helper functions should always check the type since
+ * there's no compile-time guarantees on the types of variables.
+ *
+ */
 
 // If you want to know more details about the following codes,
 // please refer to `man syscall`, section "Architecture calling conventions"
@@ -118,77 +123,6 @@ static inline target_ulong get_syscall_input_arg(CPUArchState *env, int num)
     return 0;
 }
 
-uint64_t et_get_input_arg(void *env, int num)
-{
-    return get_input_arg(env, num);
-}
-uint64_t et_get_ret_addr(void *env)
-{
-    return get_ret_addr(env);
-}
-uint64_t et_get_ret_value(void *env)
-{
-    return get_ret_value(env);
-}
-uint64_t et_get_syscall_num(void *env)
-{
-    return get_syscall_num(env);
-}
-uint64_t et_get_syscall_input_arg(void *env, int num)
-{
-    return get_syscall_input_arg(env, num);
-}
-
-void et_set_linux_struct_offset(uint64_t type, uint64_t value)
-{
-    switch (type) {
-    case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
-        g_linux_offset.file.fpath.dentry = value;
-        break;
-    case VPMU_MMAP_OFFSET_DENTRY_d_iname:
-        g_linux_offset.dentry.d_iname = value;
-        break;
-    case VPMU_MMAP_OFFSET_DENTRY_d_parent:
-        g_linux_offset.dentry.d_parent = value;
-        break;
-    case VPMU_MMAP_OFFSET_THREAD_INFO_task:
-        g_linux_offset.thread_info.task = value;
-        break;
-    case VPMU_MMAP_OFFSET_TASK_STRUCT_pid:
-        g_linux_offset.task_struct.pid = value;
-        break;
-    default:
-        ERR_MSG("Undefined type of struct offset %" PRIu64 "\n", type);
-        break;
-    }
-}
-
-void et_set_default_linux_struct_offset(uint64_t version)
-{
-#if defined(TARGET_ARM)
-    if (version == KERNEL_VERSION(4, 4, 0)) {
-        // This is kernel v4.4.0
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 12);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 44);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
-        return;
-    }
-#elif defined(TARGET_X86_64)
-    if (version == KERNEL_VERSION(4, 4, 0)) {
-        // This is kernel v4.4.0
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 24);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 24);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 24);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 0);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 1040);
-        return;
-    }
-#endif
-    ERR_MSG("This kernel version is not supported for boot time profiling");
-}
-
 static inline void __append_str(char *buff, int *position, int size_buff, const char *str)
 {
     int i = 0;
@@ -232,6 +166,31 @@ static void parse_dentry_path(CPUArchState *env,
     return;
 }
 
+uint64_t et_get_input_arg(void *env, int num)
+{
+    return get_input_arg(env, num);
+}
+
+uint64_t et_get_ret_addr(void *env)
+{
+    return get_ret_addr(env);
+}
+
+uint64_t et_get_ret_value(void *env)
+{
+    return get_ret_value(env);
+}
+
+uint64_t et_get_syscall_num(void *env)
+{
+    return get_syscall_num(env);
+}
+
+uint64_t et_get_syscall_input_arg(void *env, int num)
+{
+    return get_syscall_input_arg(env, num);
+}
+
 void et_parse_dentry_path(void *    env,
                           uintptr_t dentry_addr,
                           char *    buff,
@@ -240,13 +199,6 @@ void et_parse_dentry_path(void *    env,
                           int       max_levels)
 {
     parse_dentry_path(env, dentry_addr, buff, position, size_buff, max_levels);
-}
-
-static inline void print_mode(uint64_t mode, uint64_t mask, const char *message)
-{
-    if (mode & mask) {
-        CONSOLE_LOG("%s", message);
-    }
 }
 
 void et_check_function_call(CPUArchState *env, uint64_t target_addr)
