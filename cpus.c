@@ -1129,8 +1129,8 @@ static bool qemu_tcg_should_sleep(CPUState *cpu)
 static void qemu_tcg_wait_io_event(CPUState *cpu)
 {
 #ifdef CONFIG_VPMU
-    //Caution: iothread_requesting_mutex does not mean CPU idle!
-    // TODO This should be re-check again in QEMU-2.9
+    // Caution: iothread_requesting_mutex does not mean CPU idle!
+    // TODO per CPU idle flags...
     if (VPMU.enabled && all_cpu_threads_idle())
         VPMU.all_cpu_idle_flag = 1;
     else
@@ -1393,11 +1393,6 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
 
     /* process any pending work */
     cpu->exit_request = 1;
-#ifdef CONFIG_VPMU
-    // Set core id for each thread
-    vpmu_set_core_id(cpu->cpu_index);
-    VPMU.threaded_tcg_flag = qemu_tcg_mttcg_enabled();
-#endif
 
     while (1) {
         /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */
@@ -1419,12 +1414,6 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
 
             qemu_clock_enable(QEMU_CLOCK_VIRTUAL,
                               (cpu->singlestep_enabled & SSTEP_NOTIMER) == 0);
-
-#ifdef CONFIG_VPMU
-            // Update core id if it's running on single thread
-            if (!VPMU.threaded_tcg_flag)
-                vpmu_set_core_id(cpu->cpu_index);
-#endif
 
             if (cpu_can_run(cpu)) {
                 int r;
@@ -1452,6 +1441,11 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
             }
 
             cpu = CPU_NEXT(cpu);
+
+#ifdef CONFIG_VPMU
+            // Update cpu index after it switches
+            vpmu_set_core_id(cpu->cpu_index);
+#endif
         } /* while (cpu && !cpu->exit_request).. */
 
         /* Does not need atomic_mb_set because a spurious wakeup is okay.  */
@@ -1535,6 +1529,11 @@ static void *qemu_tcg_cpu_thread_fn(void *arg)
 
     /* process any pending work */
     cpu->exit_request = 1;
+
+#ifdef CONFIG_VPMU
+    // Set only once for multi-threaded TCG
+    vpmu_set_core_id(cpu->cpu_index);
+#endif
 
     while (1) {
         if (cpu_can_run(cpu)) {
@@ -1839,6 +1838,11 @@ void qemu_init_vcpu(CPUState *cpu)
         cpu_address_space_init(cpu, as, 0);
     }
 
+#ifdef CONFIG_VPMU
+    // Add multi-core support here
+    VPMU.threaded_tcg_flag = qemu_tcg_mttcg_enabled();
+#endif
+
     if (kvm_enabled()) {
         qemu_kvm_start_vcpu(cpu);
     } else if (hax_enabled()) {
@@ -1848,9 +1852,6 @@ void qemu_init_vcpu(CPUState *cpu)
     } else {
         qemu_dummy_start_vcpu(cpu);
     }
-#ifdef CONFIG_VPMU
-    //Add multi-core support here
-#endif
 }
 
 void cpu_stop_current(void)
