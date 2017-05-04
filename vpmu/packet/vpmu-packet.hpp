@@ -219,70 +219,6 @@ public:
     uint32_t _paddings[4];
 };
 
-#if defined(TARGET_ARM)
-class VPMU_Insn
-{
-public:
-#pragma pack(push) // push current alignment to stack
-#pragma pack(8)    // set alignment to 8 bytes boundary
-    // Packet type of a single trace
-    typedef struct {
-        uint16_t     type;            // Packet Type
-        uint8_t      num_ex_slots;    // Number of reserved ring buffer slots.
-        uint8_t      core;            // Number of CPU core
-        uint8_t      mode;            // CPU mode
-        ExtraTBInfo *tb_counters_ptr; // A pointer pointing to TB info
-    } Reference;
-
-    typedef struct Insn_Data_Cell {
-        uint64_t total_insn;
-        uint64_t load;
-        uint64_t store;
-        uint64_t branch;
-    } Insn_Data_Cell;
-
-    // The data/states of each simulators for VPMU
-    typedef struct {
-        Insn_Data_Cell user, system, interrupt, system_call, rest, fpu, co_processor;
-
-        uint64_t cycles[VPMU_MAX_CPU_CORES];   // Total cycles
-        uint64_t insn_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
-    } Data;
-
-    // The architectural configuration information
-    // which VPMU needs to know for some functionalities.
-    typedef struct {
-        char     name[128];
-        uint64_t frequency;
-        uint8_t  dual_issue;
-    } Model;
-#pragma pack(pop) // restore original alignment from stack
-
-    // Define the buffer type here because we need to use it in normal C program
-    shm_ringBuffer_typedef(Reference, TraceBuffer, VPMU_MAX_NUM_WORKERS);
-
-public:
-    // Defining the instances for communication between VPMU and workers.
-
-    // A number representing the ID of current worker (timing simulator)
-    uint32_t id;
-    // semaphore for signaling worker thread
-    sem_t job_semaphore;
-    // Timing simulator model information that VPMU required for some functions
-    Model model;
-    // cache counter information
-    Data data;
-    // Synchronization Counter to identify the serial number of synchronized data
-    volatile uint32_t sync_counter;
-    // Synchronization flag to indicate whether it's done (true/false)
-    volatile uint32_t synced_flag;
-
-    // Remain the last 128 bits empty to avoid false sharing due to cache line size
-    uint32_t _paddings[4];
-};
-
-// End of TARGET_ARM
-#elif defined(TARGET_X86_64)
 class VPMU_Insn
 {
 public:
@@ -344,7 +280,5 @@ public:
     // Remain the last 128 bits empty to avoid false sharing due to cache line size
     uint32_t _paddings[4];
 };
-
-#endif // End of TARGET_X86_64
 
 #endif
