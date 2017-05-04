@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 #ifdef CONFIG_VPMU
-#include "vpmu/include/vpmu-qemu.h"
+#include "vpmu/qemu/vpmu-qemu.h"
 #endif
 
 #define MAX_VIRTIO_CONSOLES 1

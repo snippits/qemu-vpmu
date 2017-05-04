@@ -1,7 +1,7 @@
 #ifndef __VPMU_LOG_H_
 #define __VPMU_LOG_H_
-#include "vpmu-common.h" // Include common headers, macros
-#include "vpmu-conf.h"   // Import the common configurations and QEMU config-host.h
+#include "../vpmu-common.h" // Include common headers, macros
+#include "../vpmu-conf.h"   // Import the common configurations and QEMU config-host.h
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
 #define DBG(str, ...)                                                                    \

@@ -26,8 +26,8 @@
 #include "exec/address-spaces.h"
 
 #ifdef CONFIG_VPMU
-#include "../vpmu/include/vpmu.h"
-#include "../vpmu/include/event-tracing/event-tracing.h"
+#include "../vpmu/vpmu.h"
+#include "../vpmu/event-tracing/event-tracing.h"
 #include "../vpmu/qemu/op-vpmu-i386.c"
 #include "qemu/timer.h"
 #endif

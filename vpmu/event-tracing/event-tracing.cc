@@ -1,6 +1,6 @@
 extern "C" {
-#include "vpmu-common.h"           // Include common C headers
-#include "vpmu/include/linux-mm.h" // VM_EXEC and other mmap() mode states
+#include "vpmu-common.h"   // Include common C headers
+#include "vpmu/linux-mm.h" // VM_EXEC and other mmap() mode states
 }
 #include "elf++.hh"          // elf::elf
 #include "dwarf++.hh"        // dwarf::dwarf

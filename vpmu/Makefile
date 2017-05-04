@@ -4,10 +4,11 @@
 VPMU_FLAGS=-Wall -Wno-sign-compare -g \
 			-I../../ -I../ \
 			-I$(SRC_PATH) -I$(SRC_PATH)/include \
-			-I$(SRC_PATH)/vpmu -I$(SRC_PATH)/vpmu/include -I$(SRC_PATH)/vpmu/libs \
-			-I$(SRC_PATH)/vpmu/include/packet -I$(SRC_PATH)/vpmu/include/simulator \
-			-I$(SRC_PATH)/vpmu/include/arch -I$(SRC_PATH)/vpmu/include/stream \
-			-I$(SRC_PATH)/vpmu/include/event-tracing \
+			-I$(SRC_PATH)/vpmu -I$(SRC_PATH)/vpmu/libs \
+			-I$(SRC_PATH)/vpmu/packet -I$(SRC_PATH)/vpmu/simulator \
+			-I$(SRC_PATH)/vpmu/arch -I$(SRC_PATH)/vpmu/stream \
+			-I$(SRC_PATH)/vpmu/event-tracing -I$(SRC_PATH)/vpmu/component \
+			-I$(SRC_PATH)/vpmu/misc -I$(SRC_PATH)/vpmu/qemu \
 			-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
 
 ifeq ($(CONFIG_VPMU_SET),y)
@@ -16,12 +17,12 @@ endif
 
 # Target specific flags
 ifeq ($(TARGET_NAME),arm)
-VPMU_FLAGS+=-I$(SRC_PATH)/vpmu/include/arch/arm
+VPMU_FLAGS+=-I$(SRC_PATH)/vpmu/arch/arm
 VPMU_FLAGS+=-I$(SRC_PATH)/target-arm -I$(SRC_PATH)/tcg/arm/
 VPMU_FLAGS+=-DCONFIG_VPMU_LONG_BITS=32
 endif
 ifeq ($(TARGET_NAME),x86_64)
-VPMU_FLAGS+=-I$(SRC_PATH)/vpmu/include/arch/i386
+VPMU_FLAGS+=-I$(SRC_PATH)/vpmu/arch/i386
 VPMU_FLAGS+=-I$(SRC_PATH)/target-i386 -I$(SRC_PATH)/tcg/i386/
 VPMU_FLAGS+=-DCONFIG_VPMU_LONG_BITS=64
 endif

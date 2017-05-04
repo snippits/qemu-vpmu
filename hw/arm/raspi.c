@@ -19,7 +19,7 @@
 #include "hw/arm/arm.h"
 #include "sysemu/sysemu.h"
 #ifdef CONFIG_VPMU
-#include "vpmu/include/vpmu-device.h"
+#include "vpmu/qemu/vpmu-device.h"
 #endif
 
 

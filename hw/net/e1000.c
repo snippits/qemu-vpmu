@@ -39,7 +39,7 @@
 #include "e1000x_common.h"
 
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
-#include"../vpmu/include/vpmu-qemu.h"
+#include"../vpmu/qemu/vpmu-qemu.h"
 #include"/opt/mancos/include/scatter.h"
 uint64_t vpmu_total_insn_count(void);
 

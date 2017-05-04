@@ -1,7 +1,7 @@
-#include "vpmu/include/vpmu.h"
-#include "vpmu/include/vpmu-device.h"
-#include "vpmu/include/event-tracing/event-tracing.h"
-#include "vpmu/include/linux-mm.h"
+#include "vpmu/vpmu.h"
+#include "vpmu/qemu/vpmu-device.h"
+#include "vpmu/event-tracing/event-tracing.h"
+#include "vpmu/linux-mm.h"
 
 /***  This is where QEMU helpers of event tracing are implemented
  * in order to retrieve architecture specific/dependent values.

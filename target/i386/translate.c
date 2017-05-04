@@ -32,10 +32,10 @@
 #include "exec/log.h"
 
 #ifdef CONFIG_VPMU
-#include "../vpmu/include/vpmu-extratb.h"                // Extra TB Information
-#include "../vpmu/include/packet/vpmu-packet.h"          // CACHE_PACKET_{READ,WRITE,etc.}
-#include "../vpmu/include/vpmu-log.h"                    // ERR_MSG
-#include "../vpmu/include/arch/i386/vpmu-i386-translate.h" // timing functions
+#include "../vpmu/vpmu-extratb.h"                  // Extra TB Information
+#include "../vpmu/packet/vpmu-packet.h"            // CACHE_PACKET_{READ,WRITE,etc.}
+#include "../vpmu/misc/vpmu-log.h"                 // ERR_MSG
+#include "../vpmu/arch/i386/vpmu-i386-translate.h" // timing functions
 
 static uint64_t *pc = NULL;
 // Branch filter, not a branch instruction

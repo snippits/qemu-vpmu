@@ -41,7 +41,7 @@
 #include <libfdt.h>
 #include "hw/char/pl011.h"
 #ifdef CONFIG_VPMU
-#include "vpmu/include/vpmu-device.h"
+#include "vpmu/qemu/vpmu-device.h"
 #endif
 
 #define VEXPRESS_BOARD_ID 0x8e0

@@ -1,8 +1,8 @@
 #ifndef __VPMU_QEMU_H_
 #define __VPMU_QEMU_H_
 
-#include "vpmu-common.h" // Common headers and macros
-#include "vpmu-conf.h"   // Common definitions of macros
+#include "../vpmu-common.h" // Common headers and macros
+#include "../vpmu-conf.h"   // Common definitions of macros
 
 enum VPMU_CPU_MODE { VPMU_CPU_MODE_ARM, VPMU_CPU_MODE_THUMB };
 

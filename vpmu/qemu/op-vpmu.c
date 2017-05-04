@@ -1,10 +1,10 @@
-#include "vpmu/include/vpmu-qemu.h"          // ExtraTB, XXX_ref() etc.
-#include "vpmu/include/packet/vpmu-packet.h" // data types for sending traces
-#include "vpmu/include/vpmu-device.h"        // vpmu_model_has and its macros
-#include "vpmu/include/arch/vpmu-insn.h"     // vpmu_insn_ref
-#include "vpmu/include/arch/vpmu-cache.h"    // vpmu_cache_ref
-#include "vpmu/include/arch/vpmu-branch.h"   // vpmu_branch_ref
-#include "vpmu/include/phase/phase.h"        // phasedet_ref
+#include "vpmu/qemu/vpmu-qemu.h"        // ExtraTB, XXX_ref() etc.
+#include "vpmu/packet/vpmu-packet.h"    // data types for sending traces
+#include "vpmu/qemu/vpmu-device.h"      // vpmu_model_has and its macros
+#include "vpmu/component/vpmu-insn.h"   // vpmu_insn_ref
+#include "vpmu/component/vpmu-cache.h"  // vpmu_cache_ref
+#include "vpmu/component/vpmu-branch.h" // vpmu_branch_ref
+#include "vpmu/phase/phase.h"           // phasedet_ref
 
 // helper function to calculate TLB misses
 void HELPER(vpmu_tlb_access)(uint32_t addr)

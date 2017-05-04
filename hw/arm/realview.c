@@ -25,7 +25,7 @@
 #include "qemu/error-report.h"
 #include "hw/char/pl011.h"
 #ifdef CONFIG_VPMU
-#include "vpmu/include/vpmu-device.h"
+#include "vpmu/qemu/vpmu-device.h"
 #endif
 
 #define SMP_BOOT_ADDR 0xe0000000

@@ -340,7 +340,7 @@ static inline void tb_invalidate_phys_addr(AddressSpace *as, hwaddr addr)
 #endif
 
 #ifdef CONFIG_VPMU
-    #include "vpmu/include/vpmu-extratb.h"
+#include "vpmu/vpmu-extratb.h"
 #endif
 struct TranslationBlock {
     target_ulong pc;   /* simulated PC corresponding to this block (EIP + CS base) */

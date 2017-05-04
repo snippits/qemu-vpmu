@@ -1,7 +1,7 @@
 extern "C" {
 #include "config-target.h"
-#include "vpmu-common.h"           // Include common C headers
-#include "vpmu/include/linux-mm.h" // VM_EXEC and other mmap() mode states
+#include "vpmu-common.h"   // Include common C headers
+#include "vpmu/linux-mm.h" // VM_EXEC and other mmap() mode states
 }
 #include "event-tracing.hpp" // EventTracer
 #include "phase/phase.hpp"   // Phase class

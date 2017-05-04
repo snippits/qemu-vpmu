@@ -74,11 +74,11 @@
 //#define DEBUG_IRQ
 
 #ifdef CONFIG_VPMU
-#include "vpmu/include/vpmu-device.h"
+#include "vpmu/qemu/vpmu-device.h"
 #endif
 
 #if defined(CONFIG_VPMU) && defined(CONFIG_VPMU_MANCOS)
-#include"../vpmu/include/vpmu-qemu.h"
+#include"../vpmu/qemu/vpmu-qemu.h"
 #include"/opt/mancos/include/scatter.h"
 #endif
 

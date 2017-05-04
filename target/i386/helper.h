@@ -1,5 +1,5 @@
 #ifdef CONFIG_VPMU
-#include "../vpmu/include/vpmu-qemu.h"
+#include "../vpmu/qemu/vpmu-qemu.h"
 DEF_HELPER_2(vpmu_accumulate_tb_info, void, env, ptr)
 DEF_HELPER_4(vpmu_memory_access, void, env, i64, i64, i64)
 DEF_HELPER_3(vpmu_et_call, void, env, i64, i64)

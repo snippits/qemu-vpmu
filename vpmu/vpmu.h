@@ -1,11 +1,11 @@
 #ifndef __VPMU_H_
 #define __VPMU_H_
 
-#include "config-target.h" // QEMU Target Information
-#include "vpmu-common.h"   // Common headers and macros
-#include "vpmu-conf.h"     // Import the common configurations and QEMU config-host.h
-#include "vpmu-qemu.h"     // The interface between QEMU and VPMU
-#include "vpmu-log.h"      // The logging macros of VPMU
+#include "config-target.h"  // QEMU Target Information
+#include "vpmu-common.h"    // Common headers and macros
+#include "vpmu-conf.h"      // Import the common configurations and QEMU config-host.h
+#include "qemu/vpmu-qemu.h" // The interface between QEMU and VPMU
+#include "misc/vpmu-log.h"  // The logging macros of VPMU
 
 //==========================  VPMU Macros  ===========================
 //==================  VPMU Externs(Outer Variables) ==================

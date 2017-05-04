@@ -1,5 +1,5 @@
 #ifdef CONFIG_VPMU
-#include "../vpmu/include/vpmu-qemu.h"
+#include "../vpmu/qemu/vpmu-qemu.h"
 DEF_HELPER_2(vpmu_accumulate_tb_info, void, env, ptr)
 DEF_HELPER_1(vpmu_tlb_access, void, i32)
 #if TARGET_LONG_BITS == 32

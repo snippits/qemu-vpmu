@@ -1,5 +1,5 @@
 #include "vpmu/libs/efd.h"
-#include "vpmu/include/vpmu.h"
+#include "vpmu/vpmu.h"
 
 #include "qemu/osdep.h"    // DeviceState, VMState, etc.
 #include "qemu/timer.h"    // QEMU_CLOCK_VIRTUAL, timer_new_ns()

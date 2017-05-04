@@ -69,7 +69,7 @@
 #endif
 
 #ifdef CONFIG_VPMU
-#include "vpmu/include/vpmu-qemu.h"
+#include "vpmu/qemu/vpmu-qemu.h"
 #endif
 
 #endif /* CONFIG_LINUX */

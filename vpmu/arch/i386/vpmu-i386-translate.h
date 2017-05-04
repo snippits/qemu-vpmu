@@ -3,7 +3,7 @@
 #include <stdint.h>        // uint8_t, uint32_t, etc.
 #include "config-target.h" // QEMU Target Information
 
-#include "vpmu/include/vpmu-extratb.h" // ExtraTBInfo
+#include "vpmu/vpmu-extratb.h" // ExtraTBInfo
 
 // TODO support multi-model??
 // Interface Functions for Instruction Timing.

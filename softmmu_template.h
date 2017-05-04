@@ -22,7 +22,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 #ifdef CONFIG_VPMU
-    #include "vpmu/include/vpmu-qemu.h"
+#include "vpmu/qemu/vpmu-qemu.h"
 #endif
 
 #if DATA_SIZE == 8

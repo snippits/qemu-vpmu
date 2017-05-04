@@ -3,7 +3,7 @@
 #include "json.hpp"             // nlohmann::json
 // VPMU headers
 extern "C" {
-#include "vpmu-device.h" // Timing model definition
+#include "qemu/vpmu-device.h" // Timing model definition
 }
 #include "vpmu.hpp"           // VPMU common header
 #include "vpmu-stream.hpp"    // VPMUStream, VPMUStream_T
