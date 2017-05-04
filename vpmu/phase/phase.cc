@@ -1,12 +1,18 @@
 #include "vpmu.hpp"                   // Include common C and C++ headers
 #include "phase/phase.hpp"            // Phase class
-#include "phase/phase-classifier.hpp" // NearestCluster, and other classifiers
+#include "phase/phase-detect.hpp"     // PhaseDetect class
+#include "phase/phase-classifier.hpp" // PhaseClassfier
 #include "event-tracing.hpp"          // EventTracer
 #include "vpmu-insn.hpp"              // InsnStream
 #include "vpmu-cache.hpp"             // CacheStream
 #include "vpmu-branch.hpp"            // BranchStream
 #include "vpmu-snapshot.hpp"          // VPMUSanpshot
 #include "vpmu-log.hpp"               // CONSOLE_LOG, VPMULog
+
+// Put your own phase classifier below
+#include "phase/phase-classifier-nn.hpp" // NearestCluster classifier
+
+// Put you own phase classifier above
 
 Phase Phase::not_found = Phase();
 

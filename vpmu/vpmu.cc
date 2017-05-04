@@ -12,6 +12,7 @@ extern "C" {
 #include "vpmu-cache.hpp"     // CacheStream
 #include "vpmu-branch.hpp"    // BranchStream
 #include "event-tracing.hpp"  // EventTracer event_tracer
+#include "phase-detect.hpp"   // phase_detect
 
 // The global variable that controls all the vpmu streams.
 std::vector<VPMUStream *> vpmu_streams = {};

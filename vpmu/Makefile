@@ -9,6 +9,7 @@ VPMU_FLAGS=-Wall -Wno-sign-compare -g \
 			-I$(SRC_PATH)/vpmu/arch -I$(SRC_PATH)/vpmu/stream \
 			-I$(SRC_PATH)/vpmu/event-tracing -I$(SRC_PATH)/vpmu/component \
 			-I$(SRC_PATH)/vpmu/misc -I$(SRC_PATH)/vpmu/qemu \
+			-I$(SRC_PATH)/vpmu/phase \
 			-I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
 
 ifeq ($(CONFIG_VPMU_SET),y)

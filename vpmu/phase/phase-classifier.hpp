@@ -1,78 +1,33 @@
 #ifndef __PHASE_CLASSIFIER_HPP_
 #define __PHASE_CLASSIFIER_HPP_
 
-extern "C" {
-#include "vpmu-common.h" // Include types and basic headers
-}
-#include "phase.hpp"
+#include "vpmu.hpp"  // Include types and basic headers
+#include "phase.hpp" // Phase class
 
-class NearestCluster : public Classifier
+class PhaseClassifier : public VPMULog
 {
 public:
-    Phase &classify(std::vector<Phase> &phase_list, const Phase &phase) override
+    PhaseClassifier() : VPMULog("PhaseClassifier"){};
+
+    void set_similarity_threshold(uint64_t new_threshold)
     {
-        double min_d = similarity_threshold;
-        int    idx   = -1;
-        uint64_t phase_num = (&phase - &phase_list[0]);
-
-        std::vector<double> n_vector(phase.get_vector());
-        vpmu::math::normalize(n_vector);
-
-        for (int i = 0; i < phase_list.size(); i++) {
-            // Exclude self comparison
-            if (i == phase_num) continue;
-            auto &phase_n_vector = phase_list[i].get_normalized_vector();
-            // Calaulate the distance between a phase and the window
-            double d = manhatten_distance(phase_n_vector, n_vector);
-            if (d < min_d) {
-                min_d = d;
-                idx   = i;
-            }
-        }
-
-        if (idx == -1) return Phase::not_found;
-        return phase_list[idx];
+        similarity_threshold = new_threshold;
     }
 
-
-    Phase &classify(std::vector<Phase> &phase_list, const Window &window) override
+    virtual Phase& classify(std::vector<Phase>& phase_list, const Phase& phase)
     {
-        double min_d = similarity_threshold;
-        int    idx   = -1;
-
-        std::vector<double> n_vector(window.branch_vector);
-        vpmu::math::normalize(n_vector);
-
-        for (int i = 0; i < phase_list.size(); i++) {
-            auto &phase_n_vector = phase_list[i].get_normalized_vector();
-            // Calaulate the distance between a phase and the window
-            double d = manhatten_distance(phase_n_vector, n_vector);
-            if (d < min_d) {
-                min_d = d;
-                idx   = i;
-            }
-        }
-
-        if (idx == -1) return Phase::not_found;
-        return phase_list[idx];
+        log_fatal("classify() is not implemented");
+        return Phase::not_found;
     }
 
-private:
-    double manhatten_distance(const std::vector<double> &v1,
-                              const std::vector<double> &v2)
+    virtual Phase& classify(std::vector<Phase>& phase_list, const Window& window)
     {
-        double m_distance = 0.0f;
-        for (int i = 0; i < v1.size(); i++) {
-            double abs_difference;
-            if (v1[i] >= v2[i]) {
-                abs_difference = v1[i] - v2[i];
-            } else {
-                abs_difference = v2[i] - v1[i];
-            }
-            m_distance += abs_difference;
-        }
-        return m_distance;
+        log_fatal("classify() is not implemented");
+        return Phase::not_found;
     }
+
+protected:
+    uint64_t similarity_threshold = 1;
 };
 
 #endif

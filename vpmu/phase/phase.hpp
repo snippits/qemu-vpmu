@@ -2,54 +2,15 @@
 #define __PHASE_HPP_
 
 extern "C" {
-#include "phase.h"
+#include "vpmu/vpmu-extratb.h" // Insn_Counters, ExtraTBInfo
+#include "phase.h"             // phasedet_ref (C interface function)
 }
 // #include <eigen3/Eigen/Dense> // Use Eigen for vector and its operations
-#include "vpmu.hpp"        // Include types and basic headers
-#include "vpmu-log.hpp"    // VPMULog
-#include "vpmu-utils.hpp"  // Various functions
-#include "vpmu-packet.hpp" // All performance counter data types
 
+#include "vpmu.hpp"          // Include types and basic headers
+#include "phase-common.hpp"  // Common definitions of phase detection
+#include "window.hpp"        // Window class
 #include "vpmu-snapshot.hpp" // VPMUSanpshot
-
-using CodeRange = std::pair<uint64_t, uint64_t>;
-
-struct GPUFriendnessCounter {
-    uint64_t insn;
-    uint64_t load;
-    uint64_t store;
-    uint64_t alu;
-    uint64_t bit; // shift, and, or, xor
-    uint64_t branch;
-};
-
-class Window
-{
-public:
-    Window() { branch_vector.resize(DEFAULT_VECTOR_SIZE); }
-    Window(int  vector_length) { branch_vector.resize(vector_length); }
-    inline void update_vector(uint64_t pc);
-    inline void update_counter(const ExtraTBInfo* extra_tb_info);
-    inline void update(const ExtraTBInfo* extra_tb_info);
-
-    void reset(void)
-    {
-        timestamp         = 0;
-        instruction_count = 0;
-        memset(&branch_vector[0], 0, branch_vector.size() * sizeof(branch_vector[0]));
-        code_walk_count.clear();
-        memset(&counters, 0, sizeof(counters));
-    }
-
-    // The timestamp of begining of this window
-    uint64_t timestamp = 0;
-    // Eigen::VectorXd branch_vector;
-    std::vector<double> branch_vector;
-    // Instruction count
-    uint64_t instruction_count = 0;
-    std::map<CodeRange, uint32_t> code_walk_count;
-    GPUFriendnessCounter counters = {};
-};
 
 class Phase
 {
@@ -163,72 +124,4 @@ public: // FIXME, make it private
     bool     sub_phase_flag = false;
 };
 
-class Classifier : public VPMULog
-{
-public:
-    Classifier() : VPMULog("Classifier"){};
-
-    void set_similarity_threshold(uint64_t new_threshold)
-    {
-        similarity_threshold = new_threshold;
-    }
-
-    virtual Phase& classify(std::vector<Phase>& phase_list, const Phase& phase)
-    {
-        log_fatal("classify() is not implemented");
-        return Phase::not_found;
-    }
-
-    virtual Phase& classify(std::vector<Phase>& phase_list, const Window& window)
-    {
-        log_fatal("classify() is not implemented");
-        return Phase::not_found;
-    }
-
-protected:
-    uint64_t similarity_threshold = 1;
-};
-
-class PhaseDetect
-{
-public:
-    // No default constructor for this class
-    PhaseDetect() = delete;
-
-    PhaseDetect(uint64_t new_window_size, std::unique_ptr<Classifier>&& new_classifier)
-    {
-        // window size can be changed in the code
-        window_size = new_window_size;
-        classifier  = std::move(new_classifier);
-    }
-
-    void change_classifier(std::unique_ptr<Classifier>&& new_classifier)
-    {
-        classifier = std::move(new_classifier);
-    }
-
-    inline Phase& classify(std::vector<Phase>& phase_list, const Window& window)
-    {
-        return classifier->classify(phase_list, window);
-    }
-
-    inline Phase& classify(std::vector<Phase>& phase_list, const Phase& phase)
-    {
-        return classifier->classify(phase_list, phase);
-    }
-
-    void set_window_size(uint64_t new_size) { window_size = new_size; }
-    inline uint64_t               get_window_size(void) { return window_size; }
-
-    void dump_data(FILE* fp, VPMU_Insn::Data data);
-    void dump_data(FILE* fp, VPMU_Cache::Data data);
-    void dump_data(FILE* fp, VPMU_Branch::Data data);
-
-private:
-    uint64_t window_size;
-    // C++ must use pointer in order to call the derived class virtual functions
-    std::unique_ptr<Classifier> classifier;
-};
-
-extern PhaseDetect phase_detect;
 #endif
