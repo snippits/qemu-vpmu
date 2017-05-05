@@ -1,8 +1,10 @@
 #ifndef __VPMU_STREAM_HPP_
 #define __VPMU_STREAM_HPP_
-#include "vpmu-sim.hpp"         // VPMUSimulator
-#include "vpmu-stream-impl.hpp" // VPMUStream_Impl
-#include "json.hpp"             // nlohmann::json
+#include <mutex>                 // Mutex
+#include "vpmu-local-buffer.hpp" // VPMULocalBuffer
+#include "vpmu-sim.hpp"          // VPMUSimulator
+#include "vpmu-stream-impl.hpp"  // VPMUStream_Impl
+#include "json.hpp"              // nlohmann::json
 
 class VPMUStream : public VPMULog
 {
@@ -69,7 +71,7 @@ public:
         log_debug("Initializing");
         // Destroy worker jobs from last build
         jobs.clear(); // Clear arrays and call destructors
-        local_buffer_index = 0;
+        for (auto& b : local_buffer) b.reset();
 
         // Get the default implementation of stream interface.
         if (impl == nullptr) {
@@ -104,7 +106,7 @@ public:
         impl.reset(nullptr);
         // Call de-allocation of each simulator manually
         jobs.clear(); // Clear arrays and call destructors
-        local_buffer_index = 0;
+        for (auto& b : local_buffer) b.reset();
     }
 
     void reset(void) override
@@ -133,17 +135,19 @@ public:
     }
 
     // Below are non-virtual public functions
-    inline void send_ref(Reference& new_ref)
+    inline void send_ref(int core, Reference& new_ref)
     {
         // Basic safety check
         if (impl == nullptr) return;
 
-        local_buffer[local_buffer_index] = new_ref;
-
-        local_buffer_index++;
-        if (unlikely(local_buffer_index == local_buffer_size)) {
-            impl->send(local_buffer, local_buffer_index, local_buffer_size);
-            local_buffer_index = 0;
+        local_buffer[core].push_back(new_ref);
+        if (unlikely(local_buffer[core].isFull())) {
+            // lock is automatically released when lock goes out of scope
+            std::lock_guard<std::mutex> lock(local_buffer_mutex);
+            impl->send(local_buffer[core].get_buffer(),
+                       local_buffer[core].get_index(),
+                       local_buffer[core].get_size());
+            local_buffer[core].reset();
         }
     }
 
@@ -188,10 +192,14 @@ protected:
     {
         // Basic safety check
         if (impl == nullptr) return;
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(local_buffer_mutex);
         // Flush out local buffer when index is not zero
-        if (local_buffer_index != 0) {
-            impl->send(local_buffer, local_buffer_index, local_buffer_size);
-            local_buffer_index = 0;
+        for (auto&& buf : local_buffer) {
+            if (buf.isEmpty() == false) {
+                impl->send(buf.get_buffer(), buf.get_index(), buf.get_size());
+                buf.reset();
+            }
         }
     }
 
@@ -201,13 +209,10 @@ protected:
     Impl_ptr impl;
 
 private:
-    // Using vector has some performance issue.
-    // Statically assigining the size for best performance
-    static const uint32_t local_buffer_size = 256;
-    Reference             local_buffer[local_buffer_size];
-    uint32_t              local_buffer_index = 0;
+    VPMULocalBuffer<Reference, 256> local_buffer[VPMU_MAX_CPU_CORES];
     // A copy of configuration sent to simulators
     nlohmann::json target_configs;
+    std::mutex local_buffer_mutex;
 
     virtual Sim_ptr create_sim(std::string sim_name)
     {

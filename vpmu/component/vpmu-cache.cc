@@ -58,7 +58,7 @@ void CacheStream::send(
     r.addr      = addr; // The virtual address of ld/st request
     r.size      = size; // If this is a taken branch
 
-    send_ref(r);
+    send_ref(core, r);
 }
 
 void CacheStream::send_hot_tb(

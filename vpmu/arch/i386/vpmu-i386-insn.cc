@@ -24,6 +24,6 @@ void InstructionStream::send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr)
     r.mode            = mode;             // CPU mode
     r.tb_counters_ptr = ptr;              // TB Info Pointer
 
-    send_ref(r);
+    send_ref(core, r);
 }
 

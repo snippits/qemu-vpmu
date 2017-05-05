@@ -252,7 +252,5 @@ void register_callbacks_kernel_events(void)
 
 bool et_kernel_call_event(uint64_t vaddr, void* env, int core_id)
 {
-    // TODO make this thread safe and need to check branch!!!!!!!
-    VPMU.cpu_arch_state = env;
     return event_tracer.get_kernel().call_event(vaddr, env, core_id);
 }

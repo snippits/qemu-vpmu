@@ -115,6 +115,7 @@ public:
     typedef struct {
         uint64_t correct[VPMU_MAX_CPU_CORES]; // branch_predict_correct counter
         uint64_t wrong[VPMU_MAX_CPU_CORES];   // branch_predict_wrong counter
+        // uint64_t cycles[VPMU_MAX_CPU_CORES];
     } Data;
 
     // The architectural configuration information
@@ -171,6 +172,7 @@ public:
         //[level][core][r/w miss/hit]
         uint64_t insn_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         uint64_t data_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
+        // uint64_t cycles[ALL_PROC][VPMU_MAX_CPU_CORES];
         uint64_t memory_accesses, memory_time_ns;
     } Data;
 

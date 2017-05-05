@@ -39,7 +39,7 @@ typedef struct VPMU_Struct {
 
     // TODO Is there a better way for multi-core execution env?
     // Should be set for vpmu device only.
-    void *   cpu_arch_state; // This is for identifying MMU table
+    void *   cpu_arch_state[VPMU_MAX_CPU_CORES]; // This is for identifying MMU table
     uint64_t current_pid[VPMU_MAX_CPU_CORES];
 
     struct {

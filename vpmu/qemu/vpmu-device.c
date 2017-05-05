@@ -82,7 +82,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     // This is a test code to read user data in guest virtual address from host
     if (addr == 100 * 4) {
         ERR_MSG("VA:%lx\n", value);
-        void *guest_addr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
+        void *guest_addr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state[vpmu_get_core_id()], value);
         ERR_MSG("PA:%p\n", (void *)guest_addr);
         if (guest_addr)
             ERR_MSG("value:%lx\n", *(unsigned long int *)guest_addr);
@@ -128,9 +128,10 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             // Copy the whole CPU context including TLB Table and MMU registers
             // for VPMU's use.
             vpmu_qemu_free_cpu_arch_state(vpmu_cpu_context[0]);
-            vpmu_cpu_context[0] = vpmu_qemu_clone_cpu_arch_state(VPMU.cpu_arch_state);
-            paddr               = vpmu_tlb_get_host_addr(vpmu_cpu_context[0], value);
-            binary_name         = (char *)paddr;
+            vpmu_cpu_context[0] =
+              vpmu_qemu_clone_cpu_arch_state(VPMU.cpu_arch_state[vpmu_get_core_id()]);
+            paddr       = vpmu_tlb_get_host_addr(vpmu_cpu_context[0], value);
+            binary_name = (char *)paddr;
             DBG(STR_VPMU "Trace process name: %s\n", (char *)paddr);
             if (!et_find_program_in_list((const char *)paddr)) {
                 // Only push to the list when it's not duplicated
@@ -142,7 +143,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     case VPMU_MMAP_REMOVE_PROC_NAME:
         if (VPMU.platform.kvm_enabled) break;
         if (value != 0) {
-            paddr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
+            paddr =
+              vpmu_tlb_get_host_addr(VPMU.cpu_arch_state[vpmu_get_core_id()], value);
             DBG(STR_VPMU "Remove traced process: %s\n", (char *)paddr);
             et_remove_program_from_list((const char *)paddr);
         }
@@ -159,7 +161,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
                 ERR_MSG("Can not allocate memory\n");
                 exit(EXIT_FAILURE);
             }
-            vpmu_copy_from_guest(buffer, value, buffer_size, VPMU.cpu_arch_state);
+            vpmu_copy_from_guest(
+              buffer, value, buffer_size, VPMU.cpu_arch_state[vpmu_get_core_id()]);
             fp = fopen("/tmp/vpmu-traced-bin", "wb");
             if (fp != NULL) {
                 fwrite(buffer, buffer_size, 1, fp);
@@ -186,13 +189,13 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     case VPMU_MMAP_OFFSET_LINUX_VERSION:
         VPMU.platform.linux_version = value;
         DBG(STR_VPMU "Running with Linux version %lu.%lu.%lu\n",
-               (VPMU.platform.linux_version >> 16) & 0xff,
-               (VPMU.platform.linux_version >> 8) & 0xff,
-               (VPMU.platform.linux_version >> 0) & 0xff);
+            (VPMU.platform.linux_version >> 16) & 0xff,
+            (VPMU.platform.linux_version >> 8) & 0xff,
+            (VPMU.platform.linux_version >> 0) & 0xff);
         break;
     case VPMU_MMAP_OFFSET_KERNEL_SYM_NAME:
         if (VPMU.platform.kvm_enabled) break;
-        paddr        = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state, value);
+        paddr = vpmu_tlb_get_host_addr(VPMU.cpu_arch_state[vpmu_get_core_id()], value);
         kallsym_name = (char *)paddr;
         break;
     case VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR:
