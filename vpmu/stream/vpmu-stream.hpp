@@ -59,6 +59,8 @@ public:
 
     void bind(nlohmann::json configs) override
     {
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_mutex);
         // std::cout << configs.dump();
         if (configs.size() < 1) {
             LOG_FATAL("There is no content!");
@@ -68,6 +70,8 @@ public:
 
     void build() override
     {
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_mutex);
         log_debug("Initializing");
         // Destroy worker jobs from last build
         jobs.clear(); // Clear arrays and call destructors
@@ -101,6 +105,8 @@ public:
 
     void destroy(void) override
     {
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_mutex);
         // Only release resources here.
         // Do not clear states, ex: target_configs
         impl.reset(nullptr);
@@ -111,27 +117,43 @@ public:
 
     void reset(void) override
     {
+        // Basic safety check
+        if (impl == nullptr) return;
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_mutex);
         clean_out_local_buff();
-        if (impl != nullptr) impl->send_reset();
+        impl->send_reset();
     }
 
     void sync(void) override
     {
+        // Basic safety check
+        if (impl == nullptr) return;
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_mutex);
         clean_out_local_buff();
-        if (impl != nullptr) impl->send_sync();
+        impl->send_sync();
     }
 
     void dump(void) override
     {
+        // Basic safety check
+        if (impl == nullptr) return;
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_mutex);
         clean_out_local_buff();
-        if (impl != nullptr) impl->send_dump();
+        impl->send_dump();
     }
 
     void sync_none_blocking(void) override
     {
+        // Basic safety check
+        if (impl == nullptr) return;
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_mutex);
         // log_debug("async");
         clean_out_local_buff();
-        if (impl != nullptr) impl->send_sync_none_blocking();
+        impl->send_sync_none_blocking();
     }
 
     // Below are non-virtual public functions
@@ -143,7 +165,7 @@ public:
         local_buffer[core].push_back(new_ref);
         if (unlikely(local_buffer[core].isFull())) {
             // lock is automatically released when lock goes out of scope
-            std::lock_guard<std::mutex> lock(local_buffer_mutex);
+            std::lock_guard<std::mutex> lock(stream_mutex);
             impl->send(local_buffer[core].get_buffer(),
                        local_buffer[core].get_index(),
                        local_buffer[core].get_size());
@@ -154,6 +176,8 @@ public:
     void attach_simulator(nlohmann::json sim_config)
     {
         std::string sim_name = sim_config["name"];
+        // lock is automatically released when lock goes out of scope
+        std::lock_guard<std::mutex> lock(stream_simulator_mutex);
 
         log("Attaching... " BASH_COLOR_CYAN "%s" BASH_COLOR_NONE, sim_name.c_str());
 
@@ -188,12 +212,10 @@ public:
 
 protected:
     // Force to clean out local buffer whenever the packet is a control packet
-    void clean_out_local_buff(void)
+    // mutex lock and nullptr check should be done before this function
+    // This function does not check any of them for performance
+    inline void clean_out_local_buff(void)
     {
-        // Basic safety check
-        if (impl == nullptr) return;
-        // lock is automatically released when lock goes out of scope
-        std::lock_guard<std::mutex> lock(local_buffer_mutex);
         // Flush out local buffer when index is not zero
         for (auto&& buf : local_buffer) {
             if (buf.isEmpty() == false) {
@@ -212,7 +234,10 @@ private:
     VPMULocalBuffer<Reference, 256> local_buffer[VPMU_MAX_CPU_CORES];
     // A copy of configuration sent to simulators
     nlohmann::json target_configs;
-    std::mutex     local_buffer_mutex;
+    // This mutex protects: impl function calls, and stream interface functions
+    std::mutex stream_mutex;
+    // This mutex protects: creation of simulators
+    std::mutex stream_simulator_mutex;
 
     virtual Sim_ptr create_sim(std::string sim_name)
     {
