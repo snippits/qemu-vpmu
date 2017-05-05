@@ -29,17 +29,18 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
     }
 
     log_debug("Loading symbol table to %s", program->name.c_str());
-    elf::elf ef(elf::create_mmap_loader(fd));
-    for (auto& sec : ef.sections()) {
-        { // Read section information
-            auto& hdr = sec.get_hdr();
-            // Updata section map table
-            program->section_table[sec.get_name()].beg = hdr.addr;
-            program->section_table[sec.get_name()].end = hdr.addr + hdr.size;
-        }
-        if (sec.get_hdr().type != elf::sht::symtab
-            && sec.get_hdr().type != elf::sht::dynsym)
-            continue;
+    try {
+        elf::elf ef(elf::create_mmap_loader(fd));
+        for (auto& sec : ef.sections()) {
+            { // Read section information
+                auto& hdr = sec.get_hdr();
+                // Updata section map table
+                program->section_table[sec.get_name()].beg = hdr.addr;
+                program->section_table[sec.get_name()].end = hdr.addr + hdr.size;
+            }
+            if (sec.get_hdr().type != elf::sht::symtab
+                && sec.get_hdr().type != elf::sht::dynsym)
+                continue;
 // Read only symbol sections
 #if 0
         log_debug("Symbol table '%s':", sec.get_name().c_str());
@@ -51,9 +52,9 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
                   "Index",
                   "Name");
 #endif
-        for (auto sym : sec.as_symtab()) {
-            auto& d = sym.get_data();
-            if (d.type() == elf::stt::func) {
+            for (auto sym : sec.as_symtab()) {
+                auto& d = sym.get_data();
+                if (d.type() == elf::stt::func) {
 #if 0
                 log_debug("%016" PRIx64 " %5" PRId64 " %-7s %-7s %5s %s",
                           d.value,
@@ -63,12 +64,11 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
                           to_string(d.shnxd).c_str(),
                           sym.get_name().c_str());
 #endif
-                program->sym_table[sym.get_name()] = d.value;
+                    program->sym_table[sym.get_name()] = d.value;
+                }
             }
         }
-    }
 
-    try {
         dwarf::dwarf dw(dwarf::elf::create_loader(ef));
         for (auto cu : dw.compilation_units()) {
             // log_debug("--- <%x>\n", (unsigned int)cu.get_section_offset());
@@ -88,6 +88,8 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
             }
             // log_debug("\n");
         }
+    } catch (elf::format_error e) {
+        LOG_FATAL("bad ELF magic number");
     } catch (dwarf::format_error e) {
         log_debug("Warning: Target binary '%s' does not contatin dwarf sections",
                   program->name.c_str());
