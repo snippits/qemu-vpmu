@@ -13,6 +13,7 @@ extern "C" {
 #include <utility>         // std::forward
 #include <map>             // std::map
 #include <algorithm>       // std::remove_if
+#include <mutex>           // Mutex
 #include "vpmu-log.hpp"    // Log system
 #include "vpmu-utils.hpp"  // Misc. functions
 #include "phase/phase.hpp" // Phase class
@@ -105,9 +106,12 @@ public:
         cb[event].fun_ret = f;
     }
 
-    uint64_t get_running_pid() { return VPMU.current_pid[vpmu::get_core_id()]; }
+    uint64_t get_running_pid() { return VPMU.core[vpmu::get_core_id()].current_pid; }
 
-    uint64_t get_running_pid(uint64_t core_id) { return VPMU.current_pid[core_id]; }
+    uint64_t get_running_pid(uint64_t core_id)
+    {
+        return VPMU.core[vpmu::get_core_id()].current_pid;
+    }
 
 private:
     uint64_t kernel_event_table[ET_KERNEL_EVENT_COUNT] = {0};
@@ -133,7 +137,9 @@ public:
 
     inline std::shared_ptr<ET_Program> add_program(std::string name)
     {
-        auto p = std::make_shared<ET_Program>(name);
+        auto                        p = std::make_shared<ET_Program>(name);
+        std::lock_guard<std::mutex> lock(program_list_lock);
+
         log_debug("Add new binary '%s'", name.c_str());
         program_list.push_back(p);
         // debug_dump_program_map();
@@ -142,7 +148,9 @@ public:
 
     inline std::shared_ptr<ET_Program> add_library(std::string name)
     {
-        auto p = std::make_shared<ET_Program>(name);
+        auto                        p = std::make_shared<ET_Program>(name);
+        std::lock_guard<std::mutex> lock(program_list_lock);
+
         // Set this flag to true if it's a library
         p->is_shared_library = true;
         log_debug("Add new library '%s'", name.c_str());
@@ -154,6 +162,8 @@ public:
     inline void remove_program(std::string name)
     {
         if (program_list.size() == 0) return;
+        std::lock_guard<std::mutex> lock(program_list_lock);
+
         log_debug("Try remove program '%s'", name.c_str());
         // The STL way cost a little more time than hand coding,
         // but it's much more SAFE!
@@ -168,7 +178,9 @@ public:
 
     inline std::shared_ptr<ET_Process> add_new_process(const char* name, uint64_t pid)
     {
-        auto program = find_program(name);
+        auto                        program = find_program(name);
+        std::lock_guard<std::mutex> lock(process_id_map_lock);
+
         // Check if the target program is in the monitoring list
         if (program != nullptr) {
             log_debug("Trace new process %s, pid:%5" PRIu64, name, pid);
@@ -196,6 +208,8 @@ public:
         if (process != nullptr) {
             auto program  = process->get_main_program();
             auto filename = vpmu::utils::get_file_name_from_path(path);
+            std::lock_guard<std::mutex> lock(program_list_lock);
+
             if (name != program->filename) {
                 log_debug(
                   "Rename program '%s' attributes to: real path '%s', filename '%s'",
@@ -223,6 +237,8 @@ public:
     inline void remove_process(uint64_t pid)
     {
         if (process_id_map.size() == 0) return;
+        std::lock_guard<std::mutex> lock(process_id_map_lock);
+
 #ifdef CONFIG_VPMU_DEBUG_MSG
         // It's not necessary to find, use it in debug only
         if (process_id_map.find(pid) != process_id_map.end()) {
@@ -259,6 +275,7 @@ public:
     inline void attach_to_parent(std::shared_ptr<ET_Process> parent, uint64_t child_pid)
     {
         if (parent == nullptr) return;
+        std::lock_guard<std::mutex> lock(process_lock);
 
         log_debug("Attach process %5" PRIu64 " to %5" PRIu64, child_pid, parent->pid);
         parent->attach_child_pid(child_pid);
@@ -274,6 +291,7 @@ public:
                                   std::shared_ptr<ET_Program>& program)
     {
         if (target_program == nullptr) return;
+        std::lock_guard<std::mutex> lock(program_list_lock);
 
         log_debug("Attach program '%s' to binary '%s'",
                   program->name.c_str(),
@@ -290,7 +308,8 @@ public:
 
     void set_process_cpu_state(uint64_t pid, void* cs)
     {
-        auto process = find_process(pid);
+        std::lock_guard<std::mutex> lock(process_lock);
+        auto                        process = find_process(pid);
         if (process != nullptr) process->set_cpu_state(cs);
     }
 
@@ -301,6 +320,7 @@ public:
 
     void clear_shared_libraries(void)
     {
+        std::lock_guard<std::mutex> lock(program_list_lock);
         // The STL way cost a little more time than hand coding, but it's much more SAFE!
         program_list.erase(std::remove_if(program_list.begin(),
                                           program_list.end(),
@@ -328,6 +348,12 @@ private:
     ET_Kernel kernel;
     std::map<uint64_t, std::shared_ptr<ET_Process>> process_id_map;
     std::vector<std::shared_ptr<ET_Program>> program_list;
+    // This mutex protects: process_id_map
+    std::mutex process_id_map_lock;
+    // This mutex protects: process
+    std::mutex process_lock;
+    // This mutex protects: program_list
+    std::mutex program_list_lock;
 };
 
 extern EventTracer event_tracer;

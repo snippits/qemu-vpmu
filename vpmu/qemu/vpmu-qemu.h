@@ -37,10 +37,15 @@ typedef struct VPMU_Struct {
 
     uint64_t timing_model;
 
-    // TODO Is there a better way for multi-core execution env?
-    // Should be set for vpmu device only.
-    void *   cpu_arch_state[VPMU_MAX_CPU_CORES]; // This is for identifying MMU table
-    uint64_t current_pid[VPMU_MAX_CPU_CORES];
+    struct {
+        // The per core enable flag is used to indicate whether there is
+        // any core running monitored process. We still use VPMU.enabled
+        // to decide whether run VPMU codes for performance counters.
+        bool     vpmu_enabled;   // Indicate whether VPMU is enabled on this core
+        void *   cpu_arch_state; // This is for identifying MMU table
+        uint64_t current_pid;    // Current pid on the core
+        uint64_t padding[8];     // 8 words of padding
+    } core[VPMU_MAX_CPU_CORES];
 
     struct {
         uint64_t total_tb_visit_count;

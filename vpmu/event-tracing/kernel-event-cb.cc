@@ -81,7 +81,7 @@ void register_callbacks_kernel_events(void)
 
     // Linux Kernel: New process creation
     _CB(ET_KERNEL_EXECV, {
-        uint64_t current_pid = VPMU.current_pid[vpmu::get_core_id()];
+        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
         if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
             state.bash_path =
@@ -116,18 +116,18 @@ void register_callbacks_kernel_events(void)
             pid = vpmu_read_uint32_from_guest(
               env, et_get_input_arg(env, 2), g_linux_offset.task_struct.pid);
 #endif
-        VPMU.current_pid[vpmu::get_core_id()] = pid;
-        // ERR_MSG("switch pid to %lu\n", pid);
+        VPMU.core[vpmu::get_core_id()].current_pid = pid;
+        // ERR_MSG("core %2lu switch pid to %lu\n", vpmu::get_core_id(), pid);
 
         if (et_find_traced_pid(pid)) {
             et_set_process_cpu_state(pid, env);
-            VPMU.enabled = true;
+            vpmu::enable_vpmu_on_core();
         } else {
             // Switching VPMU when current process is traced
             if (vpmu_model_has(VPMU_WHOLE_SYSTEM, VPMU))
-                VPMU.enabled = true;
+                vpmu::enable_vpmu_on_core();
             else
-                VPMU.enabled = false;
+                vpmu::disable_vpmu_on_core();
         }
         return;
     });
@@ -136,7 +136,7 @@ void register_callbacks_kernel_events(void)
     _CB(ET_KERNEL_EXIT, {
         // Do nothing if the value is not initialized
         if (g_linux_offset.task_struct.pid == 0) return;
-        uint64_t current_pid = VPMU.current_pid[vpmu::get_core_id()];
+        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
         et_remove_process(current_pid);
         return;
 
@@ -148,7 +148,7 @@ void register_callbacks_kernel_events(void)
         if (g_linux_offset.task_struct.pid == 0) return;
         uint32_t target_pid = vpmu_read_uint32_from_guest(
           env, et_get_input_arg(env, 1), g_linux_offset.task_struct.pid);
-        uint64_t current_pid = VPMU.current_pid[vpmu::get_core_id()];
+        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
         if (current_pid != 0 && et_find_traced_pid(current_pid)) {
             et_attach_to_parent_pid(current_pid, target_pid);
         }
@@ -157,11 +157,11 @@ void register_callbacks_kernel_events(void)
     // Linux Kernel: Fork a process
     _CB(ET_KERNEL_FORK,
         {
-          // DBG(STR_VPMU "fork from %lu\n", VPMU.current_pid[vpmu::get_core_id()]);
+          // DBG(STR_VPMU "fork from %lu\n", VPMU.core[vpmu::get_core_id()].current_pid);
         });
 
     _CB(ET_KERNEL_MMAP, {
-        uint64_t current_pid = VPMU.current_pid[vpmu::get_core_id()];
+        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
         if (current_pid == 0) return;
 
         // Do nothing if the value is not initialized
@@ -188,7 +188,11 @@ void register_callbacks_kernel_events(void)
         state.last_mmap_len    = et_get_input_arg(env, 3);
         state.mmap_update_flag = false;
         /*
-        DBG(STR_VPMU "mmap file: %s @ %lx mode: (%lx) ", fullpath, vaddr, mode);
+        DBG(STR_VPMU "core %2lu mmap file: %s @ %lx mode: (%lx) ",
+            vpmu::get_core_id(),
+            fullpath,
+            vaddr,
+            mode);
 #ifdef CONFIG_VPMU_DEBUG_MSG
         print_mode(mode, VM_READ, " READ");
         print_mode(mode, VM_WRITE, " WRITE");
@@ -212,7 +216,7 @@ void register_callbacks_kernel_events(void)
                 tic(&(VPMU.start_time));
                 VPMU_reset();
                 vpmu_print_status(&VPMU);
-                VPMU.enabled = 1;
+                vpmu::enable_vpmu_on_core();
             }
 
             // The current mapped file is the main program, push it to process anyway
@@ -233,7 +237,7 @@ void register_callbacks_kernel_events(void)
     });
 
     _CR(ET_KERNEL_MMAP, {
-        uint64_t current_pid = VPMU.current_pid[vpmu::get_core_id()];
+        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
         if (state.mmap_update_flag) {
             /*
             DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",

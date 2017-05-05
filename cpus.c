@@ -1840,8 +1840,8 @@ void qemu_init_vcpu(CPUState *cpu)
 
 #ifdef CONFIG_VPMU
     // Add multi-core support here
-    VPMU.threaded_tcg_flag = qemu_tcg_mttcg_enabled();
-    VPMU.cpu_arch_state[cpu->cpu_index] = cpu->env_ptr;
+    VPMU.threaded_tcg_flag                   = qemu_tcg_mttcg_enabled();
+    VPMU.core[cpu->cpu_index].cpu_arch_state = cpu->env_ptr;
 #endif
 
     if (kvm_enabled()) {

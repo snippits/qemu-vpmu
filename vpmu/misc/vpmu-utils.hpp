@@ -23,6 +23,33 @@ inline void set_core_id(uint64_t core_id)
     vpmu_running_core_id = core_id;
 }
 
+inline void enable_vpmu_on_core(uint64_t core_id)
+{
+    VPMU.core[core_id].vpmu_enabled = true;
+    // Set the global/general flag as well
+    VPMU.enabled = true;
+}
+
+inline void disable_vpmu_on_core(uint64_t core_id)
+{
+    VPMU.core[core_id].vpmu_enabled = false;
+    // Set the global/general flag as well
+    VPMU.enabled = false;
+    for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+        VPMU.enabled |= VPMU.core[i].vpmu_enabled;
+    }
+}
+
+inline void enable_vpmu_on_core(void)
+{
+    vpmu::enable_vpmu_on_core(get_core_id());
+}
+
+inline void disable_vpmu_on_core(void)
+{
+    vpmu::disable_vpmu_on_core(get_core_id());
+}
+
 namespace math
 {
     double l2_norm(const std::vector<double> &u);
