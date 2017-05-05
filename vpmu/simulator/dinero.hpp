@@ -5,6 +5,10 @@
 #include "vpmu-packet.hpp" // VPMU_Cache::Reference
 #include "vpmu-utils.hpp"  // miscellaneous functions
 
+// TODO This feature consume a lot of execution time and lines of codes
+// It is still doubtful whether this is a necessary feature
+// #define EXPERIMENTAL_PER_CORE_CYCLES
+
 extern "C" {
 #include "d4-7/d4.h"
 }
@@ -95,6 +99,12 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         int i;
 
         CONSOLE_LOG("  [%d] type : dinero\n", id);
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+        CONSOLE_LOG("    cycles:\n");
+        for (i = 0; i < platform_info.cpu.cores; i++) {
+            CONSOLE_LOG("      [%d]: %" PRIu64 "\n", i, cycles[0][i]);
+        }
+#endif
         // Dump info
         CONSOLE_LOG("       (Miss Rate)   "
                     "|    Access Count    "
@@ -243,7 +253,10 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 
     // TODO how to support multiple L2 cache?
     // BFS search to form an one dimensional array
-    void recursively_parse_json(json root, D4_CACHE_CONFIG *c, int level)
+    void recursively_parse_json(json              root,
+                                D4_CACHE_CONFIG * c,
+                                int               level,
+                                std::vector<int> &flag_has_processor)
     {
         int i, index, local_index = 0;
 
@@ -257,8 +270,10 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
             for (int i = 0; i < root.size(); i++) {
                 // If there's next level of cache topology, dive into it!
                 if (root[i]["next"] != nullptr) {
-                    recursively_parse_json(
-                      root[i]["next"], &d4_cache[local_index], level - 1);
+                    recursively_parse_json(root[i]["next"],
+                                           &d4_cache[local_index],
+                                           level - 1,
+                                           flag_has_processor);
                 }
             }
         } else {
@@ -321,6 +336,55 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         data.memory_time_ns =
           data.memory_accesses * model.latency[VPMU_Cache::Data_Level::MEMORY];
     }
+
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+    void take_snapshot(VPMU_Cache::Data &data, int proc, int core)
+    {
+        // Make a snapshot of current value
+        for (int i = VPMU_Cache::Data_Level::L1_CACHE; i < VPMU_Cache::Data_Level::MEMORY;
+             i++) {
+            auto &&icache = data.insn_cache[proc][i][core];
+            auto &&dcache = data.data_cache[proc][i][core];
+
+            auto &&s_icache = cache_data_snapshot.insn_cache[proc][i][core];
+            auto &&s_dcache = cache_data_snapshot.data_cache[proc][i][core];
+            for (int j = 0; j < VPMU_Cache::SIZE_OF_INDEX; j++) {
+                s_icache[j] = icache[j];
+                s_dcache[j] = dcache[j];
+            }
+            cache_data_snapshot.memory_accesses = data.memory_accesses;
+        }
+    }
+
+    void update_snapshot(VPMU_Cache::Data &data, int proc, int core)
+    {
+        for (int i = VPMU_Cache::Data_Level::L1_CACHE; i < VPMU_Cache::Data_Level::MEMORY;
+             i++) {
+            auto &&icache = data.insn_cache[proc][i][core];
+            auto &&dcache = data.data_cache[proc][i][core];
+
+            auto &&s_icache = cache_data_snapshot.insn_cache[proc][i][core];
+            auto &&s_dcache = cache_data_snapshot.data_cache[proc][i][core];
+
+            icache_miss_counter[core][i] +=
+              icache[VPMU_Cache::READ_MISS] - s_icache[VPMU_Cache::READ_MISS];
+            icache_access_counter[core][i] +=
+              (icache[VPMU_Cache::READ] - s_icache[VPMU_Cache::READ])
+              + (icache[VPMU_Cache::WRITE] - s_icache[VPMU_Cache::WRITE]);
+
+            dcache_miss_counter[core][i] +=
+              (dcache[VPMU_Cache::READ_MISS] - s_dcache[VPMU_Cache::READ_MISS])
+              + (dcache[VPMU_Cache::WRITE_MISS] - s_dcache[VPMU_Cache::WRITE_MISS]);
+            dcache_access_counter[core][i] +=
+              (dcache[VPMU_Cache::READ] - s_dcache[VPMU_Cache::READ])
+              + (dcache[VPMU_Cache::WRITE] - s_dcache[VPMU_Cache::WRITE]);
+        }
+        memory_access_counter[core] +=
+          data.memory_accesses - cache_data_snapshot.memory_accesses;
+
+        take_snapshot(data, proc, core);
+    }
+#endif
 
     void sync_back_config_to_vpmu(VPMU_Cache::Model &model, json &config)
     {
@@ -421,7 +485,9 @@ public:
         d4_cache[d4_num_caches].level = VPMU_Cache::MEMORY;
         d4_cache[d4_num_caches].core  = 0;
         d4_num_caches++;
-        recursively_parse_json(json_config["topology"], &d4_cache[0], d4_levels);
+        std::vector<int> flag_has_processor(ALL_PROC);
+        recursively_parse_json(
+          json_config["topology"], &d4_cache[0], d4_levels, flag_has_processor);
         sync_back_config_to_vpmu(model, json_config);
 
         // Reset the configurations depending on json contents.
@@ -442,6 +508,10 @@ public:
                                  const VPMU_Cache::Reference &ref,
                                  VPMU_Cache::Data &           data) override
     {
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+        static int last_core_id = -1; // Remember the core id of last packet
+        static int last_proc    = -1; // Remember the processor of last packet
+#endif
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
         debug_packet_num_cnt++;
@@ -478,6 +548,25 @@ public:
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
             sync_cache_data(data, cache_model);
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+            // TODO After solving the sync in data packets, this should be
+            // merged into sync_cache_data function.
+            for (int core = 0; core < platform_info.cpu.cores; core++) {
+                cycles[PROCESSOR_CPU][core] = 0;
+                for (int l = 0; l < VPMU_Cache::MEMORY; l++) {
+                    cycles[PROCESSOR_CPU][core] +=
+                      (icache_miss_counter[core][l] * cache_model.latency[l]
+                       + (icache_access_counter[core][l] - icache_miss_counter[core][l])
+                           * cache_model.latency[l]
+                       + dcache_miss_counter[core][l] * cache_model.latency[l]
+                       + (dcache_access_counter[core][l] - dcache_miss_counter[core][l])
+                           * cache_model.latency[l]);
+                }
+                cycles[PROCESSOR_CPU][core] +=
+                  memory_access_counter[core] * cache_model.latency[VPMU_Cache::MEMORY];
+            }
+            memcpy(data.cycles, cycles, sizeof(cycles));
+#endif
             break;
         case VPMU_PACKET_SYNC_DATA:
             // Sync only ensure the data in the array is up to date to and not ahead of
@@ -485,14 +574,42 @@ public:
             // Slave can stealthily do simulations as long as it does not have a pending
             // sync job.
             sync_cache_data(data, cache_model);
-            // pkg->sync_counter++;  // Increase the timestamp of counter
-            // pkg->synced_flag = 1; // Set up the flag
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+            // TODO After solving the sync in data packets, this should be
+            // merged into sync_cache_data function.
+            for (int core = 0; core < platform_info.cpu.cores; core++) {
+                cycles[PROCESSOR_CPU][core] = 0;
+                for (int l = 0; l < VPMU_Cache::MEMORY; l++) {
+                    cycles[PROCESSOR_CPU][core] +=
+                      (icache_miss_counter[core][l] * cache_model.latency[l]
+                       + (icache_access_counter[core][l] - icache_miss_counter[core][l])
+                           * cache_model.latency[l]
+                       + dcache_miss_counter[core][l] * cache_model.latency[l]
+                       + (dcache_access_counter[core][l] - dcache_miss_counter[core][l])
+                           * cache_model.latency[l]);
+                }
+                cycles[PROCESSOR_CPU][core] +=
+                  memory_access_counter[core] * cache_model.latency[VPMU_Cache::MEMORY];
+            }
+            memcpy(data.cycles, cycles, sizeof(cycles));
+#endif
             break;
         case VPMU_PACKET_DUMP_INFO:
             dump_info(id);
             break;
         case VPMU_PACKET_RESET:
             memset(&data, 0, sizeof(VPMU_Cache::Data));
+            memset(&cache_data_snapshot, 0, sizeof(VPMU_Cache::Data));
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+            memset(&cycles, 0, sizeof(cycles));
+            memset(&icache_miss_counter, 0, sizeof(icache_miss_counter));
+            memset(&dcache_miss_counter, 0, sizeof(dcache_miss_counter));
+            memset(&icache_access_counter, 0, sizeof(icache_access_counter));
+            memset(&dcache_access_counter, 0, sizeof(dcache_access_counter));
+            memset(&memory_access_counter, 0, sizeof(memory_access_counter));
+            last_core_id = -1;
+            last_proc    = -1;
+#endif
             for (i = 0; i < MAX_D4_CACHES; i++)
                 if (d4_cache[i].cache) reset_single_d4_cache(d4_cache[i].cache);
             break;
@@ -500,9 +617,30 @@ public:
         case CACHE_PACKET_WRITE:
         case CACHE_PACKET_INSN:
             // DBG("index=%d, %x\n", index, d4_cache_leaf[index]);
-            // Ignore all packets if this configuration does not support
+            // Ignore all packets if this configuration does not support (GPU/DSP/etc.)
             if (unlikely(num_cores[ref.processor] == 0)) return;
-            // Error check
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+            // Initialize the first core id and proc id if it's not set
+            if (unlikely(last_proc == -1 || last_core_id == -1)) {
+                last_core_id = ref.core;
+                last_proc    = ref.processor;
+            }
+            if (last_proc != ref.processor || last_core_id != ref.core) {
+                // This is for minimizing the number of times accumulating the misses
+                // of each core. It's very painful...
+                // Only accumulate when the processor or core id changes
+                // TODO This sync here will make the async callback having a wrong value
+                // (It's future feature)
+                sync_cache_data(data, cache_model);
+                // Summarize the last transaction
+                update_snapshot(data, last_proc, last_core_id);
+                // Take a snapshot to record the baseline of this transaction
+                take_snapshot(data, ref.processor, ref.core);
+            }
+            last_core_id = ref.core;
+            last_proc    = ref.processor;
+#endif
+            // Error check before sending to the simulator for safety
             if (likely(d4_cache_leaf[index])) d4ref(d4_cache_leaf[index], d4_ref);
             break;
         default:
@@ -595,14 +733,24 @@ private:
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
     VPMU_Cache::Model cache_model;
+    VPMU_Cache::Data  cache_data_snapshot = {};
 
-    d4cache *       d4_cache_leaf[MAX_D4_CACHES]  = {0};
-    D4_CACHE_CONFIG d4_cache[MAX_D4_CACHES]       = {{0}};
-    uint32_t        num_cores[MAX_D4_CACHES]      = {0};
-    uint32_t        core_num_table[MAX_D4_CACHES] = {0};
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+    // The core-dependent cycles (from private to shared caches)
+    uint64_t icache_miss_counter[VPMU_MAX_CPU_CORES][VPMU_Cache::MAX_LEVEL]   = {};
+    uint64_t icache_access_counter[VPMU_MAX_CPU_CORES][VPMU_Cache::MAX_LEVEL] = {};
+    uint64_t dcache_miss_counter[VPMU_MAX_CPU_CORES][VPMU_Cache::MAX_LEVEL]   = {};
+    uint64_t dcache_access_counter[VPMU_MAX_CPU_CORES][VPMU_Cache::MAX_LEVEL] = {};
+    uint64_t memory_access_counter[VPMU_MAX_CPU_CORES]                        = {};
+    uint64_t cycles[ALL_PROC][VPMU_MAX_CPU_CORES]                             = {};
+#endif
+
+    d4cache *       d4_cache_leaf[MAX_D4_CACHES]  = {};
+    D4_CACHE_CONFIG d4_cache[MAX_D4_CACHES]       = {{}};
+    uint32_t        num_cores[MAX_D4_CACHES]      = {};
+    uint32_t        core_num_table[MAX_D4_CACHES] = {};
     uint32_t        d4_num_caches                 = 0;
     uint32_t        d4_levels                     = 0;
-    int             flag_has_processor[ALL_PROC]  = {0};
 };
 
 #endif
