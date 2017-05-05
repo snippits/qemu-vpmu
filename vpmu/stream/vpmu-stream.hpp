@@ -212,7 +212,7 @@ private:
     VPMULocalBuffer<Reference, 256> local_buffer[VPMU_MAX_CPU_CORES];
     // A copy of configuration sent to simulators
     nlohmann::json target_configs;
-    std::mutex local_buffer_mutex;
+    std::mutex     local_buffer_mutex;
 
     virtual Sim_ptr create_sim(std::string sim_name)
     {
