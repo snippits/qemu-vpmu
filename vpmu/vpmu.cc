@@ -20,8 +20,6 @@ std::vector<VPMUStream *> vpmu_streams = {};
 FILE *vpmu_log_file = nullptr;
 // The definition of the only one global variable passing data around.
 struct VPMU_Struct VPMU = {};
-// A pointer to current Extra TB Info
-ExtraTBInfo *vpmu_current_extra_tb_info = nullptr;
 // A thread local storage for saving the running core id of each thread
 thread_local uint64_t vpmu_running_core_id = 0;
 // QEMU log system use these two variables
@@ -156,15 +154,10 @@ void VPMU_sync(void)
 
 void VPMU_reset(void)
 {
-    VPMU.cpu_idle_time_ns                = 0;
-    VPMU.ticks                           = 0;
-    VPMU.iomem_count                     = 0;
-    VPMU.modelsel.total_tb_visit_count   = 0;
-    VPMU.modelsel.cold_tb_visit_count    = 0;
-    VPMU.modelsel.hot_tb_visit_count     = 0;
-    VPMU.modelsel.hot_dcache_read_count  = 0;
-    VPMU.modelsel.hot_dcache_write_count = 0;
-    VPMU.modelsel.hot_icache_count       = 0;
+    VPMU.cpu_idle_time_ns = 0;
+    VPMU.ticks            = 0;
+    VPMU.iomem_count      = 0;
+    memset(VPMU.modelsel, 0, sizeof(VPMU.modelsel));
 
     for (auto s : vpmu_streams) {
         s->reset();
@@ -305,8 +298,20 @@ void vpmu_dump_readable_message(void)
     CONSOLE_LOG("CACHE:\n");
     vpmu_cache_stream.dump();
 
-    CONSOLE_U64("HOT TB      :", VPMU.modelsel.hot_tb_visit_count);
-    CONSOLE_U64("COLD TB     :", VPMU.modelsel.cold_tb_visit_count);
+    if (vpmu_model_has(VPMU_JIT_MODEL_SELECT, VPMU)) {
+        int i;
+        CONSOLE_LOG("\n\nJIT Model Selection:\n");
+        CONSOLE_LOG("  HOT TB       : ");
+        for (i = 0; i < VPMU.platform.cpu.cores - 1; i++) {
+            CONSOLE_LOG("%" PRIu64 ", ", VPMU.modelsel[i].hot_tb_visit_count);
+        }
+        CONSOLE_LOG("%" PRIu64 "\n", VPMU.modelsel[i].hot_tb_visit_count);
+        CONSOLE_LOG("  COLD TB      : ");
+        for (i = 0; i < VPMU.platform.cpu.cores - 1; i++) {
+            CONSOLE_LOG("%" PRIu64 ", ", VPMU.modelsel[i].cold_tb_visit_count);
+        }
+        CONSOLE_LOG("%" PRIu64 "\n", VPMU.modelsel[i].cold_tb_visit_count);
+    }
     CONSOLE_LOG("\n");
     CONSOLE_LOG("Timing Info:\n");
     CONSOLE_TME("  ->CPU                        :", cpu_time_ns());

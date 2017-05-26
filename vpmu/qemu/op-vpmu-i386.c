@@ -21,8 +21,6 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
     static unsigned int last_tb_pc         = 0;
     static unsigned int last_tb_has_branch = 0;
 
-    vpmu_current_extra_tb_info = extra_tb_info;
-
     if (cpl == 0) {
         mode = X86_CPU_MODE_SVC;
     } else if (cpl == 3) {

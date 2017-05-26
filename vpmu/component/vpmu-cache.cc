@@ -71,13 +71,13 @@ void CacheStream::send_hot_tb(
         uint64_t block_s  = addr >> bs;
         uint64_t block_e  = ((addr + size) - 1) >> bs;
         int      num_blks = block_e - block_s + 1;
-        VPMU.modelsel.hot_icache_count += num_blks;
+        VPMU.modelsel[core].hot_icache_count += num_blks;
     } else {
         if (data_possibly_hit(addr, type)) {
             if (type == CACHE_PACKET_WRITE) {
-                VPMU.modelsel.hot_dcache_write_count++;
+                VPMU.modelsel[core].hot_dcache_write_count++;
             } else {
-                VPMU.modelsel.hot_dcache_read_count++;
+                VPMU.modelsel[core].hot_dcache_read_count++;
             }
         } else {
             // Fallback to normal simulation

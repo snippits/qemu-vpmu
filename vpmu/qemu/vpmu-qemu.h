@@ -44,6 +44,7 @@ typedef struct VPMU_Struct {
         // any core running monitored process. We still use VPMU.enabled
         // to decide whether run VPMU codes for performance counters.
         bool     vpmu_enabled;   // Indicate whether VPMU is enabled on this core
+        bool     hot_tb_flag;    // Indicate whether this core is running hot tb
         void *   cpu_arch_state; // This is for identifying MMU table
         uint64_t current_pid;    // Current pid on the core
         uint64_t padding[8];     // 8 words of padding
@@ -56,7 +57,8 @@ typedef struct VPMU_Struct {
         uint64_t hot_dcache_read_count;
         uint64_t hot_dcache_write_count;
         uint64_t hot_icache_count;
-    } modelsel;
+        uint64_t padding[8]; // 8 words of padding
+    } modelsel[VPMU_MAX_CPU_CORES];
     VPMUPlatformInfo platform;
 } VPMU_Struct;
 

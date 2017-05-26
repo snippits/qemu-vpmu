@@ -18,6 +18,8 @@ void
   HELPER(vpmu_memory_access)(CPUARMState *env, uint32_t addr, uint32_t rw, uint32_t size)
 {
     CPUState *cs = CPU(ENV_GET_CPU(env));
+    // Get the core id from CPUState structure
+    int core_id = cs->cpu_index;
 
     // Exit all added helper functions directly when QEMU is going to be terminated.
     if (unlikely(VPMU.qemu_terminate_flag)) return;
@@ -51,10 +53,10 @@ void
                 VPMU.iomem_count++;
             } else {
                 // Memory segment
-                if (vpmu_current_extra_tb_info->modelsel.hot_tb_flag) {
+                if (VPMU.core[core_id].hot_tb_flag) {
                     rw |= VPMU_PACKET_HOT;
                 }
-                cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
+                cache_ref(PROCESSOR_CPU, core_id, addr, rw, size);
             }
         }
     }
@@ -85,13 +87,14 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
     ExtraTBInfo *extra_tb_info = (ExtraTBInfo *)opaque;
     // mode = User(USR)/Supervisor(SVC)/Interrupt Request(IRQ)
     uint8_t mode = env->uncached_cpsr & CPSR_M;
+    // Get the core id from CPUState structure
+    int core_id = cs->cpu_index;
 
-    vpmu_current_extra_tb_info = extra_tb_info;
-    extra_tb_info->cpu_mode    = mode;
+    extra_tb_info->cpu_mode = mode;
 
-//    static uint32_t return_addr = 0;
-//    static uint32_t last_issue_time = 0;
-//    char *state = &(VPMU.state);
+    //    static uint32_t return_addr = 0;
+    //    static uint32_t last_issue_time = 0;
+    //    char *state = &(VPMU.state);
 
     // Exit all added helper functions directly when QEMU is going to be terminated.
     if (unlikely(VPMU.qemu_terminate_flag)) return;
@@ -99,36 +102,38 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 #ifdef CONFIG_VPMU_SET
     et_check_function_call(env, extra_tb_info->start_addr);
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
-        phasedet_ref(
-          (mode == ARM_CPU_MODE_USR), extra_tb_info, env->regs[13], cs->cpu_index);
+        phasedet_ref((mode == ARM_CPU_MODE_USR), extra_tb_info, env->regs[13], core_id);
     } // End of VPMU_PHASEDET
 #endif
 
     if (likely(env && VPMU.enabled)) {
         if (vpmu_model_has(VPMU_JIT_MODEL_SELECT, VPMU)) {
-            uint64_t distance =
-              VPMU.modelsel.total_tb_visit_count - extra_tb_info->modelsel.last_visit;
+            uint64_t distance = VPMU.modelsel[core_id].total_tb_visit_count
+                                - extra_tb_info->modelsel.last_visit;
 
             if (distance < 100) {
 #ifdef CONFIG_VPMU_DEBUG_MSG
-                VPMU.modelsel.hot_tb_visit_count++;
+                VPMU.modelsel[core_id].hot_tb_visit_count++;
 #endif
-                extra_tb_info->modelsel.hot_tb_flag = 1;
+                extra_tb_info->modelsel.hot_tb_flag = true;
             } else {
 #ifdef CONFIG_VPMU_DEBUG_MSG
-                VPMU.modelsel.cold_tb_visit_count++;
+                VPMU.modelsel[core_id].cold_tb_visit_count++;
 #endif
-                extra_tb_info->modelsel.hot_tb_flag = 0;
+                extra_tb_info->modelsel.hot_tb_flag = false;
             }
             // Advance timestamp
-            extra_tb_info->modelsel.last_visit = VPMU.modelsel.total_tb_visit_count;
-            VPMU.modelsel.total_tb_visit_count++;
+            extra_tb_info->modelsel.last_visit =
+              VPMU.modelsel[core_id].total_tb_visit_count;
+            VPMU.modelsel[core_id].total_tb_visit_count++;
+            VPMU.core[core_id].hot_tb_flag = extra_tb_info->modelsel.hot_tb_flag;
         } else {
-            extra_tb_info->modelsel.hot_tb_flag = 0;
+            extra_tb_info->modelsel.hot_tb_flag = false;
+            VPMU.core[core_id].hot_tb_flag      = false;
         } // End of VPMU_JIT_MODEL_SELECT
 
         if (vpmu_model_has(VPMU_INSN_COUNT_SIM, VPMU)) {
-            vpmu_insn_ref(cs->cpu_index, mode, extra_tb_info);
+            vpmu_insn_ref(core_id, mode, extra_tb_info);
         } // End of VPMU_INSN_COUNT_SIM
 
         if (vpmu_model_has(VPMU_ICACHE_SIM, VPMU)) {
@@ -137,7 +142,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
                 type |= VPMU_PACKET_HOT;
             }
             cache_ref(PROCESSOR_CPU,
-                      cs->cpu_index,
+                      core_id,
                       extra_tb_info->start_addr,
                       type,
                       extra_tb_info->counters.size_bytes);
@@ -151,9 +156,9 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
             // Add global counter value of branch count.
             if (last_tb_has_branch) {
                 if (extra_tb_info->start_addr - last_tb_pc <= 4) {
-                    branch_ref(cs->cpu_index, last_tb_pc, 0); // Not taken
+                    branch_ref(core_id, last_tb_pc, 0); // Not taken
                 } else {
-                    branch_ref(cs->cpu_index, last_tb_pc, 1); // Taken
+                    branch_ref(core_id, last_tb_pc, 1); // Taken
                 }
             }
             last_tb_pc = extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;

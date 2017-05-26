@@ -34,6 +34,4 @@ typedef struct ExtraTBInfo {
     } modelsel;
 } ExtraTBInfo;
 
-// A pointer to current Extra TB Info
-extern ExtraTBInfo *vpmu_current_extra_tb_info;
 #endif
