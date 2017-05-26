@@ -135,7 +135,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             DBG(STR_VPMU "Trace process name: %s\n", (char *)paddr);
             if (!et_find_program_in_list((const char *)paddr)) {
                 // Only push to the list when it's not duplicated
-                DBG(STR_VPMU "Push process:%s into list\n", (char *)paddr);
+                DBG(STR_VPMU "Push process: %s into list\n", (char *)paddr);
                 et_add_program_to_list((const char *)paddr);
             }
         }
@@ -171,8 +171,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
             free(buffer);
             buffer_size = 0;
             buffer      = NULL;
-            DBG(STR_VPMU "Try to copy process: %s as /tmp/vpmu-traced-bin\n",
-                (char *)paddr);
+            DBG(STR_VPMU "Save binary '%s' to /tmp/vpmu-traced-bin\n",
+                (char *)binary_name);
             if (binary_name != NULL) {
                 et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
             }
