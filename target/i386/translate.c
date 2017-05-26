@@ -432,19 +432,23 @@ static inline void gen_op_add_reg_T0(TCGMemOp size, int reg)
 static inline void gen_op_ld_v(DisasContext *s, int idx, TCGv t0, TCGv a0)
 {
 #ifdef CONFIG_VPMU
-    gen_helper_vpmu_memory_access(cpu_env, a0, tcg_const_i64(CACHE_PACKET_READ), tcg_const_i64(4));
-    //gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(0), tcg_const_i64(4));
-    // printf("modrm_store insn : reg%d, its accumulated count = %u\n", reg,
-#endif 
+    TCGv_i64 tmp_packet = tcg_const_i64(CACHE_PACKET_READ);
+    TCGv_i64 tmp_size   = tcg_const_i64(4);
+    gen_helper_vpmu_memory_access(cpu_env, a0, tmp_packet, tmp_size);
+    tcg_temp_free_i64(tmp_size);
+    tcg_temp_free_i64(tmp_packet);
+#endif
     tcg_gen_qemu_ld_tl(t0, a0, s->mem_index, idx | MO_LE);
 }
 
 static inline void gen_op_st_v(DisasContext *s, int idx, TCGv t0, TCGv a0)
 {
 #ifdef CONFIG_VPMU
-    gen_helper_vpmu_memory_access(cpu_env, a0, tcg_const_i64(CACHE_PACKET_WRITE), tcg_const_i64(4));
-    //gen_helper_vpmu_memory_access(cpu_env, 0, tcg_const_i64(1), tcg_const_i64(4));
-    // printf("modrm insn : reg%d, its accumulated count = %u\n", reg, X86_count[3]);
+    TCGv_i64 tmp_packet = tcg_const_i64(CACHE_PACKET_WRITE);
+    TCGv_i64 tmp_size   = tcg_const_i64(4);
+    gen_helper_vpmu_memory_access(cpu_env, a0, tmp_packet, tmp_size);
+    tcg_temp_free_i64(tmp_size);
+    tcg_temp_free_i64(tmp_packet);
 #endif
 
     tcg_gen_qemu_st_tl(t0, a0, s->mem_index, idx | MO_LE);
@@ -5025,7 +5029,6 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 #ifdef CONFIG_VPMU
             s->tb->extra_tb_info.has_branch = 1;
             gen_helper_vpmu_et_call(cpu_env, cpu_T0, cpu_T1);
-            //            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tcg_const_i64(next_eip));
 #endif
             gen_op_jmp_v(cpu_T0);
             gen_bnd_jmp(s);
@@ -5038,7 +5041,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         do_lcall:
 #ifdef CONFIG_VPMU
             s->tb->extra_tb_info.has_branch = 1;
-            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tcg_const_i64(s->pc - s->cs_base));
+            TCGv_i64 tmp_return_addr        = tcg_const_i64(s->pc - s->cs_base);
+            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tmp_return_addr);
+            tcg_temp_free_i64(tmp_return_addr);
 #endif
             if (s->pe && !s->vm86) {
                 tcg_gen_trunc_tl_i32(cpu_tmp2_i32, cpu_T0);
@@ -6531,7 +6536,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_movi_tl(cpu_T0, next_eip);
 #ifdef CONFIG_VPMU
             s->tb->extra_tb_info.has_branch = 1;
-            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tcg_const_i64(next_eip));
+            TCGv_i64 tmp_return_addr        = tcg_const_i64(next_eip);
+            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tmp_return_addr);
+            tcg_temp_free_i64(tmp_return_addr);
 #endif
             gen_push_v(s, cpu_T0);
             gen_bnd_jmp(s);
@@ -8513,7 +8520,9 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     pc = &dc->pc;
     vpmu_branch_from_store = false;
     memset(&(tb->extra_tb_info), 0, sizeof(ExtraTBInfo));
-    gen_helper_vpmu_accumulate_tb_info(cpu_env, tcg_const_ptr((uint64_t)&(tb->extra_tb_info)));
+    TCGv_ptr tmp_extra_tb = tcg_const_ptr((void *)&tb->extra_tb_info);
+    gen_helper_vpmu_accumulate_tb_info(cpu_env, tmp_extra_tb);
+    tcg_temp_free_ptr(tmp_extra_tb);
 #endif
 
     gen_tb_start(tb);

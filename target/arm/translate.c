@@ -239,7 +239,9 @@ static void store_reg(DisasContext *s, int reg, TCGv_i32 var)
 #ifdef CONFIG_VPMU
         if (!vpmu_branch_from_store) {
             s->tb->extra_tb_info.has_branch = 1;
-            gen_helper_vpmu_branch(cpu_env, var, tcg_const_i32(s->pc));
+            TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+            gen_helper_vpmu_branch(cpu_env, var, tmp_pc);
+            tcg_temp_free_i32(tmp_pc);
         }
 #endif
     }
@@ -961,7 +963,9 @@ static inline void gen_bx_im(DisasContext *s, uint32_t addr)
     }
     if (!vpmu_branch_from_store) {
         s->tb->extra_tb_info.has_branch = 1;
-        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tcg_const_i32(s->pc));
+        TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tmp_pc);
+        tcg_temp_free_i32(tmp_pc);
     }
 #endif
 }
@@ -976,7 +980,9 @@ static inline void gen_bx(DisasContext *s, TCGv_i32 var)
 #ifdef CONFIG_VPMU
     if (!vpmu_branch_from_store) {
         s->tb->extra_tb_info.has_branch = 1;
-        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tcg_const_i32(s->pc));
+        TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tmp_pc);
+        tcg_temp_free_i32(tmp_pc);
     }
 #endif
 }
@@ -1096,18 +1102,20 @@ static void gen_aa32_ld_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
     // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
     // Please refer to vpmu/log_segfault_on_tcg
     s->tb->extra_tb_info.counters.load++;
-    if (neon_load_store_flag) return;
-    int32_t size = 0;
-    if (opc == MO_8)
-        size = 1;
-    else if (opc == MO_16)
-        size = 2;
-    else
-        size = 4;
-    gen_helper_vpmu_memory_access(cpu_env,
-                                  addr,
-                                  tcg_const_i32(CACHE_PACKET_READ),
-                                  tcg_const_i32(size));
+    if (!neon_load_store_flag) {
+        int32_t size = 0;
+        if (opc == MO_8)
+            size = 1;
+        else if (opc == MO_16)
+            size = 2;
+        else
+            size            = 4;
+        TCGv_i32 tmp_packet = tcg_const_i32(CACHE_PACKET_READ);
+        TCGv_i32 tmp_size   = tcg_const_i32(size);
+        gen_helper_vpmu_memory_access(cpu_env, addr, tmp_packet, tmp_size);
+        tcg_temp_free_i32(tmp_size);
+        tcg_temp_free_i32(tmp_packet);
+    }
 #endif
 
     tcg_temp_free(addr);
@@ -1126,18 +1134,20 @@ static void gen_aa32_st_i32(DisasContext *s, TCGv_i32 val, TCGv_i32 a32,
     // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
     // Please refer to vpmu/log_segfault_on_tcg
     s->tb->extra_tb_info.counters.store++;
-    if (neon_load_store_flag) return;
-    int32_t size = 0;
-    if (opc == MO_8)
-        size = 1;
-    else if (opc == MO_16)
-        size = 2;
-    else
-        size = 4;
-    gen_helper_vpmu_memory_access(cpu_env,
-                                  addr,
-                                  tcg_const_i32(CACHE_PACKET_WRITE),
-                                  tcg_const_i32(size));
+    if (!neon_load_store_flag) {
+        int32_t size = 0;
+        if (opc == MO_8)
+            size = 1;
+        else if (opc == MO_16)
+            size = 2;
+        else
+            size            = 4;
+        TCGv_i32 tmp_packet = tcg_const_i32(CACHE_PACKET_WRITE);
+        TCGv_i32 tmp_size   = tcg_const_i32(size);
+        gen_helper_vpmu_memory_access(cpu_env, addr, tmp_packet, tmp_size);
+        tcg_temp_free_i32(tmp_size);
+        tcg_temp_free_i32(tmp_packet);
+    }
 #endif
 
     tcg_temp_free(addr);
@@ -1195,11 +1205,13 @@ static void gen_aa32_ld_i64(DisasContext *s, TCGv_i64 val, TCGv_i32 a32,
     // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
     // Please refer to vpmu/log_segfault_on_tcg
     s->tb->extra_tb_info.counters.load++;
-    if (neon_load_store_flag) return;
-    gen_helper_vpmu_memory_access(cpu_env,
-                                  addr,
-                                  tcg_const_i32(CACHE_PACKET_READ),
-                                  tcg_const_i32(8));
+    if (!neon_load_store_flag) {
+        TCGv_i32 tmp_packet = tcg_const_i32(CACHE_PACKET_READ);
+        TCGv_i32 tmp_size   = tcg_const_i32(8);
+        gen_helper_vpmu_memory_access(cpu_env, addr, tmp_packet, tmp_size);
+        tcg_temp_free_i32(tmp_size);
+        tcg_temp_free_i32(tmp_packet);
+    }
 #endif
 
     tcg_temp_free(addr);
@@ -1233,11 +1245,13 @@ static void gen_aa32_st_i64(DisasContext *s, TCGv_i64 val, TCGv_i32 a32,
     // Generating vector ld/st would cause QEMU TCG optimizer SEG fault
     // Please refer to vpmu/log_segfault_on_tcg
     s->tb->extra_tb_info.counters.store++;
-    if (neon_load_store_flag) return;
-    gen_helper_vpmu_memory_access(cpu_env,
-                                  addr,
-                                  tcg_const_i32(CACHE_PACKET_WRITE),
-                                  tcg_const_i32(8));
+    if (!neon_load_store_flag) {
+        TCGv_i32 tmp_packet = tcg_const_i32(CACHE_PACKET_WRITE);
+        TCGv_i32 tmp_size   = tcg_const_i32(8);
+        gen_helper_vpmu_memory_access(cpu_env, addr, tmp_packet, tmp_size);
+        tcg_temp_free_i32(tmp_size);
+        tcg_temp_free_i32(tmp_packet);
+    }
 #endif
 
     tcg_temp_free(addr);
@@ -4327,7 +4341,11 @@ static inline void gen_jmp (DisasContext *s, uint32_t dest)
 #ifdef CONFIG_VPMU
         if (!vpmu_branch_from_store) {
             s->tb->extra_tb_info.has_branch = 1;
-            gen_helper_vpmu_branch(cpu_env, tcg_const_i32(dest), tcg_const_i32(s->pc));
+            TCGv_i32 tmp_dest               = tcg_const_i32(dest);
+            TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+            gen_helper_vpmu_branch(cpu_env, tmp_dest, tmp_pc);
+            tcg_temp_free_i32(tmp_pc);
+            tcg_temp_free_i32(tmp_dest);
         }
 #endif
         gen_goto_tb(s, 0, dest);
@@ -12255,8 +12273,9 @@ void gen_intermediate_code(CPUState *cs, TranslationBlock *tb)
     memset(&(tb->extra_tb_info), 0, sizeof(ExtraTBInfo));
     vpmu_branch_from_store = false;
     neon_load_store_flag   = false;
-    gen_helper_vpmu_accumulate_tb_info(cpu_env,
-                                       tcg_const_ptr((uint64_t) & (tb->extra_tb_info)));
+    TCGv_ptr tmp_extra_tb  = tcg_const_ptr((void *)&tb->extra_tb_info);
+    gen_helper_vpmu_accumulate_tb_info(cpu_env, tmp_extra_tb);
+    tcg_temp_free_ptr(tmp_extra_tb);
 #endif
 
     /* A note on handling of the condexec (IT) bits:
