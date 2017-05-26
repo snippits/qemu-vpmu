@@ -40,6 +40,30 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
 #endif
 
     if (likely(env && VPMU.enabled)) {
+        if (vpmu_model_has(VPMU_JIT_MODEL_SELECT, VPMU)) {
+            uint64_t distance = VPMU.modelsel[core_id].total_tb_visit_count
+                                - extra_tb_info->modelsel.last_visit;
+
+            if (distance < 100) {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+                VPMU.modelsel[core_id].hot_tb_visit_count++;
+#endif
+                extra_tb_info->modelsel.hot_tb_flag = true;
+            } else {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+                VPMU.modelsel[core_id].cold_tb_visit_count++;
+#endif
+                extra_tb_info->modelsel.hot_tb_flag = false;
+            }
+            // Advance timestamp
+            extra_tb_info->modelsel.last_visit =
+              VPMU.modelsel[core_id].total_tb_visit_count;
+            VPMU.modelsel[core_id].total_tb_visit_count++;
+            VPMU.core[core_id].hot_tb_flag = extra_tb_info->modelsel.hot_tb_flag;
+        } else {
+            extra_tb_info->modelsel.hot_tb_flag = false;
+            VPMU.core[core_id].hot_tb_flag      = false;
+        } // End of VPMU_JIT_MODEL_SELECT
 
         if (vpmu_model_has(VPMU_INSN_COUNT_SIM, VPMU)) {
             vpmu_insn_ref(cs->cpu_index, mode, extra_tb_info);
@@ -47,6 +71,9 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
 
         if (vpmu_model_has(VPMU_ICACHE_SIM, VPMU)) {
             uint16_t type = CACHE_PACKET_INSN;
+            if (extra_tb_info->modelsel.hot_tb_flag) {
+                type |= VPMU_PACKET_HOT;
+            }
             cache_ref(PROCESSOR_CPU,
                       cs->cpu_index,
                       extra_tb_info->start_addr,
@@ -78,27 +105,34 @@ void
     CPUState *cs = CPU(ENV_GET_CPU(env));
     int cpl = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
     uint8_t mode = X86_CPU_MODE_NON;
+    // Get the core id from CPUState structure
+    int core_id = cs->cpu_index;
 
-    if (likely(env && VPMU.enabled)) {
+    if (likely(VPMU.enabled)) {
         if (cpl == 0) {
             mode = X86_CPU_MODE_SVC;
         } else if (cpl == 3) {
             mode = X86_CPU_MODE_USR;
         } else {
-            CONSOLE_LOG("unhandled privilege : %d\n", cpl);
+            CONSOLE_LOG(STR_VPMU "Unhandled privilege : %d\n", cpl);
         }
 
-        // CONSOLE_LOG("cpu_index=%d mode=%d\n", cs->cpu_index, mode);
-        if (mode == X86_CPU_MODE_SVC) {
-            if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
-                cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
-            }
-        } else if (mode == X86_CPU_MODE_USR) {
-            if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
-                cache_ref(PROCESSOR_CPU, cs->cpu_index, addr, rw, size);
+        // TODO Is this VA the real address fed into cache?? Ex: ARM uses MVA
+        if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
+            if (unlikely(VPMU.iomem_access_flag)) {
+                // IO segment
+                VPMU.iomem_access_flag = 0; // Clear flag
+                VPMU.iomem_count++;
+            } else {
+                // Memory segment
+                if (VPMU.core[core_id].hot_tb_flag) {
+                    rw |= VPMU_PACKET_HOT;
+                }
+                cache_ref(PROCESSOR_CPU, core_id, addr, rw, size);
             }
         }
     }
+    (void)mode;
 }
 
 // helper function for ET and other usage. Only "taken" branch will enter this helper.
