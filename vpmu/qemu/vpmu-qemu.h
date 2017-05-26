@@ -24,6 +24,8 @@ typedef struct VPMU_Struct {
     bool iomem_access_flag;
     bool swi_fired_flag;
     bool threaded_tcg_flag;
+    bool qemu_terminate_flag;
+
     /* for timer interrupt */
     uint64_t timer_interrupt_return_pc;
 

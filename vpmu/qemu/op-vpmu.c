@@ -18,6 +18,10 @@ void
   HELPER(vpmu_memory_access)(CPUARMState *env, uint32_t addr, uint32_t rw, uint32_t size)
 {
     CPUState *cs = CPU(ENV_GET_CPU(env));
+
+    // Exit all added helper functions directly when QEMU is going to be terminated.
+    if (unlikely(VPMU.qemu_terminate_flag)) return;
+
     // static uint32_t cnt = 0;
     if (likely(VPMU.enabled)) {
         if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
@@ -88,6 +92,9 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 //    static uint32_t return_addr = 0;
 //    static uint32_t last_issue_time = 0;
 //    char *state = &(VPMU.state);
+
+    // Exit all added helper functions directly when QEMU is going to be terminated.
+    if (unlikely(VPMU.qemu_terminate_flag)) return;
 
 #ifdef CONFIG_VPMU_SET
     et_check_function_call(env, extra_tb_info->start_addr);
