@@ -17,9 +17,9 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
     CPUState *   cs            = CPU(ENV_GET_CPU(env));
     ExtraTBInfo *extra_tb_info = (ExtraTBInfo *)opaque;
     int cpl = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
-    uint8_t             mode               = X86_CPU_MODE_NON;
-    static unsigned int last_tb_pc         = 0;
-    static unsigned int last_tb_has_branch = 0;
+    uint8_t mode = X86_CPU_MODE_NON;
+    // Get the core id from CPUState structure
+    int core_id = cs->cpu_index;
 
     if (cpl == 0) {
         mode = X86_CPU_MODE_SVC;
@@ -29,7 +29,10 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
         CONSOLE_LOG("unhandled privilege : %d\n", cpl);
     }
 #ifdef CONFIG_VPMU_SET
-    et_check_function_call(env, extra_tb_info->start_addr);
+    // Only need to check function calls when TB is not contiguous
+    if (extra_tb_info->start_addr - VPMU.core[core_id].last_tb_pc > 8) {
+        et_check_function_call(env, extra_tb_info->start_addr);
+    }
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
         phasedet_ref(
           (mode == X86_CPU_MODE_USR), extra_tb_info, env->regs[R_ESP], cs->cpu_index);
@@ -44,9 +47,6 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
 
         if (vpmu_model_has(VPMU_ICACHE_SIM, VPMU)) {
             uint16_t type = CACHE_PACKET_INSN;
-            if (extra_tb_info->modelsel.hot_tb_flag) {
-                type |= VPMU_PACKET_HOT;
-            }
             cache_ref(PROCESSOR_CPU,
                       cs->cpu_index,
                       extra_tb_info->start_addr,
@@ -56,18 +56,20 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
 
         if (vpmu_model_has(VPMU_BRANCH_SIM, VPMU)) {
             // Add global counter value of branch count.
-            if (last_tb_has_branch) {
-                if (extra_tb_info->start_addr - last_tb_pc <= 8) {
-                    branch_ref(cs->cpu_index, last_tb_pc, 0); // Not taken
+            if (VPMU.core[core_id].last_tb_has_branch) {
+                if (extra_tb_info->start_addr - VPMU.core[core_id].last_tb_pc <= 8) {
+                    branch_ref(
+                      cs->cpu_index, VPMU.core[core_id].last_tb_pc, 0); // Not taken
                 } else {
-                    branch_ref(cs->cpu_index, last_tb_pc, 1); // Taken
+                    branch_ref(cs->cpu_index, VPMU.core[core_id].last_tb_pc, 1); // Taken
                 }
             }
         } // End of VPMU_BRANCH_SIM
     }
 
-    last_tb_pc         = extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
-    last_tb_has_branch = extra_tb_info->has_branch;
+    VPMU.core[core_id].last_tb_pc =
+      extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
+    VPMU.core[core_id].last_tb_has_branch = extra_tb_info->has_branch;
 }
 
 void

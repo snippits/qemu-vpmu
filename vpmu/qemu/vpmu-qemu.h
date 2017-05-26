@@ -43,11 +43,15 @@ typedef struct VPMU_Struct {
         // The per core enable flag is used to indicate whether there is
         // any core running monitored process. We still use VPMU.enabled
         // to decide whether run VPMU codes for performance counters.
-        bool     vpmu_enabled;   // Indicate whether VPMU is enabled on this core
-        bool     hot_tb_flag;    // Indicate whether this core is running hot tb
-        void *   cpu_arch_state; // This is for identifying MMU table
-        uint64_t current_pid;    // Current pid on the core
-        uint64_t padding[8];     // 8 words of padding
+        bool  vpmu_enabled;   // Indicate whether VPMU is enabled on this core
+        bool  hot_tb_flag;    // Indicate whether this core is running hot tb
+        void *cpu_arch_state; // This is for identifying MMU table
+        // The following variables are designed for having
+        // the execution context of each core in order to track last TB.
+        uint64_t current_pid;        // Current pid on the core
+        uint64_t last_tb_pc;         // Remember PC for each core
+        bool     last_tb_has_branch; // Remember branch of each core
+        uint64_t padding[8];         // 8 words of padding
     } core[VPMU_MAX_CPU_CORES];
 
     struct {

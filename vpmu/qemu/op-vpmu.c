@@ -80,9 +80,6 @@ void HELPER(vpmu_branch)(CPUARMState *env, uint64_t target_addr, uint64_t return
 void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 {
     CPUState *cs = CPU(ENV_GET_CPU(env));
-    // Thses are for branch
-    static unsigned int last_tb_pc         = 0;
-    static unsigned int last_tb_has_branch = 0;
 
     ExtraTBInfo *extra_tb_info = (ExtraTBInfo *)opaque;
     // mode = User(USR)/Supervisor(SVC)/Interrupt Request(IRQ)
@@ -100,7 +97,10 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
     if (unlikely(VPMU.qemu_terminate_flag)) return;
 
 #ifdef CONFIG_VPMU_SET
-    et_check_function_call(env, extra_tb_info->start_addr);
+    // Only need to check function calls when TB is not contiguous
+    if (extra_tb_info->start_addr - VPMU.core[core_id].last_tb_pc > 4) {
+        et_check_function_call(env, extra_tb_info->start_addr);
+    }
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
         phasedet_ref((mode == ARM_CPU_MODE_USR), extra_tb_info, env->regs[13], core_id);
     } // End of VPMU_PHASEDET
@@ -154,16 +154,18 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 
         if (vpmu_model_has(VPMU_BRANCH_SIM, VPMU)) {
             // Add global counter value of branch count.
-            if (last_tb_has_branch) {
-                if (extra_tb_info->start_addr - last_tb_pc <= 4) {
-                    branch_ref(core_id, last_tb_pc, 0); // Not taken
+            if (VPMU.core[core_id].last_tb_has_branch) {
+                if (extra_tb_info->start_addr - VPMU.core[core_id].last_tb_pc <= 4) {
+                    branch_ref(core_id, VPMU.core[core_id].last_tb_pc, 0); // Not taken
                 } else {
-                    branch_ref(core_id, last_tb_pc, 1); // Taken
+                    branch_ref(core_id, VPMU.core[core_id].last_tb_pc, 1); // Taken
                 }
             }
-            last_tb_pc = extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
-            last_tb_has_branch = extra_tb_info->has_branch;
         } // End of VPMU_BRANCH_SIM
+        VPMU.core[core_id].last_tb_pc =
+          extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
+        VPMU.core[core_id].last_tb_has_branch = extra_tb_info->has_branch;
+
 #if 0
         /* TODO: this mechanism should be wrapped */
         /* asm_do_IRQ handles all the hardware interrupts, not only for timer interrupts
