@@ -41,7 +41,7 @@ redo:
         }
     } else {
         // TLB miss
-        tlb_fill(cpu_state, vaddr, READ_ACCESS_TYPE, mmu_idx, GETPC());
+        tlb_fill(cpu_state, vaddr, READ_ACCESS_TYPE, mmu_idx, 0);
         goto redo;
     }
 
