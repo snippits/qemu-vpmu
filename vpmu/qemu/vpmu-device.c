@@ -37,6 +37,18 @@ static const VMStateDescription vpmu_vmstate = {
                      VMSTATE_UINT64_ARRAY(last_tick, vpmu_state_t, QEMU_CLOCK_MAX),
                      VMSTATE_END_OF_LIST()}};
 
+static void save_binary_file(const char *file, const char *buff, size_t buff_size)
+{
+    FILE *fp = NULL;
+
+    fp = fopen(file, "wb");
+    if (fp) {
+        fwrite(buff, buff_size, 1, fp);
+        fclose(fp);
+    }
+    return;
+}
+
 static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 {
     uint64_t      ret    = 0;
@@ -55,7 +67,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     void *       paddr        = NULL;
     char *       buffer       = NULL;
     static int   buffer_size  = 0;
-    FILE *       fp           = NULL;
+    void *       per_core_env = NULL;
 #endif
 
 #if TARGET_LONG_BITS == 64
@@ -73,19 +85,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         addr  = addr & (~0x04);
     }
 #endif
-
-#if 0
-    DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
-    // This is a test code to read user data in guest virtual address from host
-    if (addr == 100 * 4) {
-        ERR_MSG("VA:%lx\n", value);
-        void *guest_addr = vpmu_tlb_get_host_addr(VPMU.core[vpmu_get_core_id()].cpu_arch_state, value);
-        ERR_MSG("PA:%p\n", (void *)guest_addr);
-        if (guest_addr)
-            ERR_MSG("value:%lx\n", *(unsigned long int *)guest_addr);
-        return;
-    }
-#endif
+    // DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
 
     switch (addr) {
     case VPMU_MMAP_SET_TIMING_MODEL:
@@ -121,25 +121,24 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
 #ifdef CONFIG_VPMU_SET
     case VPMU_MMAP_ADD_PROC_NAME:
         if (VPMU.platform.kvm_enabled) break;
-        if (value != 0) {
-            paddr = vpmu_tlb_get_host_addr(VPMU.core[vpmu_get_core_id()].cpu_arch_state, value);
-            binary_name = (char *)paddr;
-            DBG(STR_VPMU "Trace process name: %s\n", (char *)paddr);
-            if (!et_find_program_in_list((const char *)paddr)) {
-                // Only push to the list when it's not duplicated
-                DBG(STR_VPMU "Push process: %s into list\n", (char *)paddr);
-                et_add_program_to_list((const char *)paddr);
-            }
+        if (value == 0) break;
+        per_core_env = VPMU.core[vpmu_get_core_id()].cpu_arch_state;
+        paddr        = vpmu_tlb_get_host_addr(per_core_env, value);
+        binary_name  = (char *)paddr;
+        DBG(STR_VPMU "Trace process name: %s\n", binary_name);
+        if (!et_find_program_in_list(binary_name)) {
+            // Only push to the list when it's not duplicated
+            DBG(STR_VPMU "Push process: %s into list\n", binary_name);
+            et_add_program_to_list(binary_name);
         }
         break;
     case VPMU_MMAP_REMOVE_PROC_NAME:
         if (VPMU.platform.kvm_enabled) break;
-        if (value != 0) {
-            paddr =
-              vpmu_tlb_get_host_addr(VPMU.core[vpmu_get_core_id()].cpu_arch_state, value);
-            DBG(STR_VPMU "Remove traced process: %s\n", (char *)paddr);
-            et_remove_program_from_list((const char *)paddr);
-        }
+        if (value == 0) break;
+        per_core_env = VPMU.core[vpmu_get_core_id()].cpu_arch_state;
+        paddr        = vpmu_tlb_get_host_addr(per_core_env, value);
+        DBG(STR_VPMU "Remove traced process: %s\n", (char *)paddr);
+        et_remove_program_from_list((const char *)paddr);
         break;
     case VPMU_MMAP_SET_PROC_SIZE:
         if (VPMU.platform.kvm_enabled) break;
@@ -147,27 +146,21 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         break;
     case VPMU_MMAP_SET_PROC_BIN:
         if (VPMU.platform.kvm_enabled) break;
-        if (buffer_size != 0) {
-            buffer = (char *)malloc(buffer_size);
-            if (buffer == NULL) {
-                ERR_MSG("Can not allocate memory\n");
-                exit(EXIT_FAILURE);
-            }
-            vpmu_copy_from_guest(
-              buffer, value, buffer_size, VPMU.core[vpmu_get_core_id()].cpu_arch_state);
-            fp = fopen("/tmp/vpmu-traced-bin", "wb");
-            if (fp != NULL) {
-                fwrite(buffer, buffer_size, 1, fp);
-            }
-            fclose(fp);
-            free(buffer);
-            buffer_size = 0;
-            buffer      = NULL;
-            DBG(STR_VPMU "Save binary '%s' to /tmp/vpmu-traced-bin\n",
-                (char *)binary_name);
-            if (binary_name != NULL) {
-                et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
-            }
+        if (value == 0 || buffer_size == 0) break;
+        buffer = (char *)malloc(buffer_size);
+        if (buffer == NULL) {
+            ERR_MSG("Cannot allocate memory for receiving binary\n");
+            break;
+        }
+        per_core_env = VPMU.core[vpmu_get_core_id()].cpu_arch_state;
+        vpmu_copy_from_guest(buffer, value, buffer_size, per_core_env);
+        save_binary_file("/tmp/vpmu-traced-bin", buffer, buffer_size);
+        free(buffer);
+        buffer      = NULL;
+        buffer_size = 0;
+        DBG(STR_VPMU "Save binary '%s' to /tmp/vpmu-traced-bin\n", binary_name);
+        if (binary_name != NULL) {
+            et_update_program_elf_dwarf(binary_name, "/tmp/vpmu-traced-bin");
         }
         break;
     case VPMU_MMAP_OFFSET_FILE_f_path_dentry:
@@ -187,8 +180,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         break;
     case VPMU_MMAP_OFFSET_KERNEL_SYM_NAME:
         if (VPMU.platform.kvm_enabled) break;
-        paddr =
-          vpmu_tlb_get_host_addr(VPMU.core[vpmu_get_core_id()].cpu_arch_state, value);
+        per_core_env = VPMU.core[vpmu_get_core_id()].cpu_arch_state;
+        paddr        = vpmu_tlb_get_host_addr(per_core_env, value);
         kallsym_name = (char *)paddr;
         break;
     case VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR:
