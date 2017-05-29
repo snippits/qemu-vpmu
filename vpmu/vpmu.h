@@ -11,6 +11,7 @@
 //==================  VPMU Externs(Outer Variables) ==================
 //========================  VPMU Definitions  ========================
 
+void *vpmu_tlb_try_get_host_addr(void *env, uintptr_t vaddr);
 void *vpmu_tlb_get_host_addr(void *env, uintptr_t vaddr);
 size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *cs);
 void vpmu_dump_elf_symbols(const char *file_path);

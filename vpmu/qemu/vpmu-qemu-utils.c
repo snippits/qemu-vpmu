@@ -8,26 +8,18 @@
 #include "exec/exec-all.h" // tlb_fill()
 #include "qom/cpu.h"       // cpu_get_phys_page_attrs_debug(), cpu_has_work(), etc.
 
-void *vpmu_tlb_get_host_addr(void *env, uintptr_t vaddr)
+void *vpmu_tlb_try_get_host_addr(void *env, uintptr_t vaddr)
 {
-    int           retry            = 0;
-    const int     READ_ACCESS_TYPE = 0;
-    uintptr_t     paddr            = 0;
-    CPUArchState *cpu_env          = (CPUArchState *)env;
-    CPUState *    cpu_state        = CPU(ENV_GET_CPU(env));
-    int           mmu_idx          = cpu_mmu_index(cpu_env, false);
-    int           index;
-    target_ulong  tlb_addr;
+    uintptr_t     paddr    = 0;
+    CPUArchState *cpu_env  = (CPUArchState *)env;
+    int           mmu_idx  = cpu_mmu_index(cpu_env, false);
+    int           index    = 0;
+    target_ulong  tlb_addr = 0;
 
     // If KVM is enabled, softMMU will not work
     if (VPMU.platform.kvm_enabled) return NULL;
     index = (vaddr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
-redo:
-    retry++;
-    if (retry > 10) {
-        ERR_MSG(STR_VPMU "fail to find vaddr 0x%lx\n", vaddr);
-        return 0;
-    }
+
     tlb_addr = cpu_env->tlb_table[mmu_idx][index].addr_read;
     if ((vaddr & TARGET_PAGE_MASK)
         == (tlb_addr & (TARGET_PAGE_MASK | TLB_INVALID_MASK))) {
@@ -39,13 +31,35 @@ redo:
             addend = cpu_env->tlb_table[mmu_idx][index].addend;
             paddr  = (uintptr_t)(vaddr + addend);
         }
-    } else {
-        // TLB miss
-        tlb_fill(cpu_state, vaddr, READ_ACCESS_TYPE, mmu_idx, 0);
-        goto redo;
     }
 
     return (void *)paddr;
+}
+
+void *vpmu_tlb_get_host_addr(void *env, uintptr_t vaddr)
+{
+    void *paddr = NULL;
+    // Variables for tlb_fill()
+    const int     READ_ACCESS_TYPE = 0;
+    CPUArchState *cpu_env          = (CPUArchState *)env;
+    CPUState *    cpu_state        = CPU(ENV_GET_CPU(env));
+    int           mmu_idx          = cpu_mmu_index(cpu_env, false);
+
+    // If KVM is enabled, softMMU will not work
+    if (VPMU.platform.kvm_enabled) return NULL;
+
+    paddr = vpmu_tlb_try_get_host_addr(env, vaddr);
+    if (paddr == NULL) {
+        // TLB miss, try fix it
+        tlb_fill(cpu_state, vaddr, READ_ACCESS_TYPE, mmu_idx, 0);
+        paddr = vpmu_tlb_try_get_host_addr(env, vaddr);
+    }
+    // Check if the address is translated after TLB look up.
+    if (paddr == NULL) {
+        ERR_MSG(STR_VPMU "Fail to translate vaddr 0x%lx\n", vaddr);
+    }
+
+    return paddr;
 }
 
 size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *cs)
