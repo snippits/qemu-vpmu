@@ -37,9 +37,6 @@ static const VMStateDescription vpmu_vmstate = {
                      VMSTATE_UINT64_ARRAY(last_tick, vpmu_state_t, QEMU_CLOCK_MAX),
                      VMSTATE_END_OF_LIST()}};
 
-// Saving QEMU's context for TLB and MMU use. (copy data from/to guest)
-static CPUArchState *vpmu_cpu_context[VPMU_MAX_CPU_CORES];
-
 static uint64_t special_read(void *opaque, hwaddr addr, unsigned size)
 {
     uint64_t      ret    = 0;
@@ -125,12 +122,7 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     case VPMU_MMAP_ADD_PROC_NAME:
         if (VPMU.platform.kvm_enabled) break;
         if (value != 0) {
-            // Copy the whole CPU context including TLB Table and MMU registers
-            // for VPMU's use.
-            vpmu_qemu_free_cpu_arch_state(vpmu_cpu_context[0]);
-            vpmu_cpu_context[0] = vpmu_qemu_clone_cpu_arch_state(
-              VPMU.core[vpmu_get_core_id()].cpu_arch_state);
-            paddr       = vpmu_tlb_get_host_addr(vpmu_cpu_context[0], value);
+            paddr = vpmu_tlb_get_host_addr(VPMU.core[vpmu_get_core_id()].cpu_arch_state, value);
             binary_name = (char *)paddr;
             DBG(STR_VPMU "Trace process name: %s\n", (char *)paddr);
             if (!et_find_program_in_list((const char *)paddr)) {
@@ -211,9 +203,6 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         CONSOLE_LOG(
           STR_VPMU "write 0x%lx to unknown address 0x%lx of vpd\n", value, addr);
     }
-
-    // Preventing unused warnings
-    (void)vpmu_cpu_context;
 }
 
 static const MemoryRegionOps vpmu_dev_ops = {
