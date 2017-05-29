@@ -6,13 +6,6 @@
 #include "vpmu/component/vpmu-branch.h" // vpmu_branch_ref
 #include "vpmu/phase/phase.h"           // phasedet_ref
 
-// helper function to calculate TLB misses
-void HELPER(vpmu_tlb_access)(uint32_t addr)
-{
-    if (likely(VPMU.enabled)) {
-    }
-}
-
 // helper function to caclulate cache reference
 void
   HELPER(vpmu_memory_access)(CPUARMState *env, uint32_t addr, uint32_t rw, uint32_t size)
@@ -59,20 +52,6 @@ void
                 cache_ref(PROCESSOR_CPU, core_id, addr, rw, size);
             }
         }
-    }
-}
-
-// helper function for SET and other usage. Only "taken" branch will enter this helper.
-#if TARGET_LONG_BITS == 32
-void HELPER(vpmu_branch)(CPUARMState *env, uint32_t target_addr, uint32_t return_addr)
-#elif TARGET_LONG_BITS == 64
-void HELPER(vpmu_branch)(CPUARMState *env, uint64_t target_addr, uint64_t return_addr)
-#else
-#error Unhandled TARGET_LONG_BITS value
-#endif
-{
-    if (likely(VPMU.enabled)) {
-        // CONSOLE_LOG("pc: %x->%x\n", return_addr, target_addr);
     }
 }
 
@@ -214,3 +193,27 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
 #endif
     }
 }
+
+#if 0
+// TODO: Prepare to be deprecated
+// helper function for SET and other usage. Only "taken" branch will enter this helper.
+#if TARGET_LONG_BITS == 32
+void HELPER(vpmu_branch)(CPUARMState *env, uint32_t target_addr, uint32_t return_addr)
+#elif TARGET_LONG_BITS == 64
+void HELPER(vpmu_branch)(CPUARMState *env, uint64_t target_addr, uint64_t return_addr)
+#else
+#error Unhandled TARGET_LONG_BITS value
+#endif
+{
+    if (likely(VPMU.enabled)) {
+        // CONSOLE_LOG("pc: %x->%x\n", return_addr, target_addr);
+    }
+}
+
+// helper function to calculate TLB misses
+void HELPER(vpmu_tlb_access)(uint32_t addr)
+{
+    if (likely(VPMU.enabled)) {
+    }
+}
+#endif

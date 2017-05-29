@@ -135,12 +135,12 @@ void
     (void)mode;
 }
 
+#if 0
+// TODO: Prepare to be deprecated
 // helper function for ET and other usage. Only "taken" branch will enter this helper.
 void HELPER(vpmu_et_call)(CPUX86State *env, uint64_t target_addr, uint64_t return_addr)
 {
 #ifdef CONFIG_VPMU_SET
-// TODO: No kernel function reaches here.
-// et_x86_check_function_call(env, target_addr, return_addr);
 #endif
 }
 
@@ -151,3 +151,4 @@ void HELPER(vpmu_et_jmp)(CPUX86State *env, uint64_t vaddr)
 // et_x86_check_function_call(env, vaddr, vaddr);
 #endif
 }
+#endif

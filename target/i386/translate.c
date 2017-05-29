@@ -412,7 +412,7 @@ static void gen_add_A0_im(DisasContext *s, int val)
 static inline void gen_op_jmp_v(TCGv dest)
 {
 #ifdef CONFIG_VPMU
-    gen_helper_vpmu_et_jmp(cpu_env, dest);
+    // gen_helper_vpmu_et_jmp(cpu_env, dest);
 #endif
     tcg_gen_st_tl(dest, cpu_env, offsetof(CPUX86State, eip));
 }
@@ -5028,7 +5028,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_push_v(s, cpu_T1);
 #ifdef CONFIG_VPMU
             s->tb->extra_tb_info.has_branch = 1;
-            gen_helper_vpmu_et_call(cpu_env, cpu_T0, cpu_T1);
+            // gen_helper_vpmu_et_call(cpu_env, cpu_T0, cpu_T1);
 #endif
             gen_op_jmp_v(cpu_T0);
             gen_bnd_jmp(s);
@@ -5041,9 +5041,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         do_lcall:
 #ifdef CONFIG_VPMU
             s->tb->extra_tb_info.has_branch = 1;
-            TCGv_i64 tmp_return_addr        = tcg_const_i64(s->pc - s->cs_base);
-            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tmp_return_addr);
-            tcg_temp_free_i64(tmp_return_addr);
+            // TCGv_i64 tmp_return_addr        = tcg_const_i64(s->pc - s->cs_base);
+            // gen_helper_vpmu_et_call(cpu_env, cpu_T0, tmp_return_addr);
+            // tcg_temp_free_i64(tmp_return_addr);
 #endif
             if (s->pe && !s->vm86) {
                 tcg_gen_trunc_tl_i32(cpu_tmp2_i32, cpu_T0);
@@ -6536,9 +6536,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_movi_tl(cpu_T0, next_eip);
 #ifdef CONFIG_VPMU
             s->tb->extra_tb_info.has_branch = 1;
-            TCGv_i64 tmp_return_addr        = tcg_const_i64(next_eip);
-            gen_helper_vpmu_et_call(cpu_env, cpu_T0, tmp_return_addr);
-            tcg_temp_free_i64(tmp_return_addr);
+            // TCGv_i64 tmp_return_addr        = tcg_const_i64(next_eip);
+            // gen_helper_vpmu_et_call(cpu_env, cpu_T0, tmp_return_addr);
+            // tcg_temp_free_i64(tmp_return_addr);
 #endif
             gen_push_v(s, cpu_T0);
             gen_bnd_jmp(s);

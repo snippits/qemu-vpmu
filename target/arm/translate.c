@@ -239,9 +239,9 @@ static void store_reg(DisasContext *s, int reg, TCGv_i32 var)
 #ifdef CONFIG_VPMU
         if (!vpmu_branch_from_store) {
             s->tb->extra_tb_info.has_branch = 1;
-            TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
-            gen_helper_vpmu_branch(cpu_env, var, tmp_pc);
-            tcg_temp_free_i32(tmp_pc);
+            // TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+            // gen_helper_vpmu_branch(cpu_env, var, tmp_pc);
+            // tcg_temp_free_i32(tmp_pc);
         }
 #endif
     }
@@ -963,9 +963,9 @@ static inline void gen_bx_im(DisasContext *s, uint32_t addr)
     }
     if (!vpmu_branch_from_store) {
         s->tb->extra_tb_info.has_branch = 1;
-        TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
-        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tmp_pc);
-        tcg_temp_free_i32(tmp_pc);
+        // TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+        // gen_helper_vpmu_branch(cpu_env, cpu_R[15], tmp_pc);
+        // tcg_temp_free_i32(tmp_pc);
     }
 #endif
 }
@@ -980,9 +980,9 @@ static inline void gen_bx(DisasContext *s, TCGv_i32 var)
 #ifdef CONFIG_VPMU
     if (!vpmu_branch_from_store) {
         s->tb->extra_tb_info.has_branch = 1;
-        TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
-        gen_helper_vpmu_branch(cpu_env, cpu_R[15], tmp_pc);
-        tcg_temp_free_i32(tmp_pc);
+        // TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+        // gen_helper_vpmu_branch(cpu_env, cpu_R[15], tmp_pc);
+        // tcg_temp_free_i32(tmp_pc);
     }
 #endif
 }
@@ -4341,11 +4341,11 @@ static inline void gen_jmp (DisasContext *s, uint32_t dest)
 #ifdef CONFIG_VPMU
         if (!vpmu_branch_from_store) {
             s->tb->extra_tb_info.has_branch = 1;
-            TCGv_i32 tmp_dest               = tcg_const_i32(dest);
-            TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
-            gen_helper_vpmu_branch(cpu_env, tmp_dest, tmp_pc);
-            tcg_temp_free_i32(tmp_pc);
-            tcg_temp_free_i32(tmp_dest);
+            // TCGv_i32 tmp_dest               = tcg_const_i32(dest);
+            // TCGv_i32 tmp_pc                 = tcg_const_i32(s->pc);
+            // gen_helper_vpmu_branch(cpu_env, tmp_dest, tmp_pc);
+            // tcg_temp_free_i32(tmp_pc);
+            // tcg_temp_free_i32(tmp_dest);
         }
 #endif
         gen_goto_tb(s, 0, dest);

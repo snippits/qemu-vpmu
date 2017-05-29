@@ -1,15 +1,16 @@
 #ifdef CONFIG_VPMU
 #include "../vpmu/qemu/vpmu-qemu.h"
 DEF_HELPER_2(vpmu_accumulate_tb_info, void, env, ptr)
-DEF_HELPER_1(vpmu_tlb_access, void, i32)
-#if TARGET_LONG_BITS == 32
-DEF_HELPER_3(vpmu_branch, void, env, i32, i32)
-#elif TARGET_LONG_BITS == 64
-DEF_HELPER_3(vpmu_branch, void, env, i64, i64)
-#else
-#error Unhandled TARGET_LONG_BITS value
-#endif
 DEF_HELPER_4(vpmu_memory_access, void, env, i32, i32, i32)
+
+// DEF_HELPER_1(vpmu_tlb_access, void, i32)
+// #if TARGET_LONG_BITS == 32
+// DEF_HELPER_3(vpmu_branch, void, env, i32, i32)
+// #elif TARGET_LONG_BITS == 64
+// DEF_HELPER_3(vpmu_branch, void, env, i64, i64)
+// #else
+// #error Unhandled TARGET_LONG_BITS value
+// #endif
 #endif
 
 DEF_HELPER_FLAGS_1(sxtb16, TCG_CALL_NO_RWG_SE, i32, i32)
