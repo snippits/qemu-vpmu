@@ -1395,11 +1395,6 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
     cpu->exit_request = 1;
 
     while (1) {
-#ifdef CONFIG_VPMU
-        // Update cpu index after it switches
-        if (cpu) vpmu_set_core_id(cpu->cpu_index);
-#endif
-
         /* Account partial waits to QEMU_CLOCK_VIRTUAL.  */
         qemu_account_warp_timer();
 
@@ -1413,6 +1408,10 @@ static void *qemu_tcg_rr_cpu_thread_fn(void *arg)
         }
 
         while (cpu && !cpu->queued_work_first && !cpu->exit_request) {
+#ifdef CONFIG_VPMU
+            // Update cpu index after it switches
+            if (cpu) vpmu_set_core_id(cpu->cpu_index);
+#endif
 
             atomic_mb_set(&tcg_current_rr_cpu, cpu);
             current_cpu = cpu;
