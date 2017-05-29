@@ -28,7 +28,7 @@ extern "C" {
 
 class ET_Kernel : public ET_Program
 {
-    using fun_callback = std::function<void(void* env, KernelState& state)>;
+    using fun_callback = std::function<void(void* env)>;
 
 public:
     ET_Kernel() : ET_Program("kernel") {}
@@ -49,7 +49,7 @@ public:
         for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
             if (kernel_event_table[i] == vaddr) {
                 // DBG(STR_VPMU "Found event-%d \n",i);
-                cb[i].fun(env, k_state[core_id]);
+                cb[i].fun(env);
                 if (cb[i].fun_ret)
                     event_return_table[core_id].push_back(
                       {et_get_ret_addr(env), cb[i].fun_ret});
@@ -58,7 +58,7 @@ public:
             if (event_return_table[core_id].size() > 0
                 && event_return_table[core_id].back().first == vaddr) {
                 auto& r = event_return_table[core_id].back();
-                r.second(env, k_state[core_id]);
+                r.second(env);
                 event_return_table[core_id].pop_back();
             }
         }
@@ -119,8 +119,7 @@ private:
     struct {
         fun_callback fun;
         fun_callback fun_ret;
-    } cb[ET_KERNEL_EVENT_COUNT]             = {};
-    KernelState k_state[VPMU_MAX_CPU_CORES] = {};
+    } cb[ET_KERNEL_EVENT_COUNT] = {};
 };
 
 class EventTracer : VPMULog

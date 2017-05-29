@@ -33,15 +33,12 @@ typedef struct LinuxStructOffset {
     } task_struct;
 } LinuxStructOffset;
 
-extern LinuxStructOffset g_linux_offset;
+typedef struct LinuxStructSize {
+    uint64_t stack_thread_size;
+} LinuxStructSize;
 
-typedef struct {
-    bool        mmap_update_flag;
-    uint64_t    last_mmap_len;
-    uint64_t    exec_event_pid;
-    const char* bash_path;
-    uint8_t     padding[64];
-} KernelState;
+extern LinuxStructOffset g_linux_offset;
+extern LinuxStructSize g_linux_size;
 
 // NOTE: Due to some QEMU's function is limited in C compiler only,
 // we implemented some interface functions in C code and management in C++ code
@@ -57,6 +54,8 @@ void et_check_function_call(CPUArchState* env, uint64_t target_addr);
 #endif
 
 // The following type of "env" should be "CPUArchState*" when called
+uint64_t et_get_syscall_user_thread_id(void *env);
+uint64_t et_get_syscall_user_thread(void *env);
 uint64_t et_get_input_arg(void* env, int num);
 uint64_t et_get_ret_addr(void* env);
 uint64_t et_get_ret_value(void* env);
@@ -87,12 +86,18 @@ void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid);
 bool et_find_traced_pid(uint64_t pid);
 bool et_find_traced_process(const char* name);
 void et_set_process_cpu_state(uint64_t pid, void* cs);
-void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mode);
-void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath);
+void et_add_process_mapped_file(uint64_t    pid,
+                                const char* fullpath,
+                                uint64_t    mode,
+                                uint64_t    file_size);
+void et_attach_shared_library_to_process(uint64_t    pid,
+                                         const char* fullpath,
+                                         uint64_t    file_size);
 
 void et_update_last_mmaped_binary(uint64_t pid, uint64_t vaddr, uint64_t len);
 
 // kernel-event-cb.cc
+void et_set_linux_thread_struct_size(uint64_t value);
 void et_set_linux_struct_offset(uint64_t type, uint64_t value);
 void et_set_default_linux_struct_offset(uint64_t version);
 bool et_kernel_call_event(uint64_t vaddr, void* env, int core_id);

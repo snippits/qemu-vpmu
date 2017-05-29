@@ -203,6 +203,9 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         if (VPMU.platform.kvm_enabled) break;
         et_set_linux_sym_addr(kallsym_name, value);
         break;
+    case VPMU_MMAP_THREAD_SIZE:
+        et_set_linux_thread_struct_size(value);
+        break;
 #endif
     default:
         CONSOLE_LOG(

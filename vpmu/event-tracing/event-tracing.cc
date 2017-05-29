@@ -532,17 +532,22 @@ void et_set_process_cpu_state(uint64_t pid, void* cs)
     event_tracer.set_process_cpu_state(pid, cs);
 }
 
-void et_add_process_mapped_file(uint64_t pid, const char* fullpath, uint64_t mode)
+void et_add_process_mapped_file(uint64_t    pid,
+                                const char* fullpath,
+                                uint64_t    mode,
+                                uint64_t    file_size)
 {
     if (mode & VM_EXEC) {
         // Mapping executable page for shared library
-        et_attach_shared_library_to_process(pid, fullpath);
+        et_attach_shared_library_to_process(pid, fullpath, file_size);
     } else {
         // TODO Just records all non-library files mapped to this process
     }
 }
 
-void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath_lib)
+void et_attach_shared_library_to_process(uint64_t    pid,
+                                         const char* fullpath_lib,
+                                         uint64_t    file_size)
 {
     std::shared_ptr<ET_Process> process = event_tracer.find_process(pid);
     if (process == nullptr) return;
@@ -564,6 +569,8 @@ void et_attach_shared_library_to_process(uint64_t pid, const char* fullpath_lib)
     } else {
         event_tracer.attach_to_program(process->get_main_program()->name, program);
     }
+    program->file_size = file_size;
+
     process->push_binary(program);
 }
 

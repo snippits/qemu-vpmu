@@ -10,6 +10,7 @@ extern "C" {
 
 // The global variable storing offsets of kernel struct types
 LinuxStructOffset g_linux_offset;
+LinuxStructSize   g_linux_size;
 
 // A helper to print message of mmap
 #define print_mode(_mode, _mask, _message)                                               \
@@ -41,6 +42,11 @@ void et_set_default_linux_struct_offset(uint64_t version)
     ERR_MSG("This kernel version is not supported for boot time profiling");
 }
 
+void et_set_linux_thread_struct_size(uint64_t value)
+{
+    g_linux_size.stack_thread_size = value;
+}
+
 void et_set_linux_struct_offset(uint64_t type, uint64_t value)
 {
     switch (type) {
@@ -69,34 +75,46 @@ void register_callbacks_kernel_events(void)
 {
 // A lambda can only be converted to a function pointer if it does not capture
 #define _CB(_EVENT_NAME_, cb)                                                            \
-    event_tracer.get_kernel().register_callback(                                         \
-      _EVENT_NAME_, [](void* env, KernelState& state) { cb });
+    event_tracer.get_kernel().register_callback(_EVENT_NAME_, [](void* env) { cb });
 
 #define _CR(_EVENT_NAME_, cb)                                                            \
-    event_tracer.get_kernel().register_return_callback(                                  \
-      _EVENT_NAME_, [](void* env, KernelState& state) { cb });
+    event_tracer.get_kernel().register_return_callback(_EVENT_NAME_,                     \
+                                                       [](void* env) { cb });
 
     // TODO Make this call back variable length of args in order to have
     // compile time check of the number of input args
 
     // Linux Kernel: New process creation
     _CB(ET_KERNEL_EXECV, {
-        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
+        uint64_t    syscall_pid = et_get_syscall_user_thread_id(env);
+        const char* bash_path   = nullptr;
+
         if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
-            state.bash_path =
+            bash_path =
               (const char*)vpmu_read_ptr_from_guest(env, et_get_input_arg(env, 2), 0);
         } else {
             // Newer linux pass filename as a struct file *, containing char*
             uintptr_t name_addr =
               vpmu_read_uintptr_from_guest(env, et_get_input_arg(env, 2), 0);
             // Remember this pointer for mmap()
-            state.bash_path = (const char*)vpmu_read_ptr_from_guest(env, name_addr, 0);
+            bash_path = (const char*)vpmu_read_ptr_from_guest(env, name_addr, 0);
         }
+        /*
+        DBG(STR_VPMU "Exec file: %s on core %lu (pid=%lu)\n",
+            bash_path,
+            vpmu::get_core_id(),
+            syscall_pid);
+        */
 
-        // DBG(STR_VPMU "Exec file: %s (pid=%lu)\n", state.bash_path, current_pid);
-        // Let another kernel event handle. It can find the absolute path.
-        state.exec_event_pid = current_pid;
+        if (et_find_program_in_list(bash_path)) {
+            event_tracer.add_new_process(bash_path, syscall_pid);
+            // DBG(STR_VPMU "Start tracing %s (pid=%lu)\n", bash_path, syscall_pid);
+            tic(&(VPMU.start_time));
+            VPMU_reset();
+            vpmu_print_status(&VPMU);
+            vpmu::enable_vpmu_on_core();
+        }
     });
 
     // Linux Kernel: Context switch
@@ -136,8 +154,8 @@ void register_callbacks_kernel_events(void)
     _CB(ET_KERNEL_EXIT, {
         // Do nothing if the value is not initialized
         if (g_linux_offset.task_struct.pid == 0) return;
-        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
-        et_remove_process(current_pid);
+        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+        et_remove_process(syscall_pid);
         return;
 
     });
@@ -148,30 +166,32 @@ void register_callbacks_kernel_events(void)
         if (g_linux_offset.task_struct.pid == 0) return;
         uint32_t target_pid = vpmu_read_uint32_from_guest(
           env, et_get_input_arg(env, 1), g_linux_offset.task_struct.pid);
-        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
-        if (current_pid != 0 && et_find_traced_pid(current_pid)) {
-            et_attach_to_parent_pid(current_pid, target_pid);
+        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+        if (syscall_pid != 0 && et_find_traced_pid(syscall_pid)) {
+            et_attach_to_parent_pid(syscall_pid, target_pid);
         }
     });
 
     // Linux Kernel: Fork a process
     _CB(ET_KERNEL_FORK,
         {
-          // DBG(STR_VPMU "fork from %lu\n", VPMU.core[vpmu::get_core_id()].current_pid);
+          // uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+          // DBG(STR_VPMU "fork from %lu\n", syscall_pid);
         });
 
     _CB(ET_KERNEL_MMAP, {
-        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
-        if (current_pid == 0) return;
+        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+        if (syscall_pid == -1) return; // Not found / some error
 
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
-        // DBG(STR_VPMU "fork from %lu\n", current_pid);
+        // DBG(STR_VPMU "fork from %lu\n", syscall_pid);
         char      fullpath[1024] = {0};
         int       position       = 0;
         uintptr_t dentry_addr    = 0;
         uintptr_t mode           = 0;
         uintptr_t vaddr          = 0;
+        uint64_t  mmap_len       = 0;
 
         if (et_get_input_arg(env, 1) == 0) return; // vaddr is zero
         dentry_addr = vpmu_read_uintptr_from_guest(
@@ -183,12 +203,12 @@ void register_callbacks_kernel_events(void)
         } else {
             mode = et_get_input_arg(env, 4);
         }
-        vaddr = et_get_input_arg(env, 2);
+        vaddr    = et_get_input_arg(env, 2);
+        mmap_len = et_get_input_arg(env, 3);
 
-        state.last_mmap_len    = et_get_input_arg(env, 3);
-        state.mmap_update_flag = false;
         /*
-        DBG(STR_VPMU "core %2lu mmap file: %s @ %lx mode: (%lx) ",
+        DBG(STR_VPMU "pid %lu on core %2lu mmap file: %s @ %lx mode: (%lx) ",
+            syscall_pid,
             vpmu::get_core_id(),
             fullpath,
             vaddr,
@@ -205,31 +225,10 @@ void register_callbacks_kernel_events(void)
         DBG("\n");
         */
 
-        if (current_pid == state.exec_event_pid && (mode & VM_READ)) {
-            // Mapping executable page for main program
-            if (et_find_program_in_list(state.bash_path)) {
-                et_add_new_process(fullpath, state.bash_path, current_pid);
-                DBG(STR_VPMU "Start tracing %s, File: %s (pid=%lu)\n",
-                    state.bash_path,
-                    fullpath,
-                    current_pid);
-                tic(&(VPMU.start_time));
-                VPMU_reset();
-                vpmu_print_status(&VPMU);
-                vpmu::enable_vpmu_on_core();
-            }
-
-            // The current mapped file is the main program, push it to process anyway
-            et_add_process_mapped_file(current_pid, fullpath, mode);
-            state.exec_event_pid   = -1;
-            state.mmap_update_flag = true;
-        } else {
-            // Records all mapped files, including shared library
-            if (et_find_traced_pid(current_pid)) {
-                // Update the mapped vadder for only exec pages
-                if (mode & VM_EXEC) state.mmap_update_flag = true;
-                et_add_process_mapped_file(current_pid, fullpath, mode);
-            }
+        auto process = event_tracer.find_process(syscall_pid);
+        if (process != nullptr) {
+            et_add_process_mapped_file(syscall_pid, fullpath, mode, mmap_len);
+            process->mmap_updated_flag = false;
         }
 
         (void)vaddr;
@@ -237,16 +236,17 @@ void register_callbacks_kernel_events(void)
     });
 
     _CR(ET_KERNEL_MMAP, {
-        uint64_t current_pid = VPMU.core[vpmu::get_core_id()].current_pid;
-        if (state.mmap_update_flag) {
+        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+        auto     process     = event_tracer.find_process(syscall_pid);
+        if (process && process->mmap_updated_flag == false) {
             /*
             DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
                 (uint64_t)et_get_ret_value(env),
-                (uint64_t)et_get_ret_value(env) + state.last_mmap_len);
+                (uint64_t)et_get_ret_value(env) + process->binary_list.back()->file_size);
             */
-            // TODO Find a better way
-            et_update_last_mmaped_binary(
-              current_pid, et_get_ret_value(env), state.last_mmap_len);
+            uint64_t vaddr = et_get_ret_value(env);
+            process->binary_list.back()->set_mapped_address(vaddr);
+            process->mmap_updated_flag = true;
         }
     });
 

@@ -166,6 +166,48 @@ static void parse_dentry_path(CPUArchState *env,
     return;
 }
 
+// Return an address of pointer type "struct task_struct *"
+static inline target_ulong get_syscall_user_thread(CPUArchState *env)
+{
+    if (g_linux_size.stack_thread_size == 0) return 0;
+#if defined(TARGET_ARM)
+    // arch/arm/include/asm/thread_info.h:current_thread_info()
+    // return (struct thread_info *) (current_stack_pointer & ~(THREAD_SIZE - 1));
+    target_ulong current_thread_ptr =
+      (env->regs[13] & ~(g_linux_size.stack_thread_size - 1));
+    target_ulong current_task_ptr = vpmu_read_uintptr_from_guest(
+      env, current_thread_ptr, g_linux_offset.thread_info.task);
+    return current_task_ptr;
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    // NOTE: g_linux_offset.thread_info.task is 0 on x86_64.
+    // Thus 0 check (initialization check) is not needed.
+    // Offset is 4 bytes (uint32_t)
+    // arch/x86/include/asm/processor.h:current_top_of_stack()
+    target_ulong x86_tss_sp0 = vpmu_read_uintptr_from_guest(env, env->tr.base, 4);
+    // arch/x86/include/asm/thread_info.h:current_thread_info()
+    x86_tss_sp0 -= g_linux_size.stack_thread_size; // THREAD_SIZE
+    // include/asm-generic/current.h
+    target_ulong current_task_ptr =
+      vpmu_read_uintptr_from_guest(env, x86_tss_sp0, g_linux_offset.thread_info.task);
+    return current_task_ptr;
+#endif
+}
+
+uint64_t et_get_syscall_user_thread_id(void *env)
+{
+    if (g_linux_offset.task_struct.pid == 0) return -1;
+    uint64_t thread_ptr = get_syscall_user_thread(env);
+    if (thread_ptr == 0) return -1;
+    uint64_t pid =
+      vpmu_read_uint32_from_guest(env, thread_ptr, g_linux_offset.task_struct.pid);
+    return pid;
+}
+
+uint64_t et_get_syscall_user_thread(void *env)
+{
+    return get_syscall_user_thread(env);
+}
+
 uint64_t et_get_input_arg(void *env, int num)
 {
     return get_input_arg(env, num);

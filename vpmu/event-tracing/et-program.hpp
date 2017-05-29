@@ -47,6 +47,16 @@ public:
         walk_count_vector.resize(address_end - address_start);
     }
 
+    void set_mapped_address(uint64_t start_addr)
+    {
+        set_mapped_address(start_addr, start_addr + file_size);
+    }
+
+    void set_file_size(uint64_t value)
+    {
+        file_size = value;
+    }
+
     void reset_walk_count(void)
     {
         // Reset all elements to zeros
@@ -76,7 +86,8 @@ public:
     // Used to count the walk count
     std::vector<uint32_t> walk_count_vector;
     // Used to identify the mapped virtual address of this program
-    uint64_t address_start, address_end;
+    uint64_t address_start = 0, address_end = 0;
+    uint64_t file_size = 0;
 };
 
 #endif

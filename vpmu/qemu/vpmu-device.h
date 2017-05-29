@@ -27,6 +27,7 @@
 #define VPMU_MMAP_OFFSET_LINUX_VERSION           0x0200
 #define VPMU_MMAP_OFFSET_KERNEL_SYM_NAME         0x0208
 #define VPMU_MMAP_OFFSET_KERNEL_SYM_ADDR         0x0210
+#define VPMU_MMAP_THREAD_SIZE                    0x0218
 
 // Mode selector
 #define VPMU_INSN_COUNT_SIM         0x1 << 0

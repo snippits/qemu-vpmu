@@ -87,6 +87,7 @@ public:
 public:
     // Used to identify the top process parent
     bool is_top_process;
+    bool mmap_updated_flag = true;
     // The root pid
     uint64_t pid = 0;
     // The timing model bind to this program
