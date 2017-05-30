@@ -17,33 +17,44 @@
 // If you want to know more details about the following codes,
 // please refer to `man syscall`, section "Architecture calling conventions"
 // NOTE that num can not be zero!
+// Follow ARM (32bits) calling convension:
+// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0042f/IHI0042F_aapcs.pdf
+// Follow ARM-64 calling convension:
+// http://infocenter.arm.com/help/topic/com.arm.doc.ihi0055c/IHI0055C_beta_aapcs64.pdf
+// Follow AMD64 calling convension:
+// User mode and kernel mode interface differs
+// http://chamilo2.grenet.fr/inp/courses/ENSIMAG3MM1LDB/document/doc_abi_ia64.pdf
+
+// Use of stack pointer
+// Lower  address
+// [return address]     <---- sp
+// [arg #]     <------------- sp + TARGET_LONG_SIZE
+// [arg # + 1] <------------- sp + TARGET_LONG_SIZE * 2
+// ...
+// Higher address
+
+#if defined(TARGET_ARM) && TARGET_LONG_BITS == 64
+#error "Many of these functions are not ready for ARM-64"
+#endif
 static inline target_ulong get_input_arg(CPUArchState *env, int num)
 {
 #if defined(TARGET_ARM)
-    if (num == 1)
-        return env->regs[0];
-    else if (num == 2)
-        return env->regs[1];
-    else if (num == 3)
-        return env->regs[2];
-    else if (num == 4)
-        return env->regs[3];
+#if TARGET_LONG_BITS == 32
+    if (num > 0 && num < 5)
+        return env->regs[num - 1];
     else if (num >= 5) {
-        // Use stack pointer
-        // Lower  address
-        // [return address] <---- sp
-        // [arg 5] <------------- sp + TARGET_LONG_SIZE
-        // [arg 6] <------------- sp + TARGET_LONG_SIZE * 2
-        // ...
-        // Higher address
         return vpmu_read_uintptr_from_guest(
           env, env->regs[13], (num - 5) * TARGET_LONG_SIZE);
     }
+#else
+    if (num > 0 && num < 9)
+        return env->xregs[num - 1];
+    else if (num >= 9) {
+        return vpmu_read_uintptr_from_guest(
+          env, env->xregs[], (num - 9) * TARGET_LONG_SIZE);
+    }
+#endif
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
-    // Follow AMD64 calling convension:
-    // User mode and kernel mode interface differs
-    // http://chamilo2.grenet.fr/inp/courses/ENSIMAG3MM1LDB/document/doc_abi_ia64.pdf
-
     if (num == 1)
         return env->regs[R_EDI];
     else if (num == 2)
@@ -57,13 +68,6 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
     else if (num == 6)
         return env->regs[9];
     else if (num >= 7) {
-        // Use stack pointer
-        // Lower  address
-        // [return address] <---- rsp
-        // [arg 7] <------------- rsp + TARGET_LONG_SIZE
-        // [arg 8] <------------- rsp + TARGET_LONG_SIZE * 2
-        // ...
-        // Higher address
         return vpmu_read_uintptr_from_guest(
           env, env->regs[R_ESP], (num - 7 + 1) * TARGET_LONG_SIZE);
     }
@@ -74,30 +78,8 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
 static inline target_ulong get_input_arg_in_kernel(CPUArchState *env, int num)
 {
 #if defined(TARGET_ARM)
-    if (num == 1)
-        return env->regs[0];
-    else if (num == 2)
-        return env->regs[1];
-    else if (num == 3)
-        return env->regs[2];
-    else if (num == 4)
-        return env->regs[3];
-    else if (num >= 5) {
-        // Use stack pointer
-        // Lower  address
-        // [return address] <---- sp
-        // [arg 5] <------------- sp + TARGET_LONG_SIZE
-        // [arg 6] <------------- sp + TARGET_LONG_SIZE * 2
-        // ...
-        // Higher address
-        return vpmu_read_uintptr_from_guest(
-          env, env->regs[13], (num - 5) * TARGET_LONG_SIZE);
-    }
+    return get_input_arg(env, num);
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
-    // Follow AMD64 calling convension:
-    // User mode and kernel mode interface differs
-    // http://chamilo2.grenet.fr/inp/courses/ENSIMAG3MM1LDB/document/doc_abi_ia64.pdf
-
     if (num == 1)
         return env->regs[R_EDI];
     else if (num == 2)
@@ -111,13 +93,6 @@ static inline target_ulong get_input_arg_in_kernel(CPUArchState *env, int num)
     else if (num == 6)
         return env->regs[9];
     else if (num >= 7) {
-        // Use stack pointer
-        // Lower  address
-        // [return address] <---- rsp
-        // [arg 7] <------------- rsp + TARGET_LONG_SIZE
-        // [arg 8] <------------- rsp + TARGET_LONG_SIZE * 2
-        // ...
-        // Higher address
         return vpmu_read_uintptr_from_guest(
           env, env->regs[R_ESP], (num - 7 + 1) * TARGET_LONG_SIZE);
     }
@@ -150,38 +125,6 @@ static inline target_ulong get_syscall_num(CPUArchState *env)
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
     return env->regs[R_EAX];
 #endif
-}
-
-static inline target_ulong get_syscall_input_arg(CPUArchState *env, int num)
-{
-#if defined(TARGET_ARM)
-    if (num == 1)
-        return env->regs[0];
-    else if (num == 2)
-        return env->regs[1];
-    else if (num == 3)
-        return env->regs[2];
-    else if (num == 4)
-        return env->regs[3];
-    else if (num == 5)
-        return env->regs[4];
-    else if (num == 6)
-        return env->regs[5];
-#elif defined(TARGET_X86_64) || defined(TARGET_I386)
-    if (num == 1)
-        return env->regs[R_EDI];
-    else if (num == 2)
-        return env->regs[R_ESI];
-    else if (num == 3)
-        return env->regs[R_EDX];
-    else if (num == 4)
-        return env->regs[10];
-    else if (num == 5)
-        return env->regs[8];
-    else if (num == 6)
-        return env->regs[9];
-#endif
-    return 0;
 }
 
 static inline void __append_str(char *buff, int *position, int size_buff, const char *str)
@@ -317,7 +260,7 @@ uint64_t et_get_syscall_num(void *env)
 
 uint64_t et_get_syscall_input_arg(void *env, int num)
 {
-    return get_syscall_input_arg(env, num);
+    return get_input_arg_in_kernel(env, num);
 }
 
 void et_parse_dentry_path(void *    env,
