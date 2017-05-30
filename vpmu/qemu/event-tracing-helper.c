@@ -12,6 +12,8 @@
  *
  */
 
+#define LINUX_KERNEL_STACK_OFFSET (5 * (TARGET_LONG_BITS / 8))
+
 // If you want to know more details about the following codes,
 // please refer to `man syscall`, section "Architecture calling conventions"
 // NOTE that num can not be zero!
@@ -38,6 +40,10 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
           env, env->regs[13], (num - 5) * TARGET_LONG_SIZE);
     }
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    // Follow AMD64 calling convension:
+    // User mode and kernel mode interface differs
+    // http://chamilo2.grenet.fr/inp/courses/ENSIMAG3MM1LDB/document/doc_abi_ia64.pdf
+
     if (num == 1)
         return env->regs[R_EDI];
     else if (num == 2)
@@ -46,6 +52,60 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
         return env->regs[R_EDX];
     else if (num == 4)
         return env->regs[R_ECX];
+    else if (num == 5)
+        return env->regs[8];
+    else if (num == 6)
+        return env->regs[9];
+    else if (num >= 7) {
+        // Use stack pointer
+        // Lower  address
+        // [return address] <---- rsp
+        // [arg 7] <------------- rsp + TARGET_LONG_SIZE
+        // [arg 8] <------------- rsp + TARGET_LONG_SIZE * 2
+        // ...
+        // Higher address
+        return vpmu_read_uintptr_from_guest(
+          env, env->regs[R_ESP], (num - 7 + 1) * TARGET_LONG_SIZE);
+    }
+#endif
+    return 0;
+}
+
+static inline target_ulong get_input_arg_in_kernel(CPUArchState *env, int num)
+{
+#if defined(TARGET_ARM)
+    if (num == 1)
+        return env->regs[0];
+    else if (num == 2)
+        return env->regs[1];
+    else if (num == 3)
+        return env->regs[2];
+    else if (num == 4)
+        return env->regs[3];
+    else if (num >= 5) {
+        // Use stack pointer
+        // Lower  address
+        // [return address] <---- sp
+        // [arg 5] <------------- sp + TARGET_LONG_SIZE
+        // [arg 6] <------------- sp + TARGET_LONG_SIZE * 2
+        // ...
+        // Higher address
+        return vpmu_read_uintptr_from_guest(
+          env, env->regs[13], (num - 5) * TARGET_LONG_SIZE);
+    }
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    // Follow AMD64 calling convension:
+    // User mode and kernel mode interface differs
+    // http://chamilo2.grenet.fr/inp/courses/ENSIMAG3MM1LDB/document/doc_abi_ia64.pdf
+
+    if (num == 1)
+        return env->regs[R_EDI];
+    else if (num == 2)
+        return env->regs[R_ESI];
+    else if (num == 3)
+        return env->regs[R_EDX];
+    else if (num == 4)
+        return env->regs[10];
     else if (num == 5)
         return env->regs[8];
     else if (num == 6)
@@ -182,14 +242,31 @@ static inline target_ulong get_syscall_user_thread(CPUArchState *env)
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
     // NOTE: g_linux_offset.thread_info.task is 0 on x86_64.
     // Thus 0 check (initialization check) is not needed.
-    // Offset is 4 bytes (uint32_t)
-    // arch/x86/include/asm/processor.h:current_top_of_stack()
-    target_ulong x86_tss_sp0 = vpmu_read_uintptr_from_guest(env, env->tr.base, 4);
-    // arch/x86/include/asm/thread_info.h:current_thread_info()
-    x86_tss_sp0 -= g_linux_size.stack_thread_size; // THREAD_SIZE
-    // include/asm-generic/current.h
-    target_ulong current_task_ptr =
-      vpmu_read_uintptr_from_guest(env, x86_tss_sp0, g_linux_offset.thread_info.task);
+
+    target_ulong current_task_ptr = 0;
+    if (VPMU.platform.linux_version < KERNEL_VERSION(3, 15, 0)) {
+        target_ulong current_thread_ptr =
+          (env->regs[R_ESP] & ~(g_linux_size.stack_thread_size - 1));
+        current_task_ptr = vpmu_read_uintptr_from_guest(
+          env, current_thread_ptr, g_linux_offset.thread_info.task);
+    } else if (VPMU.platform.linux_version < KERNEL_VERSION(4, 1, 0)) {
+        // Although it uses this_cpu_read_stable(kernel_stack), x86_tss_sp0 seems to be
+        // the same thing. https://patchwork.kernel.org/patch/6365671/
+        target_ulong x86_tss_sp0 = vpmu_read_uintptr_from_guest(env, env->tr.base, 4);
+        target_ulong current_thread_ptr =
+          (x86_tss_sp0 + LINUX_KERNEL_STACK_OFFSET - g_linux_size.stack_thread_size);
+        current_task_ptr = vpmu_read_uintptr_from_guest(
+          env, current_thread_ptr, g_linux_offset.thread_info.task);
+    } else {
+        // Offset is 4 bytes (uint32_t)
+        // arch/x86/include/asm/processor.h:current_top_of_stack()
+        target_ulong x86_tss_sp0 = vpmu_read_uintptr_from_guest(env, env->tr.base, 4);
+        // arch/x86/include/asm/thread_info.h:current_thread_info()
+        x86_tss_sp0 -= g_linux_size.stack_thread_size; // THREAD_SIZE
+        // include/asm-generic/current.h
+        current_task_ptr =
+          vpmu_read_uintptr_from_guest(env, x86_tss_sp0, g_linux_offset.thread_info.task);
+    }
     return current_task_ptr;
 #endif
 }
@@ -211,7 +288,16 @@ uint64_t et_get_syscall_user_thread(void *env)
 
 uint64_t et_get_input_arg(void *env, int num)
 {
+#ifdef TARGET_ARM
     return get_input_arg(env, num);
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
+    int cpl = ((CPUArchState *)env)->hflags & (3);
+    if (cpl == 3)
+        return get_input_arg(env, num);
+    else
+        return get_input_arg_in_kernel(env, num);
+#endif
 }
 
 uint64_t et_get_ret_addr(void *env)
