@@ -65,7 +65,8 @@ public:
     void set_symbol_address(std::string sym_name, uint64_t address)
     {
         DBG(STR_VPMU "Set Linux symbol %s @ %lx\n", sym_name.c_str(), address);
-        if (sym_name.find("do_execveat_common") != std::string::npos) {
+        if (sym_name.find("do_execveat_common") != std::string::npos
+            || sym_name.find("do_execve_common") != std::string::npos) {
             set_event_address(ET_KERNEL_EXECV, address);
         } else if (sym_name == "__switch_to") {
             set_event_address(ET_KERNEL_CONTEXT_SWITCH, address);
