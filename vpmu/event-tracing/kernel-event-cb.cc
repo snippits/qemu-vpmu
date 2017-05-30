@@ -94,12 +94,17 @@ void et_register_callbacks_kernel_events(void)
         if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
             bash_path =
-              (const char*)vpmu_read_ptr_from_guest(env, et_get_input_arg(env, 2), 0);
+              (const char*)vpmu_read_ptr_from_guest(env, et_get_input_arg(env, 1), 0);
+        } else if (VPMU.platform.linux_version < KERNEL_VERSION(3, 19, 0)) {
+            // Later linux pass filename as a struct file *, containing char*
+            // but the position of argument is still at the first one.
+            uintptr_t name_addr =
+              vpmu_read_uintptr_from_guest(env, et_get_input_arg(env, 1), 0);
+            bash_path = (const char*)vpmu_read_ptr_from_guest(env, name_addr, 0);
         } else {
             // Newer linux pass filename as a struct file *, containing char*
             uintptr_t name_addr =
               vpmu_read_uintptr_from_guest(env, et_get_input_arg(env, 2), 0);
-            // Remember this pointer for mmap()
             bash_path = (const char*)vpmu_read_ptr_from_guest(env, name_addr, 0);
         }
         /*
@@ -195,13 +200,13 @@ void et_register_callbacks_kernel_events(void)
         uintptr_t vaddr          = 0;
         uint64_t  mmap_len       = 0;
 
-        if (et_get_input_arg(env, 1) == 0) return; // vaddr is zero
+        if (et_get_input_arg(env, 1) == 0) return; // struct file * is NULL
         dentry_addr = vpmu_read_uintptr_from_guest(
           env, et_get_input_arg(env, 1), g_linux_offset.file.fpath.dentry);
         if (dentry_addr == 0) return; // pointer to dentry is zero
         et_parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
         if (VPMU.platform.linux_version < KERNEL_VERSION(3, 9, 0)) {
-            mode = vpmu_read_uintptr_from_guest(env, et_get_input_arg(env, 5), 0);
+            mode = et_get_input_arg(env, 5);
         } else {
             mode = et_get_input_arg(env, 4);
         }
