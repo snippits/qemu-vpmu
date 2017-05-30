@@ -1,7 +1,9 @@
 #ifdef CONFIG_VPMU
 #include "../vpmu/qemu/vpmu-qemu.h"
 DEF_HELPER_2(vpmu_accumulate_tb_info, void, env, ptr)
-DEF_HELPER_4(vpmu_memory_access, void, env, i64, i64, i64)
+// dh_alias_tl is target long
+DEF_HELPER_4(vpmu_memory_access, void, env, dh_alias_tl, dh_alias_tl, dh_alias_tl)
+
 // DEF_HELPER_3(vpmu_et_call, void, env, i64, i64)
 // DEF_HELPER_2(vpmu_et_jmp, void, env, i64)
 #endif

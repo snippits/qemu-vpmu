@@ -12,6 +12,42 @@ enum VPMU_X86_CPU_MODE {
     X86_CPU_MODE_NON = 0x00
 };
 
+void
+  HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, uint64_t size)
+{
+    CPUState *cs = CPU(ENV_GET_CPU(env));
+    int cpl = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
+    uint8_t mode = X86_CPU_MODE_NON;
+    // Get the core id from CPUState structure
+    int core_id = cs->cpu_index;
+
+    if (likely(VPMU.enabled)) {
+        if (cpl == 0) {
+            mode = X86_CPU_MODE_SVC;
+        } else if (cpl == 3) {
+            mode = X86_CPU_MODE_USR;
+        } else {
+            CONSOLE_LOG(STR_VPMU "Unhandled privilege : %d\n", cpl);
+        }
+
+        // TODO Is this VA the real address fed into cache?? Ex: ARM uses MVA
+        if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
+            if (unlikely(VPMU.iomem_access_flag)) {
+                // IO segment
+                VPMU.iomem_access_flag = 0; // Clear flag
+                VPMU.iomem_count++;
+            } else {
+                // Memory segment
+                if (VPMU.core[core_id].hot_tb_flag) {
+                    rw |= VPMU_PACKET_HOT;
+                }
+                cache_ref(PROCESSOR_CPU, core_id, addr, rw, size);
+            }
+        }
+    }
+    (void)mode;
+}
+
 void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
 {
     CPUState *   cs            = CPU(ENV_GET_CPU(env));
@@ -97,42 +133,6 @@ void HELPER(vpmu_accumulate_tb_info)(CPUX86State *env, void *opaque)
     VPMU.core[core_id].last_tb_pc =
       extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
     VPMU.core[core_id].last_tb_has_branch = extra_tb_info->has_branch;
-}
-
-void
-  HELPER(vpmu_memory_access)(CPUX86State *env, uint64_t addr, uint64_t rw, uint64_t size)
-{
-    CPUState *cs = CPU(ENV_GET_CPU(env));
-    int cpl = env->hflags & (3); // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
-    uint8_t mode = X86_CPU_MODE_NON;
-    // Get the core id from CPUState structure
-    int core_id = cs->cpu_index;
-
-    if (likely(VPMU.enabled)) {
-        if (cpl == 0) {
-            mode = X86_CPU_MODE_SVC;
-        } else if (cpl == 3) {
-            mode = X86_CPU_MODE_USR;
-        } else {
-            CONSOLE_LOG(STR_VPMU "Unhandled privilege : %d\n", cpl);
-        }
-
-        // TODO Is this VA the real address fed into cache?? Ex: ARM uses MVA
-        if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
-            if (unlikely(VPMU.iomem_access_flag)) {
-                // IO segment
-                VPMU.iomem_access_flag = 0; // Clear flag
-                VPMU.iomem_count++;
-            } else {
-                // Memory segment
-                if (VPMU.core[core_id].hot_tb_flag) {
-                    rw |= VPMU_PACKET_HOT;
-                }
-                cache_ref(PROCESSOR_CPU, core_id, addr, rw, size);
-            }
-        }
-    }
-    (void)mode;
 }
 
 #if 0

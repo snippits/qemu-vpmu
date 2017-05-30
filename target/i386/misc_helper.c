@@ -28,7 +28,7 @@
 #ifdef CONFIG_VPMU
 #include "../vpmu/vpmu.h"
 #include "../vpmu/event-tracing/event-tracing.h"
-#include "../vpmu/qemu/op-vpmu-i386.c"
+#include "../vpmu/qemu/op-vpmu.c"
 #include "qemu/timer.h"
 #endif
 

@@ -6,9 +6,27 @@
 #include "vpmu/component/vpmu-branch.h" // vpmu_branch_ref
 #include "vpmu/phase/phase.h"           // phasedet_ref
 
+#ifdef TARGET_ARM
+enum VPMU_ARCH_MODE {
+    VPMU_ARCH_MODE_USR = ARM_CPU_MODE_USR,
+    VPMU_ARCH_MODE_SVC = ARM_CPU_MODE_SVC,
+};
+#define vpmu_arch_sp env->regs[13]
+
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+enum VPMU_ARCH_MODE {
+    VPMU_ARCH_MODE_USR = 0x10,
+    VPMU_ARCH_MODE_SVC = 0x13,
+};
+#define vpmu_arch_sp env->regs[R_ESP]
+
+#endif
+
 // helper function to caclulate cache reference
-void
-  HELPER(vpmu_memory_access)(CPUARMState *env, uint32_t addr, uint32_t rw, uint32_t size)
+void HELPER(vpmu_memory_access)(CPUArchState *env,
+                                target_ulong  addr,
+                                target_ulong  rw,
+                                target_ulong  size)
 {
     CPUState *cs = CPU(ENV_GET_CPU(env));
     // Get the core id from CPUState structure
@@ -20,6 +38,7 @@ void
     // static uint32_t cnt = 0;
     if (likely(VPMU.enabled)) {
         if (vpmu_model_has(VPMU_DCACHE_SIM, VPMU)) {
+#ifdef TARGET_ARM
             // PLD instructions
             // http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.ddi0434b/CHDEDHHD.html
             if (rw == 0xff) { // 0xff is ARM_PLD
@@ -27,7 +46,6 @@ void
                 rw   = CACHE_PACKET_READ;
             }
 
-#ifdef TARGET_ARM
             // ARM Fast Context Switch Extension (FCSE): VA -> MVA
             int mmu_idx = cpu_mmu_index(env, false);
             if (addr < 0x02000000 && mmu_idx != ARMMMUIdx_S2NS
@@ -38,6 +56,9 @@ void
                     addr += env->cp15.fcseidr_ns;
                 }
             }
+
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+// TODO Is this VA the real address fed into cache?? Ex: ARM uses MVA
 #endif
 
             if (unlikely(VPMU.iomem_access_flag)) {
@@ -56,32 +77,50 @@ void
 }
 
 // helper function to accumulate counters
-void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
+void HELPER(vpmu_accumulate_tb_info)(CPUArchState *env, void *opaque)
 {
+    // QEMU get cpu state object
     CPUState *cs = CPU(ENV_GET_CPU(env));
-
+    // Cast pointer to ExtraTBInfo *
     ExtraTBInfo *extra_tb_info = (ExtraTBInfo *)opaque;
-    // mode = User(USR)/Supervisor(SVC)/Interrupt Request(IRQ)
-    uint8_t mode = env->uncached_cpsr & CPSR_M;
     // Get the core id from CPUState structure
     int core_id = cs->cpu_index;
-
+    // Determine if the PC is contiguous
+    bool contiguous_pc_flag =
+      ((extra_tb_info->start_addr - VPMU.core[core_id].last_tb_pc) <= TARGET_LONG_SIZE);
+#ifdef TARGET_ARM
+    // mode = User(USR)/Supervisor(SVC)/Interrupt Request(IRQ)
+    int mode = env->uncached_cpsr & CPSR_M;
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
+    int cpl = env->hflags & (3);
+    // Use mode to replace ring level
+    int mode = 0;
+    if (cpl == 0) {
+        mode = VPMU_ARCH_MODE_SVC;
+    } else if (cpl == 3) {
+        mode = VPMU_ARCH_MODE_USR;
+    } else {
+        CONSOLE_LOG(STR_VPMU "Unhandled privilege : %d\n", cpl);
+    }
+#endif
+    // Record the mode of each TB in its extra tb info
     extra_tb_info->cpu_mode = mode;
 
-    //    static uint32_t return_addr = 0;
-    //    static uint32_t last_issue_time = 0;
-    //    char *state = &(VPMU.state);
+    // static uint32_t return_addr = 0;
+    // static uint32_t last_issue_time = 0;
+    // char *state = &(VPMU.state);
 
     // Exit all added helper functions directly when QEMU is going to be terminated.
     if (unlikely(VPMU.qemu_terminate_flag)) return;
 
 #ifdef CONFIG_VPMU_SET
     // Only need to check function calls when TB is not contiguous
-    if (extra_tb_info->start_addr - VPMU.core[core_id].last_tb_pc > 4) {
+    if (!contiguous_pc_flag) {
         et_check_function_call(env, extra_tb_info->start_addr);
     }
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
-        phasedet_ref((mode == ARM_CPU_MODE_USR), extra_tb_info, env->regs[13], core_id);
+        phasedet_ref((mode == VPMU_ARCH_MODE_USR), extra_tb_info, vpmu_arch_sp, core_id);
     } // End of VPMU_PHASEDET
 #endif
 
@@ -134,13 +173,15 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
         if (vpmu_model_has(VPMU_BRANCH_SIM, VPMU)) {
             // Add global counter value of branch count.
             if (VPMU.core[core_id].last_tb_has_branch) {
-                if (extra_tb_info->start_addr - VPMU.core[core_id].last_tb_pc <= 4) {
+                if (contiguous_pc_flag) {
                     branch_ref(core_id, VPMU.core[core_id].last_tb_pc, 0); // Not taken
                 } else {
                     branch_ref(core_id, VPMU.core[core_id].last_tb_pc, 1); // Taken
                 }
             }
         } // End of VPMU_BRANCH_SIM
+
+        // Update per-core state info
         VPMU.core[core_id].last_tb_pc =
           extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
         VPMU.core[core_id].last_tb_has_branch = extra_tb_info->has_branch;
@@ -194,6 +235,7 @@ void HELPER(vpmu_accumulate_tb_info)(CPUARMState *env, void *opaque)
     }
 }
 
+#undef vpmu_arch_sp
 #if 0
 // TODO: Prepare to be deprecated
 // helper function for SET and other usage. Only "taken" branch will enter this helper.
