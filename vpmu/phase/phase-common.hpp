@@ -4,6 +4,8 @@
 #define DEFAULT_WINDOW_SIZE 200000 // 200k instructions
 #define DEFAULT_VECTOR_SIZE 2048   // 2048 buckets per BBV
 
+#include <utility> // std::pair
+
 using CodeRange = std::pair<uint64_t, uint64_t>;
 
 struct GPUFriendnessCounter {

@@ -3,6 +3,7 @@
 
 extern "C" {
 #include "config-target.h"  // Target Configuration (CONFIG_ARM)
+#include "vpmu-qemu.h"      // VPMUPlatformInfo
 #include "vpmu-conf.h"      // VPMU_MAX_CPU_CORES
 #include "vpmu-extratb.h"   // Extra TB Information
 #include "vpmu-packet.h"    // VPMU Packet Types

@@ -7,6 +7,8 @@
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
 
+#include "vpmu.hpp"        // VPMU common headers
+#include "vpmu-utils.hpp"  // miscellaneous functions
 #include "et-program.hpp"  // ET_Program class
 #include "phase/phase.hpp" // Phase class
 

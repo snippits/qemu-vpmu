@@ -1,5 +1,8 @@
 #ifndef __VPMU_STREAM_HPP_
 #define __VPMU_STREAM_HPP_
+extern "C" {
+#include "vpmu-qemu.h" // VPMUPlatformInfo
+}
 #include <mutex>                 // Mutex
 #include "vpmu-local-buffer.hpp" // VPMULocalBuffer
 #include "vpmu-sim.hpp"          // VPMUSimulator

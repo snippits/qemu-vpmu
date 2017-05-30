@@ -30,7 +30,7 @@ VPMU_OBJS+=vpmu-i386-insn.o vpmu-i386-translate.o vpmu-i386-insnset.o Intel-I7.o
 endif
 
 ifeq ($(CONFIG_VPMU_SET),y)
-all-obj-$(CONFIG_VPMU) += event-tracing-qemu.o
+all-obj-$(CONFIG_VPMU) += event-tracing-qemu.o event-tracing-helper.o
 VPMU_OBJS+=event-tracing.o kernel-event-cb.o
 VPMU_OBJS+=phase.o
 VPMU_EXTERNAL_LIBS+=vpmu/libs/libelfin/elf/libelf++.a

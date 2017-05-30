@@ -1,5 +1,8 @@
 #ifndef __VPMU_STREAM_IMPL_HPP_
 #define __VPMU_STREAM_IMPL_HPP_
+extern "C" {
+#include "vpmu-qemu.h" // VPMUPlatformInfo
+}
 #include "vpmu-sim.hpp"   // VPMUSimulator
 #include "vpmu-log.hpp"   // VPMULog
 #include "vpmu-utils.hpp" // miscellaneous functions

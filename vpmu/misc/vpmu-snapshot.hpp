@@ -1,5 +1,8 @@
 #ifndef __VPMU_SNAPSHOT_HPP_
 #define __VPMU_SNAPSHOT_HPP_
+extern "C" {
+#include "vpmu-qemu.h" // VPMUPlatformInfo
+}
 #include "vpmu-packet.hpp" // All performance counter data types
 #include "vpmu-insn.hpp"   // InsnStream
 #include "vpmu-cache.hpp"  // CacheStream

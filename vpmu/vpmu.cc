@@ -12,6 +12,7 @@ extern "C" {
 #include "vpmu-cache.hpp"     // CacheStream
 #include "vpmu-branch.hpp"    // BranchStream
 #include "event-tracing.hpp"  // EventTracer event_tracer
+#include "kernel-event-cb.h"  // et_register_callbacks_kernel_events()
 #include "phase-detect.hpp"   // phase_detect
 
 // The global variable that controls all the vpmu streams.
@@ -273,7 +274,9 @@ void VPMU_init(int argc, char **argv)
     DBG(STR_VPMU "Thread Pool Initialized\n");
     // Initialize simulators for each stream
     init_simulators(config_file);
-    register_callbacks_kernel_events();
+    // Register callbacks for kernel events
+    et_register_callbacks_kernel_events();
+
     // Done
     CONSOLE_LOG(STR_VPMU "Initialized\n");
 }

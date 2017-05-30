@@ -7,6 +7,9 @@
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
 
+#include "vpmu.hpp"       // for vpmu-qemu.h and VPMU struct
+#include "vpmu-utils.hpp" // miscellaneous functions
+
 // TODO The current implementation of name comparison does not apply well
 // when the number of monitored/traced binary is large
 // Maybe use formally two names and two paths

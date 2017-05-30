@@ -7,7 +7,9 @@
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
 
-#include "et-path.hpp" // ET_Path class
+#include "vpmu.hpp"       // VPMU common headers
+#include "vpmu-utils.hpp" // miscellaneous functions
+#include "et-path.hpp"    // ET_Path class
 
 // TODO VPMU timing model switch
 class ET_Program : public ET_Path
@@ -52,10 +54,7 @@ public:
         set_mapped_address(start_addr, start_addr + file_size);
     }
 
-    void set_file_size(uint64_t value)
-    {
-        file_size = value;
-    }
+    void set_file_size(uint64_t value) { file_size = value; }
 
     void reset_walk_count(void)
     {

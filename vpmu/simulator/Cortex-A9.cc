@@ -2,10 +2,9 @@ extern "C" {
 #include "vpmu-arm-translate.h" // Interface header between QEMU and VPMU
 #include "vpmu-arm-insnset.h"   // Instruction Set
 }
-
-#include "vpmu.hpp" // VPMU common headers
+#include "vpmu.hpp"       // VPMU common headers
+#include "vpmu-utils.hpp" // miscellaneous functions
 #include "Cortex-A9.hpp"
-#include "vpmu-utils.hpp"
 
 #ifdef CONFIG_VPMU_VFP
 void CPU_CortexA9::Translation::_vfp_lock_release(int insn)

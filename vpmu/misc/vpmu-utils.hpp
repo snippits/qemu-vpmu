@@ -1,5 +1,8 @@
 #ifndef __VPMU_UTILS_HPP
 #define __VPMU_UTILS_HPP
+extern "C" {
+#include "vpmu-qemu.h" // VPMU struct
+}
 #include <fstream>      // std::ifstream::pos_type, basic_ifstream
 #include <vector>       // std::vector
 #include <string>       // std::string

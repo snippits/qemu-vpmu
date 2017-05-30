@@ -71,7 +71,12 @@ void et_set_linux_struct_offset(uint64_t type, uint64_t value)
     }
 }
 
-void register_callbacks_kernel_events(void)
+bool et_kernel_call_event(uint64_t vaddr, void* env, int core_id)
+{
+    return event_tracer.get_kernel().call_event(vaddr, env, core_id);
+}
+
+void et_register_callbacks_kernel_events(void)
 {
 // A lambda can only be converted to a function pointer if it does not capture
 #define _CB(_EVENT_NAME_, cb)                                                            \
@@ -80,9 +85,6 @@ void register_callbacks_kernel_events(void)
 #define _CR(_EVENT_NAME_, cb)                                                            \
     event_tracer.get_kernel().register_return_callback(_EVENT_NAME_,                     \
                                                        [](void* env) { cb });
-
-    // TODO Make this call back variable length of args in order to have
-    // compile time check of the number of input args
 
     // Linux Kernel: New process creation
     _CB(ET_KERNEL_EXECV, {
@@ -252,9 +254,4 @@ void register_callbacks_kernel_events(void)
 
 #undef _CR
 #undef _CB
-}
-
-bool et_kernel_call_event(uint64_t vaddr, void* env, int core_id)
-{
-    return event_tracer.get_kernel().call_event(vaddr, env, core_id);
 }
