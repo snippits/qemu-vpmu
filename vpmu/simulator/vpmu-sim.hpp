@@ -13,10 +13,19 @@
 /// @details This class defines the interface between VPMU and each timing simulator.
 /// For instruction simulator, get_translator_handle() must be override in child class.
 /// Template T might be one of the following: VPMU_Branch, VPMU_Cache, VPMU_Insn
+/// @see vpmu-packet.hpp
 ///
 /// The flow of initialization of each timing simulator is:
 /// VPMUSimulator("some name") -> bind() -> build() -> packet_processor()
-/// The sample code of ARM CPU timing simulator:
+/// Note that only build() and packet_processor() are done by individual
+/// implementation of hardware component simulator.
+///
+/// Please refer to build() and packet_processor() for what should be done
+/// specifically in these two stages.
+///
+/// Finally, among component simulators, only CPU simulator needs to implement
+/// a translator class due to the design of QEMU dynamic binary translation.
+/// The following code is a demo of this requirement.
 /*! @code
 class CPUSimulator : public VPMUSimulator
     class Translation : public VPMUARMTranslate
@@ -58,18 +67,33 @@ public:
     /// for the configurations to this timing simulator.
     ///
     /// __ATTENTION!__ Simulator need to tell VPMU required information
-    /// by setting the variable of model.
+    /// by setting the input argument - model.
     /// @param[out] t The model configuration returned to VPMU.
     virtual void build(typename T::Model &model) {}
 
     /// @brief This is where to release/free/deallocate resources holded by simulator.
     /// @details It's designed for making programer being aware of releasing resource.
-    /// One can also rely on destructor to release resources.
+    /// One can also rely on destructor to release resources when it's safe.
     virtual void destroy() { LOG_FATAL("destroy function is not implemented!!"); }
 
     /// @brief The main function of each timing simulator for processing traces.
     /// @details This function would be called packet by packet.
     /// When synchronizing data, the implementation needs to write data to __t.data__.
+    ///
+    /// The packet types of control packet are:
+    ///
+    /// __VPMU_PACKET_BARRIER__ and __VPMU_PACKET_SYNC_DATA__:
+    /// The individual component simulator is required to store latest data
+    /// into __data__. All the packets before this packet must be done.
+    /// There is no difference to what a component simulator should do.
+    ///
+    /// __VPMU_PACKET_DUMP_INFO__:
+    /// Use CONSOLE_LOG() or log() to print simulator data in a nice form.
+    ///
+    /// __VPMU_PACKET_RESET__:
+    /// Clear all the counters/values of simulator data.
+    ///
+    /// Component dependent data packet types:
     /// @param[in] id The identity number to this simulator. Started from 0.
     /// @param[in] ref The input packet, it could be either control/data packet.
     /// The state bits of ref are and should be zeros.
@@ -118,6 +142,10 @@ public:
 
     /// @brief Return the translator handle for aquiring timing of instructions.
     /// @details Only used in CPU instruction model when QEMU translats codes.
+    /// The returned handler will be used in individual QEMU thread when executing
+    /// gen_intermediate_code() in order to get cycles and info. of each TB.
+    /// If you need to identify which core this handle is running on,
+    /// please use vpmu::get_core_id().
     /// @return VPMUArchTranslate The translator class used in QEMU binary translation.
     virtual VPMUArchTranslate &get_translator_handle(void)
     {

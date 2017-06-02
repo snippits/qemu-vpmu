@@ -2950,6 +2950,7 @@ void CPU_CortexA9::packet_processor(int                         id,
         memset(&data, 0, sizeof(VPMU_Insn::Data));
         break;
     case VPMU_PACKET_DATA:
+        // TODO One day, we need a simple pipeline model...
         accumulate(ref, data);
         break;
     default:

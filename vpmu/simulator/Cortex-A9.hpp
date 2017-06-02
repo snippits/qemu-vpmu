@@ -12,9 +12,17 @@ extern "C" {
     _D.user._N + _D.system._N + _D.interrupt._N + _D.system_call._N + _D.rest._N         \
       + _D.fpu._N + _D.co_processor._N
 
+/// @brief Cortex A9 component simulator class
+/// @details This class demonstrates the use of VPMUSimulator class for CPU simulation.
+/// The implementations of a component simulator should override build(),
+/// packet_processor(), and get_translator_handle() classes as the basic requirement.
+/// This example declare Translation class under the scope of CPU_CortexA9, but this is
+/// not a requirement.
+///
 class CPU_CortexA9 : public VPMUSimulator<VPMU_Insn>
 {
 private: // VPMUARMTranslate
+    /// @brief Translation class of VPMUARMTranslate
     class Translation : public VPMUARMTranslate
     {
     public:
@@ -67,47 +75,66 @@ public: // VPMUSimulator
     CPU_CortexA9() : VPMUSimulator("CortexA9") {}
     ~CPU_CortexA9() {}
 
+    /// Must override this. This is called in translation time.
     VPMUARMTranslate& get_translator_handle(void) override { return translator; }
 
-    void destroy() override { ; } // Nothing to do
+    /// @brief This is where to release/free/deallocate resources holded by simulator.
+    void destroy() override { ; }
+    /// @brief Initiate and allocate resource required by this timing simulator.
     void build(VPMU_Insn::Model& model) override;
+    /// @brief The main function of each timing simulator for processing traces.
     void packet_processor(int                         id,
                           const VPMU_Insn::Reference& ref,
                           VPMU_Insn::Data&            data) override;
 
 private:
 #ifdef CONFIG_VPMU_DEBUG_MSG
-    // The total number of packets counter for debugging
+    /// The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;
 #endif
+    /// The accumulated cycles of each core when doing timing simulation.
     uint64_t cycles[VPMU_MAX_CPU_CORES] = {0};
-    // The CPU configurations for timing model
+    /// Rename platform_info. The CPU configurations for timing model
     using VPMUSimulator::platform_info;
-    // The instance of Translator called from QEMU when doing binary translation
+    /// The instance of Translator called from QEMU when doing binary translation
     Translation translator;
 
+    /// @brief The main function for processing data packets and accumulate cycles
+    /// per-core.
+    /// @details This function is a private function since it is used only in this calss.
+    /// This function is called when packet_processor() receives VPMU_PACKET_DATA,
+    /// and accumulates the counters and cycles for doing the CPU timing simulation.
+    ///
+    /// If one wants to simulate pipeline, one needs to implement per-core pipeline state
+    /// and use the states when accumulating the cycles.
+    /// In this simple model, we do not simulate that part of impact.
     void accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data);
 
+    /// A function to help sum up instruction count of each mode (user, sys, ...)
     uint64_t vpmu_total_insn_count(VPMU_Insn::Data& insn_data)
     {
         return VPMU_INSN_SUM(insn_data, total_insn);
     }
 
+    /// A function to help sum up ld/st count of each mode (user, sys, ...)
     uint64_t vpmu_total_ldst_count(VPMU_Insn::Data& insn_data)
     {
         return VPMU_INSN_SUM(insn_data, load) + VPMU_INSN_SUM(insn_data, store);
     }
 
+    /// A function to help sum up load count of each mode (user, sys, ...)
     uint64_t vpmu_total_load_count(VPMU_Insn::Data& insn_data)
     {
         return VPMU_INSN_SUM(insn_data, load);
     }
 
+    /// A function to help sum up store count of each mode (user, sys, ...)
     uint64_t vpmu_total_store_count(VPMU_Insn::Data& insn_data)
     {
         return VPMU_INSN_SUM(insn_data, store);
     }
 
+    /// A function to help sum up branch insn. count of each mode (user, sys, ...)
     uint64_t vpmu_branch_insn_count(VPMU_Insn::Data& insn_data)
     {
         return VPMU_INSN_SUM(insn_data, branch);
