@@ -9,6 +9,9 @@
 #include "vpmu-cache.hpp"  // vpmu_cache_stream
 #include "vpmu-branch.hpp" // vpmu_branch_stream
 
+// Pointer to argv[0] for modifying process name in htop
+extern char *global_argv_0;
+
 namespace vpmu
 {
 
@@ -123,6 +126,14 @@ namespace utils
         return output;
     }
 
+    std::string get_process_name(void)
+    {
+        char name[32] = {};
+
+        prctl(PR_GET_NAME, name);
+        return name;
+    }
+
     void name_process(std::string new_name)
     {
         char process_name[LINUX_NAMELEN] = {0};
@@ -135,6 +146,8 @@ namespace utils
 #endif
         snprintf(process_name, LINUX_NAMELEN, "%s", new_name.c_str());
         prctl(PR_SET_NAME, process_name);
+        // This force over-write the cmdline
+        strcpy(global_argv_0, process_name);
     }
 
     void name_thread(std::string new_name)

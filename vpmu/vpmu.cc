@@ -31,6 +31,8 @@ extern int   loglevel;
 extern FILE *qemu_logfile;
 extern int   qemu_loglevel;
 #endif
+// Pointer to argv[0] for modifying process name in htop
+char *global_argv_0 = NULL;
 
 static inline void
 attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
@@ -246,6 +248,7 @@ void VPMU_init(int argc, char **argv)
     char config_file[1024] = {0};
     char kernel_file[1024] = {0};
 
+    global_argv_0 = argv[0];
     // Initialize the path to empty string
     VPMU.output_path[0] = 0;
 

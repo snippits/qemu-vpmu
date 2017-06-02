@@ -79,6 +79,7 @@ namespace utils
     std::string get_version_from_vmlinux(const char *file_path);
     std::string get_random_hash_name(uint32_t string_length);
 
+    std::string get_process_name(void);
     void name_process(std::string new_name);
     void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
