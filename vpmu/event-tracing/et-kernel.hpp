@@ -17,6 +17,16 @@ class ET_Kernel : public ET_Program
 public:
     ET_Kernel() : ET_Program("kernel") {}
 
+    bool check_all_events_set(void)
+    {
+        for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
+            if (kernel_event_table[i] == 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     ET_KERNEL_EVENT_TYPE find_event(uint64_t vaddr)
     {
         for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
@@ -99,12 +109,12 @@ public:
     }
 
 private:
-    uint64_t kernel_event_table[ET_KERNEL_EVENT_COUNT] = {0};
+    uint64_t kernel_event_table[ET_KERNEL_EVENT_SIZE] = {0};
     std::vector<std::pair<uint64_t, fun_callback>> event_return_table[VPMU_MAX_CPU_CORES];
     struct {
         fun_callback fun;
         fun_callback fun_ret;
-    } cb[ET_KERNEL_EVENT_COUNT] = {};
+    } cb[ET_KERNEL_EVENT_SIZE] = {};
 };
 
 #endif
