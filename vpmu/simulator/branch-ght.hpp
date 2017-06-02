@@ -50,6 +50,7 @@ public:
         // The implementation depends on your own packet type and writing style
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
+        case VPMU_PACKET_SYNC_DATA:
             data = counters;
             break;
         case VPMU_PACKET_DUMP_INFO:

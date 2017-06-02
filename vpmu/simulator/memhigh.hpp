@@ -67,7 +67,6 @@ public:
 #endif
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
-            break;
         case VPMU_PACKET_SYNC_DATA:
             break;
         case VPMU_PACKET_DUMP_INFO:

@@ -56,6 +56,7 @@ void CPU_IntelI7::packet_processor(int                         id,
     // The implementation depends on your own packet type and writing style
     switch (ref.type) {
     case VPMU_PACKET_BARRIER:
+    case VPMU_PACKET_SYNC_DATA:
         data.insn_cnt[0] = vpmu_total_insn_count(data);
         data.cycles[0]   = cycles[0];
         break;

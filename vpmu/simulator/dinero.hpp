@@ -547,27 +547,6 @@ public:
         // The implementation depends on your own packet type and writing style
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
-            sync_cache_data(data, cache_model);
-#ifdef EXPERIMENTAL_PER_CORE_CYCLES
-            // TODO After solving the sync in data packets, this should be
-            // merged into sync_cache_data function.
-            for (int core = 0; core < platform_info.cpu.cores; core++) {
-                cycles[PROCESSOR_CPU][core] = 0;
-                for (int l = 0; l < VPMU_Cache::MEMORY; l++) {
-                    cycles[PROCESSOR_CPU][core] +=
-                      (icache_miss_counter[core][l] * cache_model.latency[l]
-                       + (icache_access_counter[core][l] - icache_miss_counter[core][l])
-                           * cache_model.latency[l]
-                       + dcache_miss_counter[core][l] * cache_model.latency[l]
-                       + (dcache_access_counter[core][l] - dcache_miss_counter[core][l])
-                           * cache_model.latency[l]);
-                }
-                cycles[PROCESSOR_CPU][core] +=
-                  memory_access_counter[core] * cache_model.latency[VPMU_Cache::MEMORY];
-            }
-            memcpy(data.cycles, cycles, sizeof(cycles));
-#endif
-            break;
         case VPMU_PACKET_SYNC_DATA:
             // Sync only ensure the data in the array is up to date to and not ahead of
             // the time packet processor receive the sync packet.
