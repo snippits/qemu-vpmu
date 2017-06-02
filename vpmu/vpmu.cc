@@ -165,9 +165,43 @@ void VPMU_reset(void)
     }
 }
 
+static inline void print_pass_or_fail(const char *prefix, bool flag)
+{
+    if (flag)
+        DBG(BASH_COLOR_GREEN "PASS" BASH_COLOR_NONE "   :");
+    else
+        DBG(BASH_COLOR_GREEN "FAILED" BASH_COLOR_NONE " :");
+    DBG(" %s\n", prefix);
+}
+
+static void vpmu_check_and_print_funs(void)
+{
+    DBG("Important variables of Snippits:\n");
+    DBG("\nEvent Tracing:\n");
+    // g_linux_offset.thread_info.task is zero on x86 mode, thus no need to check that.
+    print_pass_or_fail("Offsets of struct",
+                       (g_linux_offset.file.fpath.dentry > 0)
+                         && (g_linux_offset.dentry.d_iname > 0)
+                         && (g_linux_offset.dentry.d_parent > 0)
+                         && (g_linux_offset.task_struct.pid > 0));
+    print_pass_or_fail("THREAD_SIZE", g_linux_size.stack_thread_size > 0);
+
+    DBG("\nKernel Symbol Addresses:\n");
+    auto &&kernel = event_tracer.get_kernel();
+    print_pass_or_fail("MMap", kernel.find_vaddr(ET_KERNEL_MMAP) > 0);
+    print_pass_or_fail("Fork", kernel.find_vaddr(ET_KERNEL_FORK) > 0);
+    print_pass_or_fail("Wake New Task", kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) > 0);
+    print_pass_or_fail("Execv", kernel.find_vaddr(ET_KERNEL_EXECV) > 0);
+    print_pass_or_fail("Exit", kernel.find_vaddr(ET_KERNEL_EXIT) > 0);
+    print_pass_or_fail("Context Switch", kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH) > 0);
+    DBG("\n\n");
+}
+
 void VPMU_dump_result(void)
 {
     VPMU_sync();
+
+    vpmu_check_and_print_funs();
 
     CONSOLE_LOG("==== Program Profile ====\n\n");
 #if defined(TARGET_ARM)
