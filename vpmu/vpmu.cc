@@ -169,34 +169,40 @@ void VPMU_reset(void)
 
 static inline void print_pass_or_fail(const char *prefix, bool flag)
 {
-    if (flag)
-        DBG(BASH_COLOR_GREEN "PASS" BASH_COLOR_NONE "   :");
-    else
-        DBG(BASH_COLOR_GREEN "FAILED" BASH_COLOR_NONE " :");
-    DBG(" %s\n", prefix);
+    const char *postfix = (flag) ? "passed" : "failed";
+    DBG("%-60s" BASH_COLOR_GREEN "%s" BASH_COLOR_NONE "\n", prefix, postfix);
 }
 
 static void vpmu_check_and_print_funs(void)
 {
-    DBG("Important variables of Snippits:\n");
+#define PPF(_S_, _V_) print_pass_or_fail(_S_, (_V_ > 0))
+#define vaddr(_V_) event_tracer.get_kernel().find_vaddr(_V_)
+    DBG("\nImportant variables of Snippits:\n");
+
     DBG("\nEvent Tracing:\n");
+    DBG("------------------------------------------------------------\n");
+    PPF("(Kernel) Offsets of file.fpath.dentry", g_linux_offset.file.fpath.dentry);
+    PPF("(Kernel) Offsets of dentry.d_iname", g_linux_offset.dentry.d_iname);
+    PPF("(Kernel) Offsets of dentry.d_parent", g_linux_offset.dentry.d_parent);
+#ifdef TARGET_ARM
     // g_linux_offset.thread_info.task is zero on x86 mode, thus no need to check that.
-    print_pass_or_fail("Offsets of struct",
-                       (g_linux_offset.file.fpath.dentry > 0)
-                         && (g_linux_offset.dentry.d_iname > 0)
-                         && (g_linux_offset.dentry.d_parent > 0)
-                         && (g_linux_offset.task_struct.pid > 0));
-    print_pass_or_fail("THREAD_SIZE", g_linux_size.stack_thread_size > 0);
+    PPF("(Kernel) Offsets of thread_info.task", g_linux_offset.thread_info.task);
+#endif
+    PPF("(Kernel) Offsets of task_struct.pid", g_linux_offset.task_struct.pid);
+    PPF("(Kernel) THREAD_SIZE", g_linux_size.stack_thread_size);
 
     DBG("\nKernel Symbol Addresses:\n");
-    auto &&kernel = event_tracer.get_kernel();
-    print_pass_or_fail("MMap", kernel.find_vaddr(ET_KERNEL_MMAP) > 0);
-    print_pass_or_fail("Fork", kernel.find_vaddr(ET_KERNEL_FORK) > 0);
-    print_pass_or_fail("Wake New Task", kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) > 0);
-    print_pass_or_fail("Execv", kernel.find_vaddr(ET_KERNEL_EXECV) > 0);
-    print_pass_or_fail("Exit", kernel.find_vaddr(ET_KERNEL_EXIT) > 0);
-    print_pass_or_fail("Context Switch", kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH) > 0);
+    DBG("------------------------------------------------------------\n");
+    PPF("MMap (mmap_region)", vaddr(ET_KERNEL_MMAP));
+    PPF("Fork (do_fork, _do_fork)", vaddr(ET_KERNEL_FORK));
+    PPF("Wake New Task (wake_up_new_task)", vaddr(ET_KERNEL_WAKE_NEW_TASK));
+    PPF("Execv (do_execveat_common, do_execve_common)", vaddr(ET_KERNEL_EXECV));
+    PPF("Exit (do_exit)", vaddr(ET_KERNEL_EXIT));
+    PPF("Context Switch (__switch_to)", vaddr(ET_KERNEL_CONTEXT_SWITCH));
+
     DBG("\n\n");
+#undef vaddr
+#undef PPF
 }
 
 void VPMU_dump_result(void)
