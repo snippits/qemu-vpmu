@@ -97,6 +97,8 @@ public:
     // Lists of shared pointer objects
     std::vector<std::shared_ptr<ET_Program>> binary_list;
     std::vector<std::shared_ptr<ET_Process>> child_list;
+    // Remember the pointer to lastest mapped file for updating its address
+    std::weak_ptr<ET_Program> last_mapped_file;
 
     std::vector<Phase> phase_list;
     // History records

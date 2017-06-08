@@ -572,6 +572,8 @@ void et_attach_shared_library_to_process(uint64_t    pid,
     }
     program->file_size = file_size;
 
+    // Remember the latest mapped file for later updating its address range
+    process->last_mapped_file = program;
     process->push_binary(program);
 }
 

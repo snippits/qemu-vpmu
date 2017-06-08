@@ -248,14 +248,17 @@ void et_register_callbacks_kernel_events(void)
         uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
         auto     process     = event_tracer.find_process(syscall_pid);
         if (process && process->mmap_updated_flag == false) {
-            /*
-            DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
-                (uint64_t)et_get_ret_value(env),
-                (uint64_t)et_get_ret_value(env) + process->binary_list.back()->file_size);
-            */
-            uint64_t vaddr = et_get_ret_value(env);
-            process->binary_list.back()->set_mapped_address(vaddr);
-            process->mmap_updated_flag = true;
+            // Has to be copied into a shared_ptr before usage
+            if (auto file = process->last_mapped_file.lock()) {
+                /*
+                DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
+                    (uint64_t)et_get_ret_value(env),
+                    (uint64_t)et_get_ret_value(env) + file->file_size);
+                */
+                uint64_t vaddr = et_get_ret_value(env);
+                file->set_mapped_address(vaddr);
+                process->mmap_updated_flag = true;
+            }
         }
     });
 
