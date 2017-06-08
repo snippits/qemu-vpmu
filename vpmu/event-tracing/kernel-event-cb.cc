@@ -235,7 +235,9 @@ void et_register_callbacks_kernel_events(void)
         auto process = event_tracer.find_process(syscall_pid);
         if (process != nullptr) {
             et_add_process_mapped_file(syscall_pid, fullpath, mode, mmap_len);
-            process->mmap_updated_flag = false;
+            // TODO Build a mapping table for data segments and refactor this flag
+            // Update address when the flag is exec only
+            if (mode & VM_EXEC) process->mmap_updated_flag = false;
         }
 
         (void)vaddr;

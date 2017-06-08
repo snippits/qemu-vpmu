@@ -537,6 +537,7 @@ void et_add_process_mapped_file(uint64_t    pid,
                                 uint64_t    mode,
                                 uint64_t    file_size)
 {
+    // TODO The flow should explicitly distinguish main binary and shared libraries
     if (mode & VM_EXEC) {
         // Mapping executable page for shared library
         et_attach_shared_library_to_process(pid, fullpath, file_size);
