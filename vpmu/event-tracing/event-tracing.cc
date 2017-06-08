@@ -388,6 +388,7 @@ void ET_Process::dump_process_info(void)
         j["Binaries"][i]["Symbols"]   = binary_list[i]->sym_table.size();
         j["Binaries"][i]["DWARF"]     = binary_list[i]->line_table.size();
         j["Binaries"][i]["Libraries"] = binary_list[i]->library_list.size();
+        j["Binaries"][i]["isLibrary"] = binary_list[i]->is_shared_library;
         // TODO these vars would be moved away
         sprintf(temp_str, "%p", (void*)binary_list[i]->address_start);
         j["Binaries"][i]["Addr Beg"] = temp_str;
