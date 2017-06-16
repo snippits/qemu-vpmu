@@ -8,9 +8,7 @@ extern "C" {
 #include "vpmu-translate.hpp" // VPMUARMTranslate
 #include "vpmu-packet.hpp"    // VPMU_Insn
 
-#define VPMU_INSN_SUM(_D, _N)                                                            \
-    _D.user._N + _D.system._N + _D.interrupt._N + _D.system_call._N + _D.rest._N         \
-      + _D.fpu._N + _D.co_processor._N
+#define VPMU_INSN_SUM(_D, _N) _D.user._N + _D.system._N
 
 /// @brief Cortex A9 component simulator class
 /// @details This class demonstrates the use of VPMUSimulator class for CPU simulation.

@@ -113,11 +113,35 @@ public:
     } Reference;
 
     // The data/states of each simulators for VPMU
-    typedef struct {
+    class Data
+    {
+    public:
         uint64_t correct[VPMU_MAX_CPU_CORES]; // branch_predict_correct counter
         uint64_t wrong[VPMU_MAX_CPU_CORES];   // branch_predict_wrong counter
         // uint64_t cycles[VPMU_MAX_CPU_CORES];
-    } Data;
+
+        Data operator+(const Data &rhs)
+        {
+            Data out = {}; // Copy elision
+
+            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                out.correct[i] = this->correct[i] + rhs.correct[i];
+                out.wrong[i]   = this->wrong[i] + rhs.wrong[i];
+            }
+            return out;
+        }
+
+        Data operator-(const Data &rhs)
+        {
+            Data out = {}; // Copy elision
+
+            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                out.correct[i] = this->correct[i] - rhs.correct[i];
+                out.wrong[i]   = this->wrong[i] - rhs.wrong[i];
+            }
+            return out;
+        }
+    };
 
     // The architectural configuration information
     // which VPMU needs to know for some functionalities.
@@ -169,13 +193,63 @@ public:
     } Reference;
 
     // The data/states of each simulators for VPMU
-    typedef struct {
+    class Data
+    {
+    public:
         //[level][core][r/w miss/hit]
         uint64_t insn_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         uint64_t data_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         // uint64_t cycles[ALL_PROC][VPMU_MAX_CPU_CORES];
         uint64_t memory_accesses, memory_time_ns;
-    } Data;
+
+        Data operator+(const Data &rhs)
+        {
+            Data out = {}; // Copy elision
+
+            for (int c = 0; c < ALL_PROC; c++) {
+                // Skip if that processing core does not exist
+                if (c == PROCESSOR_GPU && VPMU.platform.gpu.cores == 0) continue;
+                for (int m = 0; m < MAX_LEVEL; m++) {
+                    for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                        for (int j = 0; j < SIZE_OF_INDEX; j++) {
+                            out.insn_cache[c][m][i][j] =
+                              this->insn_cache[c][m][i][j] + rhs.insn_cache[c][m][i][j];
+                            out.data_cache[c][m][i][j] =
+                              this->data_cache[c][m][i][j] + rhs.data_cache[c][m][i][j];
+                        }
+                    }
+                }
+            }
+            out.memory_accesses = this->memory_accesses + rhs.memory_accesses;
+            out.memory_time_ns  = this->memory_time_ns + rhs.memory_time_ns;
+
+            return out;
+        }
+
+        Data operator-(const Data &rhs)
+        {
+            Data out = {}; // Copy elision
+
+            for (int c = 0; c < ALL_PROC; c++) {
+                // Skip if that processing core does not exist
+                if (c == PROCESSOR_GPU && VPMU.platform.gpu.cores == 0) continue;
+                for (int m = 0; m < MAX_LEVEL; m++) {
+                    for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                        for (int j = 0; j < SIZE_OF_INDEX; j++) {
+                            out.insn_cache[c][m][i][j] =
+                              this->insn_cache[c][m][i][j] - rhs.insn_cache[c][m][i][j];
+                            out.data_cache[c][m][i][j] =
+                              this->data_cache[c][m][i][j] - rhs.data_cache[c][m][i][j];
+                        }
+                    }
+                }
+            }
+            out.memory_accesses = this->memory_accesses - rhs.memory_accesses;
+            out.memory_time_ns  = this->memory_time_ns - rhs.memory_time_ns;
+
+            return out;
+        }
+    };
 
     // The architectural configuration information
     // which VPMU needs to know for some functionalities.
@@ -244,13 +318,68 @@ public:
     } Insn_Data_Cell;
 
     // The data/states of each simulators for VPMU
-    typedef struct {
+    class Data
+    {
+    public:
         // TODO This should be core independent
-        Insn_Data_Cell user, system, interrupt, system_call, rest, fpu, co_processor;
+        Insn_Data_Cell user, system;
 
         uint64_t cycles[VPMU_MAX_CPU_CORES];   // Total cycles
         uint64_t insn_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
-    } Data;
+
+        inline void add_cell(Insn_Data_Cell &      out,
+                             const Insn_Data_Cell &lhs,
+                             const Insn_Data_Cell &rhs)
+        {
+            uint64_t *o = (uint64_t *)&out;
+            uint64_t *l = (uint64_t *)&lhs;
+            uint64_t *r = (uint64_t *)&rhs;
+
+            for (int j = 0; j < sizeof(Insn_Data_Cell) / sizeof(uint64_t); j++) {
+                o[j] = l[j] + r[j];
+            }
+        }
+
+        inline void sub_cell(Insn_Data_Cell &      out,
+                             const Insn_Data_Cell &lhs,
+                             const Insn_Data_Cell &rhs)
+        {
+            uint64_t *o = (uint64_t *)&out;
+            uint64_t *l = (uint64_t *)&lhs;
+            uint64_t *r = (uint64_t *)&rhs;
+
+            for (int j = 0; j < sizeof(Insn_Data_Cell) / sizeof(uint64_t); j++) {
+                o[j] = l[j] - r[j];
+            }
+        }
+
+        Data operator+(const Data &rhs)
+        {
+            Data out = {}; // Copy elision
+
+            add_cell(out.user, this->user, rhs.user);
+            add_cell(out.system, this->system, rhs.system);
+            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                out.cycles[i]   = this->cycles[i] + rhs.cycles[i];
+                out.insn_cnt[i] = this->insn_cnt[i] + rhs.insn_cnt[i];
+            }
+
+            return out;
+        }
+
+        Data operator-(const Data &rhs)
+        {
+            Data out = {}; // Copy elision
+
+            sub_cell(out.user, this->user, rhs.user);
+            sub_cell(out.system, this->system, rhs.system);
+            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                out.cycles[i]   = this->cycles[i] + rhs.cycles[i];
+                out.insn_cnt[i] = this->insn_cnt[i] + rhs.insn_cnt[i];
+            }
+            return out;
+        }
+    };
 
     // The architectural configuration information
     // which VPMU needs to know for some functionalities.

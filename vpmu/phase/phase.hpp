@@ -79,7 +79,7 @@ public:
         update_vector(phase.get_vector());
         update_counter(phase.get_counters());
         update_walk_count(phase.code_walk_count);
-        snapshot.add(phase.snapshot);
+        snapshot += phase.snapshot;
         num_windows += phase.get_num_windows();
     }
 

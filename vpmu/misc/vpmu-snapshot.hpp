@@ -13,7 +13,15 @@ extern "C" {
 class VPMUSnapshot
 {
 public:
-    VPMUSnapshot() { reset(); }
+    /// Do nothing for default constructor
+    VPMUSnapshot() {}
+
+    /// Take a new snapshot at initialization following RAII form
+    VPMUSnapshot(bool take_a_shot_flag)
+    {
+        if (take_a_shot_flag) take_snapshot();
+    }
+
     // Copy constructor
     VPMUSnapshot(const VPMUSnapshot& rhs)
     {
@@ -45,113 +53,50 @@ public:
         memset(&time_ns, 0, sizeof(time_ns));
     }
 
-    void accumulate_counter(VPMU_Branch::Data& in_old,
-                            VPMU_Branch::Data& in_new,
-                            VPMU_Branch::Data& out)
+    VPMUSnapshot operator+(const VPMUSnapshot& rhs)
     {
-#define UPDATE_INT(__attri_name)                                                         \
-    for (int i = 0; i < VPMU.platform.cpu.cores; i++) {                                  \
-        out.__attri_name[i] += in_new.__attri_name[i] - in_old.__attri_name[i];          \
-    }
+        VPMUSnapshot out = {}; // Copy elision
 
-        UPDATE_INT(wrong);
-        UPDATE_INT(correct);
-#undef UPDATE_INT
-    }
+        out.insn_data   = this->insn_data + rhs.insn_data;
+        out.branch_data = this->branch_data + rhs.branch_data;
+        out.cache_data  = this->cache_data + rhs.cache_data;
 
-    void accumulate_counter(VPMU_Cache::Data& in_old,
-                            VPMU_Cache::Data& in_new,
-                            VPMU_Cache::Data& out)
-    {
-#define UPDATE_INT(__attri_name)                                                         \
-    for (int m = 0; m < VPMU_Cache::MAX_LEVEL; m++) {                                    \
-        for (int i = 0; i < VPMU.platform.cpu.cores; i++) {                              \
-            for (int j = 0; j < VPMU_Cache::SIZE_OF_INDEX; j++) {                        \
-                out.__attri_name[PROCESSOR_CPU][m][i][j] +=                              \
-                  in_new.__attri_name[PROCESSOR_CPU][m][i][j]                            \
-                  - in_old.__attri_name[PROCESSOR_CPU][m][i][j];                         \
-            }                                                                            \
-        }                                                                                \
-    }
-
-#define UPDATE_INT_VAR(__attri_name)                                                     \
-    out.__attri_name += in_new.__attri_name - in_old.__attri_name;
-
-        UPDATE_INT(insn_cache);
-        UPDATE_INT(data_cache);
-        UPDATE_INT_VAR(memory_accesses);
-        UPDATE_INT_VAR(memory_time_ns);
-
-#undef UPDATE_INT_VAR
-#undef UPDATE_INT
-    }
-
-    void accumulate_counter(VPMU_Insn::Data& in_old,
-                            VPMU_Insn::Data& in_new,
-                            VPMU_Insn::Data& out)
-    {
-#define UPDATE_INT(__attri_name)                                                         \
-    for (int i = 0; i < VPMU.platform.cpu.cores; i++) {                                  \
-        out.__attri_name[i] += in_new.__attri_name[i] - in_old.__attri_name[i];          \
-    }
-
-#define UPDATE_INT_VAR(__attri_name)                                                     \
-    out.__attri_name += in_new.__attri_name - in_old.__attri_name;
-
-#define UPDATE_INT_CELL(__mode_name)                                                     \
-    UPDATE_INT_VAR(__mode_name.total_insn);                                              \
-    UPDATE_INT_VAR(__mode_name.load);                                                    \
-    UPDATE_INT_VAR(__mode_name.store);                                                   \
-    UPDATE_INT_VAR(__mode_name.branch);
-
-        UPDATE_INT_CELL(user);
-        UPDATE_INT_CELL(system);
-        UPDATE_INT_CELL(interrupt);
-        UPDATE_INT_CELL(system_call);
-        UPDATE_INT_CELL(rest);
-        UPDATE_INT_CELL(fpu);
-        UPDATE_INT_CELL(co_processor);
-        UPDATE_INT(cycles);
-        UPDATE_INT(insn_cnt);
-
-#undef UPDATE_INT_CELL
-#undef UPDATE_INT_VAR
-#undef UPDATE_INT
-    }
-
-    void accumulate(VPMUSnapshot&      new_snapshot,
-                    VPMU_Insn::Data&   _insn_data,
-                    VPMU_Branch::Data& _branch_data,
-                    VPMU_Cache::Data&  _cache_data,
-                    uint64_t           _time_ns[])
-    {
-        accumulate_counter(insn_data, new_snapshot.insn_data, _insn_data);
-        accumulate_counter(branch_data, new_snapshot.branch_data, _branch_data);
-        accumulate_counter(cache_data, new_snapshot.cache_data, _cache_data);
-
-        _time_ns[0] += vpmu::target::cpu_time_ns() - time_ns[0];
-        _time_ns[1] += vpmu::target::branch_time_ns() - time_ns[1];
-        _time_ns[2] += vpmu::target::cache_time_ns() - time_ns[2];
-        _time_ns[3] += vpmu::target::memory_time_ns() - time_ns[3];
-        _time_ns[4] += vpmu::target::io_time_ns() - time_ns[4];
-        _time_ns[5] += vpmu::target::time_ns() - time_ns[5];
-    }
-
-    void add(VPMUSnapshot& another_snapshot)
-    {
-        VPMU_Insn::Data   _insn_data   = {};
-        VPMU_Branch::Data _branch_data = {};
-        VPMU_Cache::Data  _cache_data  = {};
-
-        accumulate_counter(_insn_data, another_snapshot.insn_data, insn_data);
-        accumulate_counter(_branch_data, another_snapshot.branch_data, branch_data);
-        accumulate_counter(_cache_data, another_snapshot.cache_data, cache_data);
-
-        for (int i = 0; i < sizeof(time_ns) / sizeof(time_ns[0]); i++) {
-            time_ns[i] += another_snapshot.time_ns[i];
+        for (int i = 0; i < sizeof(time_ns) / sizeof(uint64_t); i++) {
+            out.time_ns[i] = this->time_ns[i] + rhs.time_ns[i];
         }
+
+        return out;
     }
 
+    VPMUSnapshot operator-(const VPMUSnapshot& rhs)
+    {
+        VPMUSnapshot out = {}; // Copy elision
+
+        out.insn_data   = this->insn_data - rhs.insn_data;
+        out.branch_data = this->branch_data - rhs.branch_data;
+        out.cache_data  = this->cache_data - rhs.cache_data;
+
+        for (int i = 0; i < sizeof(time_ns) / sizeof(uint64_t); i++) {
+            out.time_ns[i] = this->time_ns[i] - rhs.time_ns[i];
+        }
+
+        return out;
+    }
+
+    VPMUSnapshot& operator+=(const VPMUSnapshot& rhs)
+    {
+        this->insn_data   = this->insn_data + rhs.insn_data;
+        this->branch_data = this->branch_data + rhs.branch_data;
+        this->cache_data  = this->cache_data + rhs.cache_data;
+
+        for (int i = 0; i < sizeof(time_ns) / sizeof(uint64_t); i++) {
+            this->time_ns[i] += rhs.time_ns[i];
+        }
+
+        return *this;
+    }
+
+public:
     VPMU_Insn::Data   insn_data   = {};
     VPMU_Branch::Data branch_data = {};
     VPMU_Cache::Data  cache_data  = {};

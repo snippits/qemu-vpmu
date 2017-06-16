@@ -8,10 +8,7 @@ extern "C" {
 #include "vpmu-translate.hpp" // VPMUi386Translate
 #include "vpmu-packet.hpp"    // VPMU_Insn
 
-#define VPMU_INSN_SUM(_D, _N)                                                            \
-    _D.user._N + _D.system._N + _D.interrupt._N + _D.system_call._N + _D.rest._N         \
-      + _D.fpu._N + _D.co_processor._N
-
+#define VPMU_INSN_SUM(_D, _N) _D.user._N + _D.system._N
 class CPU_IntelI7 : public VPMUSimulator<VPMU_Insn>
 {
 private: // VPMUi386Translate

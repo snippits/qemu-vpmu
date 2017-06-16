@@ -12,10 +12,6 @@ extern "C" {
 LinuxStructOffset g_linux_offset;
 LinuxStructSize   g_linux_size;
 
-// A helper to print message of mmap
-#define print_mode(_mode, _mask, _message)                                               \
-    if (_mode & _mask) CONSOLE_LOG("%s", _message);
-
 void et_set_default_linux_struct_offset(uint64_t version)
 {
 #if defined(TARGET_ARM)
@@ -76,18 +72,20 @@ bool et_kernel_call_event(uint64_t vaddr, void* env, int core_id)
     return event_tracer.get_kernel().call_event(vaddr, env, core_id);
 }
 
+/// A helper to print message of mmap
+static inline void print_mode(uintptr_t mode, uintptr_t mask, const char* message)
+{
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    if (mode & mask) CONSOLE_LOG("%s", message);
+#endif
+}
+
 void et_register_callbacks_kernel_events(void)
 {
-// A lambda can only be converted to a function pointer if it does not capture
-#define _CB(_EVENT_NAME_, cb)                                                            \
-    event_tracer.get_kernel().register_callback(_EVENT_NAME_, [](void* env) { cb });
-
-#define _CR(_EVENT_NAME_, cb)                                                            \
-    event_tracer.get_kernel().register_return_callback(_EVENT_NAME_,                     \
-                                                       [](void* env) { cb });
+    auto& kernel = event_tracer.get_kernel();
 
     // Linux Kernel: New process creation
-    _CB(ET_KERNEL_EXECV, {
+    kernel.register_callback(ET_KERNEL_EXECV, [](void* env) {
         uint64_t    syscall_pid = et_get_syscall_user_thread_id(env);
         const char* bash_path   = nullptr;
 
@@ -125,7 +123,7 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Context switch
-    _CB(ET_KERNEL_CONTEXT_SWITCH, {
+    kernel.register_callback(ET_KERNEL_CONTEXT_SWITCH, [](void* env) {
         uint64_t pid = -1;
 
         // Do nothing if the value is not initialized
@@ -158,7 +156,7 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Process End
-    _CB(ET_KERNEL_EXIT, {
+    kernel.register_callback(ET_KERNEL_EXIT, [](void* env) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.task_struct.pid == 0) return;
         uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
@@ -168,7 +166,7 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: wake up the newly forked process
-    _CB(ET_KERNEL_WAKE_NEW_TASK, {
+    kernel.register_callback(ET_KERNEL_WAKE_NEW_TASK, [](void* env) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.task_struct.pid == 0) return;
         uint32_t target_pid = vpmu_read_uint32_from_guest(
@@ -180,13 +178,12 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Fork a process
-    _CB(ET_KERNEL_FORK,
-        {
-          // uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-          // DBG(STR_VPMU "fork from %lu\n", syscall_pid);
-        });
+    kernel.register_callback(ET_KERNEL_FORK, [](void* env) {
+        // uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+        // DBG(STR_VPMU "fork from %lu\n", syscall_pid);
+    });
 
-    _CB(ET_KERNEL_MMAP, {
+    kernel.register_callback(ET_KERNEL_MMAP, [](void* env) {
         uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
         if (syscall_pid == -1) return; // Not found / some error
 
@@ -220,7 +217,6 @@ void et_register_callbacks_kernel_events(void)
             fullpath,
             vaddr,
             mode);
-#ifdef CONFIG_VPMU_DEBUG_MSG
         print_mode(mode, VM_READ, " READ");
         print_mode(mode, VM_WRITE, " WRITE");
         print_mode(mode, VM_EXEC, " EXEC");
@@ -228,7 +224,6 @@ void et_register_callbacks_kernel_events(void)
         print_mode(mode, VM_IO, " IO");
         print_mode(mode, VM_HUGETLB, " HUGETLB");
         print_mode(mode, VM_DONTCOPY, " DONTCOPY");
-#endif
         DBG("\n");
         */
 
@@ -244,7 +239,7 @@ void et_register_callbacks_kernel_events(void)
         return;
     });
 
-    _CR(ET_KERNEL_MMAP, {
+    kernel.register_return_callback(ET_KERNEL_MMAP, [](void* env) {
         uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
         auto     process     = event_tracer.find_process(syscall_pid);
         if (process && process->mmap_updated_flag == false) {
@@ -262,6 +257,6 @@ void et_register_callbacks_kernel_events(void)
         }
     });
 
-#undef _CR
-#undef _CB
+    // This is to prevent compiler warning of unused warning
+    (void)print_mode;
 }

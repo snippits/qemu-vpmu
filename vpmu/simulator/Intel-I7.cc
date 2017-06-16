@@ -65,18 +65,12 @@ void CPU_IntelI7::packet_processor(int                         id,
         CONSOLE_U64(" Total instruction count       :", vpmu_total_insn_count(data));
         CONSOLE_U64("  ->User mode insn count       :", data.user.total_insn);
         CONSOLE_U64("  ->Supervisor mode insn count :", data.system.total_insn);
-        CONSOLE_U64("  ->IRQ mode insn count        :", data.interrupt.total_insn);
-        CONSOLE_U64("  ->Other mode insn count      :", data.rest.total_insn);
         CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(data));
         CONSOLE_U64("  ->User mode load count       :", data.user.load);
         CONSOLE_U64("  ->Supervisor mode load count :", data.system.load);
-        CONSOLE_U64("  ->IRQ mode load count        :", data.interrupt.load);
-        CONSOLE_U64("  ->Other mode load count      :", data.rest.load);
         CONSOLE_U64(" Total store instruction count :", vpmu_total_store_count(data));
         CONSOLE_U64("  ->User mode store count      :", data.user.store);
         CONSOLE_U64("  ->Supervisor mode store count:", data.system.store);
-        CONSOLE_U64("  ->IRQ mode store count       :", data.interrupt.store);
-        CONSOLE_U64("  ->Other mode store count     :", data.rest.store);
 
         break;
     case VPMU_PACKET_RESET:
@@ -112,18 +106,8 @@ void CPU_IntelI7::accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& i
 
     if (ref.mode == USR) {
         cell = &insn_data.user;
-    } else if (ref.mode == SVC) {
-        // if (ref.swi_fired_flag) { // TODO This feature is still lack of
-        // setting this flag to true
-        //    cell = &insn_data.system_call;
-        //} else {
-        //    cell = &insn_data.system;
-        //}
-        cell = &insn_data.system;
-    } else if (ref.mode == IRQ) {
-        cell = &insn_data.interrupt;
     } else {
-        cell = &insn_data.rest;
+        cell = &insn_data.system;
     }
     cell->total_insn += ref.tb_counters_ptr->counters.total;
     cell->load += ref.tb_counters_ptr->counters.load;

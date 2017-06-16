@@ -20,26 +20,23 @@ PhaseDetect phase_detect(DEFAULT_WINDOW_SIZE, std::make_unique<NearestCluster>()
 
 void PhaseDetect::dump_data(FILE* fp, VPMU_Insn::Data data)
 {
-#define VPMU_INSN_SUM(_N)                                                                \
-    data.user._N + data.system._N + data.interrupt._N + data.system_call._N              \
-      + data.rest._N + data.fpu._N + data.co_processor._N
-
+#define VPMU_INSN_SUM(_N) data.user._N + data.system._N
 #define FILE_U64(str, val) fprintf(fp, str " %'" PRIu64 "\n", (uint64_t)val)
     FILE_U64(" Total instruction count       :", VPMU_INSN_SUM(total_insn));
     FILE_U64("  ->User mode insn count       :", data.user.total_insn);
     FILE_U64("  ->Supervisor mode insn count :", data.system.total_insn);
-    FILE_U64("  ->IRQ mode insn count        :", data.interrupt.total_insn);
-    FILE_U64("  ->Other mode insn count      :", data.rest.total_insn);
+    FILE_U64("  ->deprecated                 :", 0);
+    FILE_U64("  ->deprecated                 :", 0);
     FILE_U64(" Total load instruction count  :", VPMU_INSN_SUM(load));
     FILE_U64("  ->User mode load count       :", data.user.load);
     FILE_U64("  ->Supervisor mode load count :", data.system.load);
-    FILE_U64("  ->IRQ mode load count        :", data.interrupt.load);
-    FILE_U64("  ->Other mode load count      :", data.rest.load);
+    FILE_U64("  ->deprecated                 :", 0);
+    FILE_U64("  ->deprecated                 :", 0);
     FILE_U64(" Total store instruction count :", VPMU_INSN_SUM(store));
     FILE_U64("  ->User mode store count      :", data.user.store);
     FILE_U64("  ->Supervisor mode store count:", data.system.store);
-    FILE_U64("  ->IRQ mode store count       :", data.interrupt.store);
-    FILE_U64("  ->Other mode store count     :", data.rest.store);
+    FILE_U64("  ->deprecated                 :", 0);
+    FILE_U64("  ->deprecated                 :", 0);
 
 #undef VPMU_INSN_SUM
 #undef FILE_U64
@@ -179,15 +176,11 @@ void Phase::update_snapshot(VPMUSnapshot& process_snapshot)
 {
     // TODO use async call back, the current counters are out of date
     {
+        // If this is implemented in async mode, this force sync could be removed
         VPMU_sync();
-        VPMUSnapshot new_snapshot;
-        new_snapshot.take_snapshot();
+        VPMUSnapshot new_snapshot(true);
 
-        process_snapshot.accumulate(new_snapshot,
-                                    snapshot.insn_data,
-                                    snapshot.branch_data,
-                                    snapshot.cache_data,
-                                    snapshot.time_ns);
+        this->snapshot += new_snapshot - process_snapshot;
         process_snapshot = new_snapshot;
     }
 }

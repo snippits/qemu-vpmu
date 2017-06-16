@@ -167,42 +167,51 @@ void VPMU_reset(void)
     }
 }
 
-static inline void print_pass_or_fail(const char *prefix, bool flag)
+static inline void print_pass(const char *prefix, uint64_t value)
 {
-    const char *postfix = (flag) ? "passed" : "failed";
+    const char *postfix = (value > 0) ? "passed" : "failed";
     DBG("%-60s" BASH_COLOR_GREEN "%s" BASH_COLOR_NONE "\n", prefix, postfix);
 }
 
 static void vpmu_check_and_print_funs(void)
 {
-#define PPF(_S_, _V_) print_pass_or_fail(_S_, (_V_ > 0))
-#define vaddr(_V_) event_tracer.get_kernel().find_vaddr(_V_)
-    DBG("\nImportant variables of Snippits:\n");
+    DBG("\nImportant variables of Snippits:\n\n");
+
+    DBG("%-60s" BASH_COLOR_GREEN "%lu.%lu.%lu" BASH_COLOR_NONE "\n",
+        "(Target) Linux kernel version",
+        (VPMU.platform.linux_version >> 16) & 0xff,
+        (VPMU.platform.linux_version >> 8) & 0xff,
+        (VPMU.platform.linux_version >> 0) & 0xff);
 
     DBG("\nEvent Tracing:\n");
     DBG("------------------------------------------------------------\n");
-    PPF("(Kernel) Offsets of file.fpath.dentry", g_linux_offset.file.fpath.dentry);
-    PPF("(Kernel) Offsets of dentry.d_iname", g_linux_offset.dentry.d_iname);
-    PPF("(Kernel) Offsets of dentry.d_parent", g_linux_offset.dentry.d_parent);
+    print_pass("(Kernel) Offsets of file.fpath.dentry", g_linux_offset.file.fpath.dentry);
+    print_pass("(Kernel) Offsets of dentry.d_iname", g_linux_offset.dentry.d_iname);
+    print_pass("(Kernel) Offsets of dentry.d_parent", g_linux_offset.dentry.d_parent);
 #ifdef TARGET_ARM
-    // g_linux_offset.thread_info.task is zero on x86 mode, thus no need to check that.
-    PPF("(Kernel) Offsets of thread_info.task", g_linux_offset.thread_info.task);
+    // g_linux_offset.thread_info.task is zero on x86 mode, thus only check on ARM.
+    print_pass("(Kernel) Offsets of thread_info.task", g_linux_offset.thread_info.task);
 #endif
-    PPF("(Kernel) Offsets of task_struct.pid", g_linux_offset.task_struct.pid);
-    PPF("(Kernel) THREAD_SIZE", g_linux_size.stack_thread_size);
+    print_pass("(Kernel) Offsets of task_struct.pid", g_linux_offset.task_struct.pid);
+    print_pass("(Kernel) THREAD_SIZE", g_linux_size.stack_thread_size);
 
+    auto& kernel = event_tracer.get_kernel();
     DBG("\nKernel Symbol Addresses:\n");
     DBG("------------------------------------------------------------\n");
-    PPF("MMap (mmap_region)", vaddr(ET_KERNEL_MMAP));
-    PPF("Fork (do_fork, _do_fork)", vaddr(ET_KERNEL_FORK));
-    PPF("Wake New Task (wake_up_new_task)", vaddr(ET_KERNEL_WAKE_NEW_TASK));
-    PPF("Execv (do_execveat_common, do_execve_common)", vaddr(ET_KERNEL_EXECV));
-    PPF("Exit (do_exit)", vaddr(ET_KERNEL_EXIT));
-    PPF("Context Switch (__switch_to)", vaddr(ET_KERNEL_CONTEXT_SWITCH));
+    print_pass("MMap (mmap_region)",                           // mmap
+               kernel.find_vaddr(ET_KERNEL_MMAP));             //
+    print_pass("Fork (do_fork, _do_fork)",                     // fork
+               kernel.find_vaddr(ET_KERNEL_FORK));             //
+    print_pass("Wake New Task (wake_up_new_task)",             // new task
+               kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK));    //
+    print_pass("Execv (do_execveat_common, do_execve_common)", // do_execve
+               kernel.find_vaddr(ET_KERNEL_EXECV));            //
+    print_pass("Exit (do_exit)",                               // do_exit
+               kernel.find_vaddr(ET_KERNEL_EXIT));             //
+    print_pass("Context Switch (__switch_to)",                 // context switch
+               kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH));   //
 
     DBG("\n\n");
-#undef vaddr
-#undef PPF
 }
 
 void VPMU_dump_result(void)
