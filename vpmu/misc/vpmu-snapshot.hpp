@@ -8,6 +8,8 @@ extern "C" {
 #include "vpmu-cache.hpp"  // CacheStream
 #include "vpmu-branch.hpp" // BranchStream
 
+#include <valarray>
+
 // Sometimes, you have to go Insane, to Outsane, the Sane. You know what i'm Sanin?
 
 class VPMUSnapshot
@@ -28,7 +30,7 @@ public:
         insn_data   = rhs.insn_data;
         branch_data = rhs.branch_data;
         cache_data  = rhs.cache_data;
-        memcpy(time_ns, rhs.time_ns, sizeof(time_ns));
+        time_ns     = rhs.time_ns;
     }
 
     void take_snapshot(void)
@@ -50,7 +52,7 @@ public:
         memset(&insn_data, 0, sizeof(insn_data));
         memset(&branch_data, 0, sizeof(branch_data));
         memset(&cache_data, 0, sizeof(cache_data));
-        memset(&time_ns, 0, sizeof(time_ns));
+        time_ns = 0;
     }
 
     VPMUSnapshot operator+(const VPMUSnapshot& rhs)
@@ -60,10 +62,7 @@ public:
         out.insn_data   = this->insn_data + rhs.insn_data;
         out.branch_data = this->branch_data + rhs.branch_data;
         out.cache_data  = this->cache_data + rhs.cache_data;
-
-        for (int i = 0; i < sizeof(time_ns) / sizeof(uint64_t); i++) {
-            out.time_ns[i] = this->time_ns[i] + rhs.time_ns[i];
-        }
+        out.time_ns     = this->time_ns + rhs.time_ns;
 
         return out;
     }
@@ -75,10 +74,7 @@ public:
         out.insn_data   = this->insn_data - rhs.insn_data;
         out.branch_data = this->branch_data - rhs.branch_data;
         out.cache_data  = this->cache_data - rhs.cache_data;
-
-        for (int i = 0; i < sizeof(time_ns) / sizeof(uint64_t); i++) {
-            out.time_ns[i] = this->time_ns[i] - rhs.time_ns[i];
-        }
+        out.time_ns     = this->time_ns - rhs.time_ns;
 
         return out;
     }
@@ -88,19 +84,16 @@ public:
         this->insn_data   = this->insn_data + rhs.insn_data;
         this->branch_data = this->branch_data + rhs.branch_data;
         this->cache_data  = this->cache_data + rhs.cache_data;
-
-        for (int i = 0; i < sizeof(time_ns) / sizeof(uint64_t); i++) {
-            this->time_ns[i] += rhs.time_ns[i];
-        }
+        this->time_ns     = this->time_ns + rhs.time_ns;
 
         return *this;
     }
 
 public:
-    VPMU_Insn::Data   insn_data   = {};
-    VPMU_Branch::Data branch_data = {};
-    VPMU_Cache::Data  cache_data  = {};
-    uint64_t          time_ns[6]  = {};
+    VPMU_Insn::Data         insn_data   = {};
+    VPMU_Branch::Data       branch_data = {};
+    VPMU_Cache::Data        cache_data  = {};
+    std::valarray<uint64_t> time_ns     = std::valarray<uint64_t>(6);
 };
 
 #endif
