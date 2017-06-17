@@ -311,10 +311,10 @@ public:
     } Reference;
 
     typedef struct Insn_Data_Cell {
-        uint64_t total_insn;
-        uint64_t load;
-        uint64_t store;
-        uint64_t branch;
+        uint64_t total_insn[VPMU_MAX_CPU_CORES];
+        uint64_t load[VPMU_MAX_CPU_CORES];
+        uint64_t store[VPMU_MAX_CPU_CORES];
+        uint64_t branch[VPMU_MAX_CPU_CORES];
     } Insn_Data_Cell;
 
     // The data/states of each simulators for VPMU
@@ -331,12 +331,21 @@ public:
                              const Insn_Data_Cell &lhs,
                              const Insn_Data_Cell &rhs)
         {
-            uint64_t *o = (uint64_t *)&out;
-            uint64_t *l = (uint64_t *)&lhs;
-            uint64_t *r = (uint64_t *)&rhs;
+            // The number of elements in struct Insn_Data_Cell
+            const int cell_length = sizeof(Insn_Data_Cell) // Total bytes
+                                    / VPMU_MAX_CPU_CORES   // Length of each member
+                                    / sizeof(uint64_t);    // Size of each member
+            struct ArrayView {
+                uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
+            };
+            struct ArrayView *o = (struct ArrayView *)&out;
+            struct ArrayView *l = (struct ArrayView *)&lhs;
+            struct ArrayView *r = (struct ArrayView *)&rhs;
 
-            for (int j = 0; j < sizeof(Insn_Data_Cell) / sizeof(uint64_t); j++) {
-                o[j] = l[j] + r[j];
+            for (int i = 0; i < cell_length; i++) {
+                for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
+                    o->element[i][j] = l->element[i][j] + r->element[i][j];
+                }
             }
         }
 
@@ -344,12 +353,21 @@ public:
                              const Insn_Data_Cell &lhs,
                              const Insn_Data_Cell &rhs)
         {
-            uint64_t *o = (uint64_t *)&out;
-            uint64_t *l = (uint64_t *)&lhs;
-            uint64_t *r = (uint64_t *)&rhs;
+            // The number of elements in struct Insn_Data_Cell
+            const int cell_length = sizeof(Insn_Data_Cell) // Total bytes
+                                    / VPMU_MAX_CPU_CORES   // Length of each member
+                                    / sizeof(uint64_t);    // Size of each member
+            struct ArrayView {
+                uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
+            };
+            struct ArrayView *o = (struct ArrayView *)&out;
+            struct ArrayView *l = (struct ArrayView *)&lhs;
+            struct ArrayView *r = (struct ArrayView *)&rhs;
 
-            for (int j = 0; j < sizeof(Insn_Data_Cell) / sizeof(uint64_t); j++) {
-                o[j] = l[j] - r[j];
+            for (int i = 0; i < cell_length; i++) {
+                for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
+                    o->element[i][j] = l->element[i][j] - r->element[i][j];
+                }
             }
         }
 

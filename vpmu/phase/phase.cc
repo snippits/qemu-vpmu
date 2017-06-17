@@ -18,27 +18,35 @@ Phase Phase::not_found = Phase();
 
 PhaseDetect phase_detect(DEFAULT_WINDOW_SIZE, std::make_unique<NearestCluster>());
 
+#include "todo-misc.hpp"
 void PhaseDetect::dump_data(FILE* fp, VPMU_Insn::Data data)
 {
-#define VPMU_INSN_SUM(_N) data.user._N + data.system._N
 #define FILE_U64(str, val) fprintf(fp, str " %'" PRIu64 "\n", (uint64_t)val)
-    FILE_U64(" Total instruction count       :", VPMU_INSN_SUM(total_insn));
-    FILE_U64("  ->User mode insn count       :", data.user.total_insn);
-    FILE_U64("  ->Supervisor mode insn count :", data.system.total_insn);
+
+    // TODO This should save data from all cores. However the very next revision
+    // will remove this and use json format.
+    FILE_U64(" Total instruction count       :",
+             (vpmu_sum_u64_array(data.user.total_insn)
+            + vpmu_sum_u64_array(data.system.total_insn)));
+    FILE_U64("  ->User mode insn count       :", vpmu_sum_u64_array(data.user.total_insn));
+    FILE_U64("  ->Supervisor mode insn count :", vpmu_sum_u64_array(data.system.total_insn));
     FILE_U64("  ->deprecated                 :", 0);
     FILE_U64("  ->deprecated                 :", 0);
-    FILE_U64(" Total load instruction count  :", VPMU_INSN_SUM(load));
-    FILE_U64("  ->User mode load count       :", data.user.load);
-    FILE_U64("  ->Supervisor mode load count :", data.system.load);
+    FILE_U64(" Total load instruction count  :",
+            (vpmu_sum_u64_array(data.user.load)
+           + vpmu_sum_u64_array(data.system.load)));
+    FILE_U64("  ->User mode load count       :", vpmu_sum_u64_array(data.user.load));
+    FILE_U64("  ->Supervisor mode load count :", vpmu_sum_u64_array(data.system.load));
     FILE_U64("  ->deprecated                 :", 0);
     FILE_U64("  ->deprecated                 :", 0);
-    FILE_U64(" Total store instruction count :", VPMU_INSN_SUM(store));
-    FILE_U64("  ->User mode store count      :", data.user.store);
-    FILE_U64("  ->Supervisor mode store count:", data.system.store);
+    FILE_U64(" Total store instruction count :",
+            (vpmu_sum_u64_array(data.user.store)
+           + vpmu_sum_u64_array(data.system.store)));
+    FILE_U64("  ->User mode store count      :", vpmu_sum_u64_array(data.user.store));
+    FILE_U64("  ->Supervisor mode store count:", vpmu_sum_u64_array(data.system.store));
     FILE_U64("  ->deprecated                 :", 0);
     FILE_U64("  ->deprecated                 :", 0);
 
-#undef VPMU_INSN_SUM
 #undef FILE_U64
 }
 

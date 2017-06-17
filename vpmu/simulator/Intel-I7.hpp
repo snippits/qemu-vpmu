@@ -1,14 +1,13 @@
 #ifndef __CPU_INTEL_I7_HPP__
 #define __CPU_INTEL_I7_HPP__
 extern "C" {
-#include "vpmu-qemu.h"        // ExtraTBInfo
+#include "vpmu-qemu.h"         // ExtraTBInfo
 #include "vpmu-i386-insnset.h" // Instruction Set
 }
 #include "vpmu-sim.hpp"       // VPMUSimulator
 #include "vpmu-translate.hpp" // VPMUi386Translate
 #include "vpmu-packet.hpp"    // VPMU_Insn
 
-#define VPMU_INSN_SUM(_D, _N) _D.user._N + _D.system._N
 class CPU_IntelI7 : public VPMUSimulator<VPMU_Insn>
 {
 private: // VPMUi386Translate
@@ -28,6 +27,7 @@ private: // VPMUi386Translate
             log_debug("X86 32-bit is not supported yet");
             return 0;
         }
+
     private:
         Model    cpu_model;
         uint32_t x86_instr_time[X86_INSTRUCTION_TOTAL_COUNTS];
@@ -60,35 +60,7 @@ private:
 
     void accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data);
 
-    uint64_t vpmu_total_insn_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, total_insn);
-    }
-
-    uint64_t vpmu_total_ldst_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, load) + VPMU_INSN_SUM(insn_data, store);
-    }
-
-    uint64_t vpmu_total_load_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, load);
-    }
-
-    uint64_t vpmu_total_store_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, store);
-    }
-
-    uint64_t vpmu_branch_insn_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, branch);
-    }
     // End of VPMUSimulator
 };
 
-
-
-
-#undef VPMU_INSN_SUM
 #endif

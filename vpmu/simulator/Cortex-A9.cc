@@ -6,6 +6,8 @@ extern "C" {
 #include "vpmu-utils.hpp" // miscellaneous functions
 #include "Cortex-A9.hpp"
 
+#include "todo-misc.hpp"
+
 #ifdef CONFIG_VPMU_VFP
 void CPU_CortexA9::Translation::_vfp_lock_release(int insn)
 {
@@ -2929,14 +2931,20 @@ void CPU_CortexA9::packet_processor(int                         id,
     case VPMU_PACKET_DUMP_INFO:
         CONSOLE_LOG("  [%d] type : Cortex A9\n", id);
         CONSOLE_U64(" Total instruction count       :", vpmu_total_insn_count(data));
-        CONSOLE_U64("  ->User mode insn count       :", data.user.total_insn);
-        CONSOLE_U64("  ->Supervisor mode insn count :", data.system.total_insn);
+        CONSOLE_LOG("  ->User mode insn count       : ");
+        vpmu_print_u64_array(data.user.total_insn);
+        CONSOLE_LOG("  ->Supervisor mode insn count : ");
+        vpmu_print_u64_array(data.system.total_insn);
         CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(data));
-        CONSOLE_U64("  ->User mode load count       :", data.user.load);
-        CONSOLE_U64("  ->Supervisor mode load count :", data.system.load);
+        CONSOLE_LOG("  ->User mode load count       : ");
+        vpmu_print_u64_array(data.user.load);
+        CONSOLE_LOG("  ->Supervisor mode load count : ");
+        vpmu_print_u64_array(data.system.load);
         CONSOLE_U64(" Total store instruction count :", vpmu_total_store_count(data));
-        CONSOLE_U64("  ->User mode store count      :", data.user.store);
-        CONSOLE_U64("  ->Supervisor mode store count:", data.system.store);
+        CONSOLE_LOG("  ->User mode store count      : ");
+        vpmu_print_u64_array(data.user.store);
+        CONSOLE_LOG("  ->Supervisor mode store count: ");
+        vpmu_print_u64_array(data.system.store);
 
         break;
     case VPMU_PACKET_RESET:
@@ -2961,14 +2969,7 @@ void CPU_CortexA9::accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& 
     // Defining the types (struct) for communication
     enum CPU_MODE { // Copy from QEMU cpu.h
         USR = 0x10,
-        FIQ = 0x11,
-        IRQ = 0x12,
         SVC = 0x13,
-        MON = 0x16,
-        ABT = 0x17,
-        HYP = 0x1a,
-        UND = 0x1b,
-        SYS = 0x1f
     };
 
     if (ref.mode == USR) {
@@ -2976,10 +2977,10 @@ void CPU_CortexA9::accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& 
     } else {
         cell = &insn_data.system;
     }
-    cell->total_insn += ref.tb_counters_ptr->counters.total;
-    cell->load += ref.tb_counters_ptr->counters.load;
-    cell->store += ref.tb_counters_ptr->counters.store;
-    cell->branch += ref.tb_counters_ptr->has_branch;
+    cell->total_insn[ref.core] += ref.tb_counters_ptr->counters.total;
+    cell->load[ref.core] += ref.tb_counters_ptr->counters.load;
+    cell->store[ref.core] += ref.tb_counters_ptr->counters.store;
+    cell->branch[ref.core] += ref.tb_counters_ptr->has_branch;
     cycles[ref.core] += ref.tb_counters_ptr->ticks;
 }
 

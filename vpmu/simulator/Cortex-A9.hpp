@@ -8,8 +8,6 @@ extern "C" {
 #include "vpmu-translate.hpp" // VPMUARMTranslate
 #include "vpmu-packet.hpp"    // VPMU_Insn
 
-#define VPMU_INSN_SUM(_D, _N) _D.user._N + _D.system._N
-
 /// @brief Cortex A9 component simulator class
 /// @details This class demonstrates the use of VPMUSimulator class for CPU simulation.
 /// The implementations of a component simulator should override build(),
@@ -108,41 +106,10 @@ private:
     /// In this simple model, we do not simulate that part of impact.
     void accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data);
 
-    /// A function to help sum up instruction count of each mode (user, sys, ...)
-    uint64_t vpmu_total_insn_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, total_insn);
-    }
-
-    /// A function to help sum up ld/st count of each mode (user, sys, ...)
-    uint64_t vpmu_total_ldst_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, load) + VPMU_INSN_SUM(insn_data, store);
-    }
-
-    /// A function to help sum up load count of each mode (user, sys, ...)
-    uint64_t vpmu_total_load_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, load);
-    }
-
-    /// A function to help sum up store count of each mode (user, sys, ...)
-    uint64_t vpmu_total_store_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, store);
-    }
-
-    /// A function to help sum up branch insn. count of each mode (user, sys, ...)
-    uint64_t vpmu_branch_insn_count(VPMU_Insn::Data& insn_data)
-    {
-        return VPMU_INSN_SUM(insn_data, branch);
-    }
-
 #ifdef CONFIG_VPMU_VFP
     void print_vfp_count(void);
 #endif
     // End of VPMUSimulator
 };
 
-#undef VPMU_INSN_SUM
 #endif
