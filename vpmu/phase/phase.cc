@@ -354,23 +354,22 @@ void phasedet_ref(bool               user_mode,
                   uint64_t           stack_ptr,
                   uint64_t           core_id)
 {
-    // TODO This won't apply to multi-core emulation
-    static bool last_tb_is_user = false;
+    // TODO This is not good for coding style
+    static bool last_tb_is_user[VPMU_MAX_CPU_CORES] = {false};
     if (!user_mode) {
         // kernel_phasedet_ref((last_tb_is_user == true), extra_tb_info);
-        last_tb_is_user = false;
     } else {
         uint64_t pid = VPMU.core[vpmu::get_core_id()].current_pid;
-        if (last_tb_is_user == false) {
+        if (last_tb_is_user[core_id] == false) {
             // Kernel IRQ to User mode
             // auto process = event_tracer.find_process((uint64_t)0);
             // if (process != nullptr)
             //    process->phase_history.push_back(std::make_pair(vpmu_get_timestamp_us(),
             //    -1));
         }
-        last_tb_is_user = user_mode;
         update_window(pid, extra_tb_info, stack_ptr);
     }
+    last_tb_is_user[core_id] = user_mode;
 
     return;
 }
