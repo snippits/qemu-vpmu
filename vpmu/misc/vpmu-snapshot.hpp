@@ -24,15 +24,6 @@ public:
         if (take_a_shot_flag) take_snapshot();
     }
 
-    // Copy constructor
-    VPMUSnapshot(const VPMUSnapshot& rhs)
-    {
-        insn_data   = rhs.insn_data;
-        branch_data = rhs.branch_data;
-        cache_data  = rhs.cache_data;
-        time_ns     = rhs.time_ns;
-    }
-
     void take_snapshot(void)
     {
         insn_data   = vpmu_insn_stream.get_data();
