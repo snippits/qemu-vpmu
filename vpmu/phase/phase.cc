@@ -18,36 +18,27 @@ Phase Phase::not_found = Phase();
 
 PhaseDetect phase_detect(DEFAULT_WINDOW_SIZE, std::make_unique<NearestCluster>());
 
-#include "todo-misc.hpp"
 void PhaseDetect::dump_data(FILE* fp, VPMU_Insn::Data data)
 {
-#define FILE_U64(str, val) fprintf(fp, str " %'" PRIu64 "\n", (uint64_t)val)
+    using vpmu::math::sum_cores;
 
     // TODO This should save data from all cores. However the very next revision
     // will remove this and use json format.
-    FILE_U64(" Total instruction count       :",
-             (vpmu_sum_u64_array(data.user.total_insn)
-            + vpmu_sum_u64_array(data.system.total_insn)));
-    FILE_U64("  ->User mode insn count       :", vpmu_sum_u64_array(data.user.total_insn));
-    FILE_U64("  ->Supervisor mode insn count :", vpmu_sum_u64_array(data.system.total_insn));
-    FILE_U64("  ->deprecated                 :", 0);
-    FILE_U64("  ->deprecated                 :", 0);
-    FILE_U64(" Total load instruction count  :",
-            (vpmu_sum_u64_array(data.user.load)
-           + vpmu_sum_u64_array(data.system.load)));
-    FILE_U64("  ->User mode load count       :", vpmu_sum_u64_array(data.user.load));
-    FILE_U64("  ->Supervisor mode load count :", vpmu_sum_u64_array(data.system.load));
-    FILE_U64("  ->deprecated                 :", 0);
-    FILE_U64("  ->deprecated                 :", 0);
-    FILE_U64(" Total store instruction count :",
-            (vpmu_sum_u64_array(data.user.store)
-           + vpmu_sum_u64_array(data.system.store)));
-    FILE_U64("  ->User mode store count      :", vpmu_sum_u64_array(data.user.store));
-    FILE_U64("  ->Supervisor mode store count:", vpmu_sum_u64_array(data.system.store));
-    FILE_U64("  ->deprecated                 :", 0);
-    FILE_U64("  ->deprecated                 :", 0);
-
-#undef FILE_U64
+    FILE_FP_U64(fp, " Total instruction count       :", data.sum_all().total_insn);
+    FILE_FP_U64(fp, " ->User mode insn count       :", sum_cores(data.user.total_insn));
+    FILE_FP_U64(fp, " ->Supervisor mode insn count :", sum_cores(data.system.total_insn));
+    FILE_FP_U64(fp, " ->deprecated                 :", 0);
+    FILE_FP_U64(fp, " ->deprecated                 :", 0);
+    FILE_FP_U64(fp, " Total load instruction count  :", data.sum_all().load);
+    FILE_FP_U64(fp, " ->User mode load count       :", sum_cores(data.user.load));
+    FILE_FP_U64(fp, " ->Supervisor mode load count :", sum_cores(data.system.load));
+    FILE_FP_U64(fp, " ->deprecated                 :", 0);
+    FILE_FP_U64(fp, " ->deprecated                 :", 0);
+    FILE_FP_U64(fp, " Total store instruction count :", data.sum_all().store);
+    FILE_FP_U64(fp, " ->User mode store count      :", sum_cores(data.user.store));
+    FILE_FP_U64(fp, " ->Supervisor mode store count:", sum_cores(data.system.store));
+    FILE_FP_U64(fp, " ->deprecated                 :", 0);
+    FILE_FP_U64(fp, " ->deprecated                 :", 0);
 }
 
 void PhaseDetect::dump_data(FILE* fp, VPMU_Branch::Data data)

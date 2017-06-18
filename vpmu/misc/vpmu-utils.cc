@@ -1,4 +1,5 @@
 #include <sys/prctl.h> // prctl
+#include <sys/ioctl.h> // ioctl
 #include <stdexcept>   // exception
 
 #include "vpmu.hpp"       // VPMU common headers
@@ -63,6 +64,7 @@ namespace utils
     std::vector<std::string> str_split(std::string const &input, const char *ch)
     {
         char *txt = strdup(input.c_str());
+        // return vector of string
         std::vector<std::string> ret;
 
         char *pch;
@@ -80,8 +82,10 @@ namespace utils
     std::string get_version_from_vmlinux(const char *file_path)
     {
         char version_string[1024] = {};
+        // Open file with read only permission
         int fd = open(file_path, O_RDONLY);
-        struct stat s;
+        // Variable to capture return status of file
+        struct stat s = {};
 
         if (fd < 0) {
             ERR_MSG("File %s not found!\n", file_path);
@@ -178,13 +182,6 @@ namespace utils
         pthread_setname_np(t.native_handle(), thread_name);
     }
 
-    int32_t clog2(uint32_t x)
-    {
-        int32_t i;
-        for (i = -1; x != 0; i++) x >>= 1;
-        return i;
-    }
-
     void print_color_time(const char *str, uint64_t time)
     {
         CONSOLE_LOG(BASH_COLOR_GREEN); // Color Code - Green
@@ -252,6 +249,20 @@ namespace utils
         return j;
     }
 
+    int get_tty_columns(void)
+    {
+        struct winsize w;
+        ioctl(0, TIOCGWINSZ, &w);
+        return w.ws_col;
+    }
+
+    int get_tty_rows(void)
+    {
+        struct winsize w;
+        ioctl(0, TIOCGWINSZ, &w);
+        return w.ws_row;
+    }
+
 } // End of namespace vpmu::utils
 
 namespace host
@@ -266,11 +277,11 @@ namespace target
 {
     double scale_factor(void) { return 1 / (VPMU.platform.cpu.frequency / 1000.0); }
 
-    uint64_t cpu_cycles(void) { return vpmu_insn_stream.get_cycles(0); }
+    uint64_t cpu_cycles(void) { return vpmu_insn_stream.get_cycles(); }
 
-    uint64_t branch_cycles(void) { return vpmu_branch_stream.get_cycles(0); }
+    uint64_t branch_cycles(void) { return vpmu_branch_stream.get_cycles(); }
 
-    uint64_t cache_cycles(void) { return vpmu_cache_stream.get_cache_cycles(0); }
+    uint64_t cache_cycles(void) { return vpmu_cache_stream.get_cache_cycles(); }
 
     uint64_t in_cpu_cycles(void)
     {

@@ -6,8 +6,7 @@ extern "C" {
 #include "vpmu.hpp" // VPMU common headers
 #include "Intel-I7.hpp"
 #include "vpmu-utils.hpp"
-
-#include "todo-misc.hpp"
+#include "vpmu-template-output.hpp"
 
 // Compute the number of cycles that this instruction will take,
 // not including any I-cache or D-cache misses. This function
@@ -32,10 +31,11 @@ void CPU_IntelI7::build(VPMU_Insn::Model& model)
     log_debug(json_config.dump().c_str());
 
     auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
-    strncpy(model.name, model_name.c_str(), sizeof(model.name));
-    model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
-    model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
+    strncpy(insn_model.name, model_name.c_str(), sizeof(insn_model.name));
+    insn_model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
+    insn_model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
 
+    model = insn_model;
     translator.build(json_config);
     log_debug("Initialized");
 }
@@ -44,8 +44,6 @@ void CPU_IntelI7::packet_processor(int                         id,
                                    const VPMU_Insn::Reference& ref,
                                    VPMU_Insn::Data&            data)
 {
-#define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
-#define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
 #ifdef CONFIG_VPMU_DEBUG_MSG
     debug_packet_num_cnt++;
     if (ref.type == VPMU_PACKET_DUMP_INFO) {
@@ -59,46 +57,27 @@ void CPU_IntelI7::packet_processor(int                         id,
     switch (ref.type) {
     case VPMU_PACKET_BARRIER:
     case VPMU_PACKET_SYNC_DATA:
-        data.insn_cnt[0] = vpmu_total_insn_count(data);
-        data.cycles[0]   = cycles[0];
+        data = insn_data;
         break;
     case VPMU_PACKET_DUMP_INFO:
         CONSOLE_LOG("  [%d] type : Intel I7\n", id);
-        CONSOLE_U64(" Total instruction count       :", vpmu_total_insn_count(data));
-        CONSOLE_LOG("  ->User mode insn count       : ");
-        vpmu_print_u64_array(data.user.total_insn);
-        CONSOLE_LOG("  ->Supervisor mode insn count : ");
-        vpmu_print_u64_array(data.system.total_insn);
-        CONSOLE_U64(" Total load instruction count  :", vpmu_total_load_count(data));
-        CONSOLE_LOG("  ->User mode load count       : ");
-        vpmu_print_u64_array(data.user.load);
-        CONSOLE_LOG("  ->Supervisor mode load count : ");
-        vpmu_print_u64_array(data.system.load);
-        CONSOLE_U64(" Total store instruction count :", vpmu_total_store_count(data));
-        CONSOLE_LOG("  ->User mode store count      : ");
-        vpmu_print_u64_array(data.user.store);
-        CONSOLE_LOG("  ->Supervisor mode store count: ");
-        vpmu_print_u64_array(data.system.store);
+        vpmu::output::CPU_counters(insn_model, insn_data);
 
         break;
     case VPMU_PACKET_RESET:
-        memset(cycles, 0, sizeof(cycles));
-        memset(&data, 0, sizeof(VPMU_Insn::Data));
+        memset(&insn_data, 0, sizeof(VPMU_Insn::Data));
         break;
     case VPMU_PACKET_DATA:
-        accumulate(ref, data);
+        accumulate(ref);
         break;
     default:
         LOG_FATAL("Unexpected packet");
     }
-
-#undef CONSOLE_TME
-#undef CONSOLE_U64
 }
 
-void CPU_IntelI7::accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data)
+void CPU_IntelI7::accumulate(const VPMU_Insn::Reference& ref)
 {
-    VPMU_Insn::DataCell* cell = NULL;
+    VPMU_Insn::DataCell* cell = nullptr;
     // Defining the types (struct) for communication
     enum CPU_MODE { // Copy from QEMU cpu.h
         USR = 0x10,
@@ -114,7 +93,7 @@ void CPU_IntelI7::accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& i
     cell->load[ref.core] += ref.tb_counters_ptr->counters.load;
     cell->store[ref.core] += ref.tb_counters_ptr->counters.store;
     cell->branch[ref.core] += ref.tb_counters_ptr->has_branch;
-    cycles[ref.core] += ref.tb_counters_ptr->ticks;
+    cell->cycles[ref.core] += ref.tb_counters_ptr->ticks;
 }
 
 #ifdef CONFIG_VPMU_VFP

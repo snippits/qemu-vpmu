@@ -1,7 +1,8 @@
 #ifndef __BRANCH_ONE_BIT_HPP__
 #define __BRANCH_ONE_BIT_HPP__
-#include "vpmu-sim.hpp"    // VPMUSimulator
-#include "vpmu-packet.hpp" // VPMU_Branch::Reference
+#include "vpmu-sim.hpp"             // VPMUSimulator
+#include "vpmu-packet.hpp"          // VPMU_Branch::Reference
+#include "vpmu-template-output.hpp" // Template output format
 
 /// @brief One bit branch predictor class
 /// @details This class demonstrates the use of VPMUSimulator class.
@@ -53,9 +54,10 @@ public:
 
         log_debug(json_config.dump().c_str());
         auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
-        strncpy(model.name, model_name.c_str(), sizeof(model.name));
-        model.latency = vpmu::utils::get_json<int>(json_config, "miss latency");
+        strncpy(branch_model.name, model_name.c_str(), sizeof(branch_model.name));
+        branch_model.latency = vpmu::utils::get_json<int>(json_config, "miss latency");
 
+        model = branch_model;
         log_debug("Initialized");
     }
 
@@ -74,7 +76,7 @@ public:
     /// Use CONSOLE_LOG() or log() to print simulator data in a nice form.
     ///
     /// __VPMU_PACKET_RESET__:
-    /// Clear all the counters/values of simulator data.
+    /// Clear all the branch_data/values of simulator data.
     ///
     /// Component dependent data packet types:
     /// @param[in] id The identity number to this simulator. Started from 0.
@@ -98,35 +100,15 @@ public:
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
         case VPMU_PACKET_SYNC_DATA:
-            data = counters;
+            data = branch_data;
             break;
         case VPMU_PACKET_DUMP_INFO:
-            int i;
-
             CONSOLE_LOG("  [%d] type : One Bit Predictor\n", id);
-            // Accuracy
-            CONSOLE_LOG("    -> predict accuracy    : (");
-            for (i = 0; i < platform_info.cpu.cores - 1; i++) {
-                CONSOLE_LOG("%'0.2f, ",
-                            (float)counters.correct[i]
-                              / (counters.correct[i] + counters.wrong[i]));
-            }
-            CONSOLE_LOG("%'0.2f)\n",
-                        (float)counters.correct[i]
-                          / (counters.correct[i] + counters.wrong[i]));
-            // Correct
-            CONSOLE_LOG("    -> correct prediction  : (");
-            for (i = 0; i < platform_info.cpu.cores - 1; i++)
-                CONSOLE_LOG("%'" PRIu64 ", ", counters.correct[i]);
-            CONSOLE_LOG("%'" PRIu64 ")\n", counters.correct[i]);
-            // Wrong
-            CONSOLE_LOG("    -> wrong prediction    : (");
-            for (i = 0; i < platform_info.cpu.cores - 1; i++)
-                CONSOLE_LOG("%'" PRIu64 ", ", counters.wrong[i]);
-            CONSOLE_LOG("%'" PRIu64 ")\n", counters.wrong[i]);
+            vpmu::output::Branch_counters(branch_model, branch_data);
+
             break;
         case VPMU_PACKET_RESET:
-            counters = {}; // Zero initializer
+            branch_data = {}; // Zero initializer
             break;
         case VPMU_PACKET_DATA:
             one_bit_branch_predictor(ref);
@@ -145,7 +127,9 @@ private:
     uint64_t predictor[VPMU_MAX_CPU_CORES] = {};
     /// The tempory data storing the data needs by this branch predictor.
     /// In this case, the data equals to the branch data format in Snippits.
-    VPMU_Branch::Data counters = {};
+    VPMU_Branch::Data branch_data = {};
+    /// The tempory data storing the model configuration of this branch predictor.
+    VPMU_Branch::Model branch_model = {};
     /// Rename platform_info. The CPU configurations for timing model
     using VPMUSimulator::platform_info;
 
@@ -162,16 +146,16 @@ private:
         case 0: // predict not taken
             if (taken) {
                 predictor[core] = 1;
-                counters.wrong[core]++;
+                branch_data.wrong[core]++;
             } else
-                counters.correct[core]++;
+                branch_data.correct[core]++;
             break;
         case 1: // predict taken
             if (taken)
-                counters.correct[core]++;
+                branch_data.correct[core]++;
             else {
                 predictor[core] = 0;
-                counters.wrong[core]++;
+                branch_data.wrong[core]++;
             }
             break;
         default:

@@ -26,22 +26,30 @@ public:
         impl = std::make_unique<VPMUStreamSingleThread<VPMU_Insn>>("I_Strm", 1024 * 64);
     }
 
-    inline uint64_t get_insn_count(void)
+    inline uint64_t get_insn_count(int model_idx, int core_id)
     {
-        VPMU_Insn::Data data = get_data(0);
-        return data.insn_cnt[0];
+        VPMU_Insn::Data data = get_data(model_idx);
+        if (core_id == -1)
+            return data.sum_all().total_insn;
+        else
+            return data.sum_all_mode().total_insn[core_id];
     }
 
-    inline uint64_t get_cycles(int n)
+    inline uint64_t get_cycles(int model_idx, int core_id)
     {
-        VPMU_Insn::Data data = get_data(n);
-        return data.cycles[0];
+        VPMU_Insn::Data data = get_data(model_idx);
+        if (core_id == -1)
+            return data.sum_all().cycles;
+        else
+            return data.sum_all_mode().cycles[core_id];
     }
 
-    inline uint64_t get_cycles(void)
-    {
-        return get_cycles(0);
-    }
+    // TODO
+    // Summarize instruction count of all cores means nothing. We define it as prohibit.
+    inline uint64_t get_insn_count(void) { return get_insn_count(0, -1); }
+    inline uint64_t get_cycles(void) { return get_cycles(0, -1); }
+    // inline uint64_t get_insn_count(void) = delete;
+    // inline uint64_t get_cycles(void) = delete;
 
     // TODO This is a new funcion
     template <class F, class... Args>

@@ -310,73 +310,129 @@ public:
         ExtraTBInfo *tb_counters_ptr; // A pointer pointing to TB info
     } Reference;
 
-    typedef struct {
+    /// This is the counters in each mode (user/system).
+    class DataCell
+    {
+    public:
+        uint64_t cycles[VPMU_MAX_CPU_CORES];
         uint64_t total_insn[VPMU_MAX_CPU_CORES];
         uint64_t load[VPMU_MAX_CPU_CORES];
         uint64_t store[VPMU_MAX_CPU_CORES];
         uint64_t branch[VPMU_MAX_CPU_CORES];
-    } DataCell;
+
+        uint64_t *operator[](std::size_t idx)
+        {
+            // The number of elements in struct DataCell
+            const int cell_length = sizeof(DataCell)     // Total bytes
+                                    / VPMU_MAX_CPU_CORES // Length of each member
+                                    / sizeof(uint64_t);  // Size of each member
+            struct ArrayView {
+                uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
+            };
+            struct ArrayView *l = (struct ArrayView *)this;
+
+            return l->element[idx];
+        }
+
+        const uint64_t *operator[](std::size_t idx) const
+        {
+            // The number of elements in struct DataCell
+            const int cell_length = sizeof(DataCell)     // Total bytes
+                                    / VPMU_MAX_CPU_CORES // Length of each member
+                                    / sizeof(uint64_t);  // Size of each member
+            struct ArrayView {
+                uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
+            };
+            struct ArrayView *l = (struct ArrayView *)this;
+
+            return l->element[idx];
+        }
+
+        int size(void)
+        {
+            return sizeof(DataCell)     // Total bytes
+                   / VPMU_MAX_CPU_CORES // Length of each member
+                   / sizeof(uint64_t);  // Size of each member
+        }
+
+        DataCell operator+(const DataCell &rhs)
+        {
+            DataCell  out = {}; // Copy elision
+            DataCell &lhs = *this;
+
+            for (int i = 0; i < out.size(); i++) {
+                for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
+                    out[i][j] = lhs[i][j] + rhs[i][j];
+                }
+            }
+
+            return out;
+        }
+
+        DataCell operator-(const DataCell &rhs)
+        {
+            DataCell  out = {}; // Copy elision
+            DataCell &lhs = *this;
+
+            for (int i = 0; i < out.size(); i++) {
+                for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
+                    out[i][j] = lhs[i][j] - rhs[i][j];
+                }
+            }
+
+            return out;
+        }
+    };
+
+    typedef struct {
+        uint64_t cycles;
+        uint64_t total_insn;
+        uint64_t load;
+        uint64_t store;
+        uint64_t branch;
+    } DataCell_Summed;
 
     // The data/states of each simulators for VPMU
     class Data
     {
     public:
-        // TODO This should be core independent
         DataCell user, system;
 
-        uint64_t cycles[VPMU_MAX_CPU_CORES];   // Total cycles
-        uint64_t insn_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
-
-        inline void add_cell(DataCell &out, const DataCell &lhs, const DataCell &rhs)
+        DataCell sum_all_mode(void)
         {
-            // The number of elements in struct DataCell
-            const int cell_length = sizeof(DataCell)     // Total bytes
-                                    / VPMU_MAX_CPU_CORES // Length of each member
-                                    / sizeof(uint64_t);  // Size of each member
-            struct ArrayView {
-                uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
-            };
-            struct ArrayView *o = (struct ArrayView *)&out;
-            struct ArrayView *l = (struct ArrayView *)&lhs;
-            struct ArrayView *r = (struct ArrayView *)&rhs;
+            DataCell out = this->user + this->system; // Copy elision
 
-            for (int i = 0; i < cell_length; i++) {
-                for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
-                    o->element[i][j] = l->element[i][j] + r->element[i][j];
-                }
-            }
+            return out;
         }
 
-        inline void sub_cell(DataCell &out, const DataCell &lhs, const DataCell &rhs)
+        DataCell_Summed sum_all(void)
         {
-            // The number of elements in struct DataCell
-            const int cell_length = sizeof(DataCell)     // Total bytes
-                                    / VPMU_MAX_CPU_CORES // Length of each member
-                                    / sizeof(uint64_t);  // Size of each member
-            struct ArrayView {
-                uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
-            };
-            struct ArrayView *o = (struct ArrayView *)&out;
-            struct ArrayView *l = (struct ArrayView *)&lhs;
-            struct ArrayView *r = (struct ArrayView *)&rhs;
+            DataCell        p_result = this->sum_all_mode(); // Copy elision
+            DataCell_Summed result   = {};                   // Copy elision
 
-            for (int i = 0; i < cell_length; i++) {
+            // The number of elements in struct DataCell
+            const int cell_length = sizeof(DataCell_Summed) // Total bytes
+                                    / sizeof(uint64_t);     // Size of each member
+            struct ArrayView_Summed {
+                uint64_t element[cell_length];
+            };
+            struct ArrayView_Summed *res = (struct ArrayView_Summed *)&result;
+
+            for (int i = 0; i < p_result.size(); i++) {
                 for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
-                    o->element[i][j] = l->element[i][j] - r->element[i][j];
+                    res->element[i] += p_result[i][j];
                 }
             }
+
+            return result;
         }
 
         Data operator+(const Data &rhs)
         {
             Data out = {}; // Copy elision
 
-            add_cell(out.user, this->user, rhs.user);
-            add_cell(out.system, this->system, rhs.system);
-            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
-                out.cycles[i]   = this->cycles[i] + rhs.cycles[i];
-                out.insn_cnt[i] = this->insn_cnt[i] + rhs.insn_cnt[i];
-            }
+            out.user   = this->user + rhs.user;
+            out.system = this->system + rhs.system;
 
             return out;
         }
@@ -385,12 +441,9 @@ public:
         {
             Data out = {}; // Copy elision
 
-            sub_cell(out.user, this->user, rhs.user);
-            sub_cell(out.system, this->system, rhs.system);
-            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
-                out.cycles[i]   = this->cycles[i] + rhs.cycles[i];
-                out.insn_cnt[i] = this->insn_cnt[i] + rhs.insn_cnt[i];
-            }
+            out.user   = this->user - rhs.user;
+            out.system = this->system - rhs.system;
+
             return out;
         }
     };

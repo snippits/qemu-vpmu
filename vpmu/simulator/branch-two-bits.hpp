@@ -1,7 +1,8 @@
 #ifndef __BRANCH_TWO_BITS_HPP__
 #define __BRANCH_TWO_BITS_HPP__
-#include "vpmu-sim.hpp"    // VPMUSimulator
-#include "vpmu-packet.hpp" // VPMU_Branch::Reference
+#include "vpmu-sim.hpp"             // VPMUSimulator
+#include "vpmu-packet.hpp"          // VPMU_Branch::Reference
+#include "vpmu-template-output.hpp" // Template output format
 
 class Branch_Two_Bits : public VPMUSimulator<VPMU_Branch>
 {
@@ -17,9 +18,10 @@ public:
 
         log_debug(json_config.dump().c_str());
         auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
-        strncpy(model.name, model_name.c_str(), sizeof(model.name));
-        model.latency = vpmu::utils::get_json<int>(json_config, "miss latency");
+        strncpy(branch_model.name, model_name.c_str(), sizeof(branch_model.name));
+        branch_model.latency = vpmu::utils::get_json<int>(json_config, "miss latency");
 
+        model = branch_model;
         log_debug("Initialized");
     }
 
@@ -40,35 +42,15 @@ public:
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
         case VPMU_PACKET_SYNC_DATA:
-            data = counters;
+            data = branch_data;
             break;
         case VPMU_PACKET_DUMP_INFO:
-            int i;
-
             CONSOLE_LOG("  [%d] type : Two Bits Predictor\n", id);
-            // Accuracy
-            CONSOLE_LOG("    -> predict accuracy    : (");
-            for (i = 0; i < platform_info.cpu.cores - 1; i++) {
-                CONSOLE_LOG("%'0.2f, ",
-                            (float)counters.correct[i]
-                              / (counters.correct[i] + counters.wrong[i]));
-            }
-            CONSOLE_LOG("%'0.2f)\n",
-                        (float)counters.correct[i]
-                          / (counters.correct[i] + counters.wrong[i]));
-            // Correct
-            CONSOLE_LOG("    -> correct prediction  : (");
-            for (i = 0; i < platform_info.cpu.cores - 1; i++)
-                CONSOLE_LOG("%'" PRIu64 ", ", counters.correct[i]);
-            CONSOLE_LOG("%'" PRIu64 ")\n", counters.correct[i]);
-            // Wrong
-            CONSOLE_LOG("    -> wrong prediction    : (");
-            for (i = 0; i < platform_info.cpu.cores - 1; i++)
-                CONSOLE_LOG("%'" PRIu64 ", ", counters.wrong[i]);
-            CONSOLE_LOG("%'" PRIu64 ")\n", counters.wrong[i]);
+            vpmu::output::Branch_counters(branch_model, branch_data);
+
             break;
         case VPMU_PACKET_RESET:
-            counters = {}; // Zero initializer
+            branch_data = {}; // Zero initializer
             break;
         case VPMU_PACKET_DATA:
             two_bits_branch_predictor(ref);
@@ -84,8 +66,9 @@ private:
     uint64_t debug_packet_num_cnt = 0;
 #endif
     // predictor (the states of branch predictors)
-    uint64_t          predictor[VPMU_MAX_CPU_CORES] = {0};
-    VPMU_Branch::Data counters                      = {}; // Zero initializer
+    uint64_t           predictor[VPMU_MAX_CPU_CORES] = {};
+    VPMU_Branch::Data  branch_data                   = {};
+    VPMU_Branch::Model branch_model                  = {};
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
 
@@ -104,11 +87,11 @@ private:
             if (*entry > 0) *entry -= 1;
         }
 
-        // Update counters
+        // Update branch_data
         if (flag) {
-            counters.correct[core]++;
+            branch_data.correct[core]++;
         } else {
-            counters.wrong[core]++;
+            branch_data.wrong[core]++;
         }
     }
 };

@@ -70,6 +70,22 @@ namespace math
 
         return key;
     }
+
+    inline uint32_t ilog2(uint32_t x)
+    {
+        uint32_t i;
+        for (i = -1; x != 0; i++) x >>= 1;
+        return i;
+    }
+
+    inline uint64_t sum_cores(uint64_t value[])
+    {
+        uint64_t sum = 0;
+        for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+            sum += value[i];
+        }
+        return sum;
+    }
 } // End of namespace vpmu::math
 
 namespace utils
@@ -83,7 +99,6 @@ namespace utils
     void name_process(std::string new_name);
     void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
-    int32_t clog2(uint32_t x);
 
     inline std::string get_file_name_from_path(const char *path)
     {
@@ -170,6 +185,9 @@ namespace utils
     std::string read_text_content(const char *filename);
     std::unique_ptr<char> read_binary_content(const char *filename);
     nlohmann::json load_json(const char *vpmu_config_file);
+    int get_tty_columns(void);
+    int get_tty_rows(void);
+
 } // End of namespace vpmu::utils
 
 namespace host

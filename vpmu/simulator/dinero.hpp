@@ -1,9 +1,10 @@
 #ifndef __CACHE_DINERO_HPP__
 #define __CACHE_DINERO_HPP__
-#include <string>          // std::string
-#include "vpmu-sim.hpp"    // VPMUSimulator
-#include "vpmu-packet.hpp" // VPMU_Cache::Reference
-#include "vpmu-utils.hpp"  // miscellaneous functions
+#include <string>                   // std::string
+#include "vpmu-sim.hpp"             // VPMUSimulator
+#include "vpmu-packet.hpp"          // VPMU_Cache::Reference
+#include "vpmu-utils.hpp"           // miscellaneous functions
+#include "vpmu-template-output.hpp" // Template output format
 
 // TODO This feature consume a lot of execution time and lines of codes
 // It is still doubtful whether this is a necessary feature
@@ -94,6 +95,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         return d;
     }
 
+    // This is old dump function which prints all info (including GPU)
     void dump_info(int id)
     {
         int i;
@@ -159,9 +161,9 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
 
         IF_KEY_IS("name", c->name = strdup(val));
         IF_KEY_IS("processor", c->name = strdup(val));
-        IF_KEY_IS("blocksize", c->lg2blocksize = vpmu::utils::clog2(atoi(val)));
-        IF_KEY_IS("subblocksize", c->lg2subblocksize = vpmu::utils::clog2(atoi(val)));
-        IF_KEY_IS("size", c->lg2size = vpmu::utils::clog2(atoi(val)));
+        IF_KEY_IS("blocksize", c->lg2blocksize = vpmu::math::ilog2(atoi(val)));
+        IF_KEY_IS("subblocksize", c->lg2subblocksize = vpmu::math::ilog2(atoi(val)));
+        IF_KEY_IS("size", c->lg2size = vpmu::math::ilog2(atoi(val)));
         IF_KEY_IS("assoc", c->assoc = atoi(val));
         IF_KEY_IS("split_3c_cnt", c->flags |= atoi(val) ? D4F_CCC : 0);
         c->flags |= extra_flag;
@@ -420,7 +422,7 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
                 int  level  = model.levels;
                 while (n_elem != nullptr) {
                     model.d_log2_blocksize[level] =
-                      vpmu::utils::clog2(get_json<int>(c_elem, "blocksize"));
+                      vpmu::math::ilog2(get_json<int>(c_elem, "blocksize"));
                     model.d_log2_blocksize_mask[level] =
                       ~((1 << model.d_log2_blocksize[level]) - 1);
                     model.d_write_alloc[level] = (c_elem["walloc"] == "ALWAYS");
@@ -432,14 +434,14 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
                 }
 
                 model.d_log2_blocksize[level] =
-                  vpmu::utils::clog2(get_json<int>(c_elem["d-cache"], "blocksize"));
+                  vpmu::math::ilog2(get_json<int>(c_elem["d-cache"], "blocksize"));
                 model.d_log2_blocksize_mask[level] =
                   ~((1 << model.d_log2_blocksize[level]) - 1);
                 model.d_write_alloc[level] = (c_elem["d-cache"]["walloc"] == "ALWAYS");
                 model.d_write_back[level]  = (c_elem["d-cache"]["wback"] == "ALWAYS");
 
                 model.i_log2_blocksize[level] =
-                  vpmu::utils::clog2(get_json<int>(c_elem["i-cache"], "blocksize"));
+                  vpmu::math::ilog2(get_json<int>(c_elem["i-cache"], "blocksize"));
                 model.i_log2_blocksize_mask[level] =
                   ~((1 << model.i_log2_blocksize[level]) - 1);
 
@@ -488,7 +490,7 @@ public:
         std::vector<int> flag_has_processor(ALL_PROC);
         recursively_parse_json(
           json_config["topology"], &d4_cache[0], d4_levels, flag_has_processor);
-        sync_back_config_to_vpmu(model, json_config);
+        sync_back_config_to_vpmu(cache_model, json_config);
 
         // Reset the configurations depending on json contents.
         // Ex: some configuration might miss GPU topology while num_gpu_core are set
@@ -499,7 +501,7 @@ public:
             ERR_MSG("Something wrong with dinero cache\n");
             exit(1);
         }
-        cache_model = model;
+        model = cache_model;
 
         log_debug("Initialized");
     }
@@ -574,7 +576,9 @@ public:
 #endif
             break;
         case VPMU_PACKET_DUMP_INFO:
-            dump_info(id);
+            CONSOLE_LOG("  [%d] type : dinero\n", id);
+            vpmu::output::Cache_counters(cache_model, data);
+
             break;
         case VPMU_PACKET_RESET:
             memset(&data, 0, sizeof(VPMU_Cache::Data));

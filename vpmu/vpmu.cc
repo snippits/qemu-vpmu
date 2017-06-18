@@ -195,7 +195,7 @@ static void vpmu_check_and_print_funs(void)
     print_pass("(Kernel) Offsets of task_struct.pid", g_linux_offset.task_struct.pid);
     print_pass("(Kernel) THREAD_SIZE", g_linux_size.stack_thread_size);
 
-    auto& kernel = event_tracer.get_kernel();
+    auto &kernel = event_tracer.get_kernel();
     DBG("\nKernel Symbol Addresses:\n");
     DBG("------------------------------------------------------------\n");
     print_pass("MMap (mmap_region)",                           // mmap
@@ -343,9 +343,6 @@ void vpmu_dump_readable_message(void)
     using namespace vpmu::host;
     using namespace vpmu::target;
 
-// These two are for making info formatable and maintainable
-#define CONSOLE_U64(str, val) CONSOLE_LOG(str " %'" PRIu64 "\n", (uint64_t)val)
-#define CONSOLE_TME(str, val) CONSOLE_LOG(str " %'lf sec\n", (double)val / 1000000000.0)
     CONSOLE_LOG("Instructions:\n");
     vpmu_insn_stream.dump();
     CONSOLE_LOG("Branch:\n");
@@ -369,20 +366,18 @@ void vpmu_dump_readable_message(void)
     }
     CONSOLE_LOG("\n");
     CONSOLE_LOG("Timing Info:\n");
-    CONSOLE_TME("  ->CPU                        :", cpu_time_ns());
-    CONSOLE_TME("  ->Branch                     :", branch_time_ns());
-    CONSOLE_TME("  ->Cache                      :", cache_time_ns());
-    CONSOLE_TME("  ->System memory              :", memory_time_ns());
-    CONSOLE_TME("  ->I/O memory                 :", io_time_ns());
-    CONSOLE_TME("  ->Idle                       :", VPMU.cpu_idle_time_ns);
-    CONSOLE_TME("Estimated execution time       :", time_ns());
+    CONSOLE_TME("  ->CPU                         :", cpu_time_ns());
+    CONSOLE_TME("  ->Branch                      :", branch_time_ns());
+    CONSOLE_TME("  ->Cache                       :", cache_time_ns());
+    CONSOLE_TME("  ->System memory               :", memory_time_ns());
+    CONSOLE_TME("  ->I/O memory                  :", io_time_ns());
+    CONSOLE_TME("  ->Idle                        :", VPMU.cpu_idle_time_ns);
+    CONSOLE_TME("Estimated execution time        :", time_ns());
 
     CONSOLE_LOG("\n");
     CONSOLE_TME("Emulation Time :", wall_clock_period());
     CONSOLE_LOG("MIPS           : %'0.2lf\n\n",
                 (double)vpmu_total_insn_count() / (wall_clock_period() / 1000.0));
-#undef CONSOLE_TME
-#undef CONSOLE_U64
 }
 
 void vpmu_print_status(VPMU_Struct *vpmu)

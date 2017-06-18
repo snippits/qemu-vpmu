@@ -27,14 +27,20 @@ public:
 
     void send(uint8_t core, uint64_t pc, uint32_t taken);
 
-    inline uint64_t get_cycles(int n)
+    inline uint64_t get_cycles(int model_idx, int core_id)
     {
-        VPMU_Branch::Model model = get_model(n);
-        VPMU_Branch::Data  data  = get_data(n);
-        return data.wrong[0] * model.latency;
+        VPMU_Branch::Model model = get_model(model_idx);
+        VPMU_Branch::Data  data  = get_data(model_idx);
+        if (core_id == -1)
+            return vpmu::math::sum_cores(data.wrong) * model.latency;
+        else
+            return data.wrong[core_id] * model.latency;
     }
 
-    inline uint64_t get_cycles(void) { return get_cycles(0); }
+    // TODO
+    // Summarize branch misses of all cores means nothing. We define it as prohibit.
+    inline uint64_t get_cycles(void) { return get_cycles(0, -1); }
+    // inline uint64_t get_cycles(void) = delete;
 
 private:
     // This is a register function declared in the vpmu-branch.cc file.

@@ -17,7 +17,8 @@ VPATH+=:$(SRC_PATH)/vpmu/qemu
 all-obj-$(CONFIG_VPMU) += vpmu-device.o vpmu-qemu-utils.o
 
 # Please add your VPMU source code here
-VPMU_OBJS=vpmu.o vpmu-insn.o vpmu-branch.o vpmu-cache.o vpmu-utils.o
+VPMU_OBJS=vpmu.o vpmu-insn.o vpmu-branch.o vpmu-cache.o
+VPMU_OBJS+=vpmu-utils.o vpmu-template-output.o
 VPMU_OBJS+=ref.o misc.o
 
 ifeq ($(TARGET_NAME),arm)

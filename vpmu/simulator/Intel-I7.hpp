@@ -52,13 +52,16 @@ private:
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;
 #endif
-    uint64_t cycles[VPMU_MAX_CPU_CORES] = {0};
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
     // The instance of Translator called from QEMU when doing binary translation
-    Translation translator;
+    Translation translator = {};
+    // The data stored in this simulator
+    VPMU_Insn::Data insn_data = {};
+    // The model stored in this simulator
+    VPMU_Insn::Model insn_model = {};
 
-    void accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data);
+    void accumulate(const VPMU_Insn::Reference& ref);
 
     // End of VPMUSimulator
 };
