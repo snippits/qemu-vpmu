@@ -98,7 +98,7 @@ void CPU_IntelI7::packet_processor(int                         id,
 
 void CPU_IntelI7::accumulate(const VPMU_Insn::Reference& ref, VPMU_Insn::Data& insn_data)
 {
-    VPMU_Insn::Insn_Data_Cell* cell = NULL;
+    VPMU_Insn::DataCell* cell = NULL;
     // Defining the types (struct) for communication
     enum CPU_MODE { // Copy from QEMU cpu.h
         USR = 0x10,

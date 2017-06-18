@@ -310,31 +310,29 @@ public:
         ExtraTBInfo *tb_counters_ptr; // A pointer pointing to TB info
     } Reference;
 
-    typedef struct Insn_Data_Cell {
+    typedef struct {
         uint64_t total_insn[VPMU_MAX_CPU_CORES];
         uint64_t load[VPMU_MAX_CPU_CORES];
         uint64_t store[VPMU_MAX_CPU_CORES];
         uint64_t branch[VPMU_MAX_CPU_CORES];
-    } Insn_Data_Cell;
+    } DataCell;
 
     // The data/states of each simulators for VPMU
     class Data
     {
     public:
         // TODO This should be core independent
-        Insn_Data_Cell user, system;
+        DataCell user, system;
 
         uint64_t cycles[VPMU_MAX_CPU_CORES];   // Total cycles
         uint64_t insn_cnt[VPMU_MAX_CPU_CORES]; // Total instruction count
 
-        inline void add_cell(Insn_Data_Cell &      out,
-                             const Insn_Data_Cell &lhs,
-                             const Insn_Data_Cell &rhs)
+        inline void add_cell(DataCell &out, const DataCell &lhs, const DataCell &rhs)
         {
-            // The number of elements in struct Insn_Data_Cell
-            const int cell_length = sizeof(Insn_Data_Cell) // Total bytes
-                                    / VPMU_MAX_CPU_CORES   // Length of each member
-                                    / sizeof(uint64_t);    // Size of each member
+            // The number of elements in struct DataCell
+            const int cell_length = sizeof(DataCell)     // Total bytes
+                                    / VPMU_MAX_CPU_CORES // Length of each member
+                                    / sizeof(uint64_t);  // Size of each member
             struct ArrayView {
                 uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
             };
@@ -349,14 +347,12 @@ public:
             }
         }
 
-        inline void sub_cell(Insn_Data_Cell &      out,
-                             const Insn_Data_Cell &lhs,
-                             const Insn_Data_Cell &rhs)
+        inline void sub_cell(DataCell &out, const DataCell &lhs, const DataCell &rhs)
         {
-            // The number of elements in struct Insn_Data_Cell
-            const int cell_length = sizeof(Insn_Data_Cell) // Total bytes
-                                    / VPMU_MAX_CPU_CORES   // Length of each member
-                                    / sizeof(uint64_t);    // Size of each member
+            // The number of elements in struct DataCell
+            const int cell_length = sizeof(DataCell)     // Total bytes
+                                    / VPMU_MAX_CPU_CORES // Length of each member
+                                    / sizeof(uint64_t);  // Size of each member
             struct ArrayView {
                 uint64_t element[cell_length][VPMU_MAX_CPU_CORES];
             };
