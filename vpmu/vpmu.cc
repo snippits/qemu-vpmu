@@ -183,6 +183,28 @@ static void vpmu_check_and_print_funs(void)
         (VPMU.platform.linux_version >> 8) & 0xff,
         (VPMU.platform.linux_version >> 0) & 0xff);
 
+    auto cache_model            = vpmu_cache_stream.get_model(0);
+    auto cpu_model              = vpmu_insn_stream.get_model(0);
+    auto branch_model           = vpmu_branch_stream.get_model(0);
+    DBG("\nConfigs / Settings:\n");
+    DBG("------------------------------------------------------------\n");
+    print_pass("Disabled KVM", !VPMU.platform.kvm_enabled);
+    DBG("%-60s%s\n", "CPU Model", cpu_model.name);
+    DBG("%-60s%u core(s)\n", "CPU cores", VPMU.platform.cpu.cores);
+    DBG("%-60s%" PRIu64 " MHz\n", "CPU frequency", cpu_model.frequency);
+#ifdef TARGET_ARM
+    DBG("%-60s%s\n", "CPU dual issue", cpu_model.dual_issue ? "on" : "off");
+#endif
+    DBG("%-60s%s\n", "Branch model", branch_model.name);
+    DBG("%-60s%u cycles\n", "Branch latency", branch_model.latency);
+    DBG("%-60s%s\n", "Cache model", cache_model.name);
+    DBG("%-60s%d level(s)\n", "Cache levels", cache_model.levels);
+    for (int i = cache_model.levels; i > 0; i--) {
+        char tmp[128] = {};
+        snprintf(tmp, sizeof(tmp), "Cache latency (exclusive) level-%d", i);
+        DBG("%-60s%d cycles\n", tmp, cache_model.latency[i]);
+    }
+
     DBG("\nEvent Tracing:\n");
     DBG("------------------------------------------------------------\n");
     print_pass("(Kernel) Offsets of file.fpath.dentry", g_linux_offset.file.fpath.dentry);
