@@ -177,8 +177,11 @@ void VPMU_reset(void)
 
 static inline void print_pass(const char *prefix, uint64_t value)
 {
-    const char *postfix = (value > 0) ? "passed" : "failed";
-    DBG("%-60s" BASH_COLOR_GREEN "%s" BASH_COLOR_NONE "\n", prefix, postfix);
+    if (value > 0) {
+        DBG("%-60s" BASH_COLOR_GREEN "%s" BASH_COLOR_NONE "\n", prefix, "passed");
+    } else {
+        DBG("%-60s" BASH_COLOR_RED "%s" BASH_COLOR_NONE "\n", prefix, "failed");
+    }
 }
 
 static void vpmu_check_and_print_funs(void)
