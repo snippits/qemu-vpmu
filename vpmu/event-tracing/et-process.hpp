@@ -104,7 +104,7 @@ public:
     // History records
     std::vector<std::pair<uint64_t, uint64_t>> phase_history;
     Window       current_window;
-    VPMUSnapshot snapshot;
+    VPMUSnapshot snapshot  = VPMUSnapshot(true); /// Take a snapshot at creation
     uint64_t     stack_ptr = 0;
 
 private:
