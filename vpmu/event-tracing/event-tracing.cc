@@ -538,7 +538,29 @@ void et_add_process_mapped_file(uint64_t    pid,
                                 uint64_t    mode,
                                 uint64_t    file_size)
 {
-    // TODO The flow should explicitly distinguish main binary and shared libraries
+    // TODO Better looking codes
+    auto process = event_tracer.find_process(pid);
+    // TODO why is this size 1?? not 0?
+    if (process && process->binary_list.size() == 1) {
+        auto program = process->get_main_program();
+        // READ or EXEC. TODO why does x86 sometimes has no exec mode but still run?
+        if (((mode & VM_EXEC) || (mode & VM_READ)) && !(mode & VM_WRITE)
+            && program == event_tracer.find_program(fullpath)) {
+            // The program is main program, rename the real path and filename
+            program->filename  = vpmu::utils::get_file_name_from_path(fullpath);
+            program->path      = fullpath;
+            program->file_size = file_size;
+
+            // Remember the latest mapped file for later updating its address range
+            process->last_mapped_file = program;
+            process->push_binary(program);
+            // TODO Where to place this flag update?
+            process->mmap_updated_flag = false;
+            return;
+        }
+    }
+
+    // The following will be shared library
     if (mode & VM_EXEC) {
         // Mapping executable page for shared library
         et_attach_shared_library_to_process(pid, fullpath, file_size);
@@ -561,16 +583,9 @@ void et_attach_shared_library_to_process(uint64_t    pid,
         program = event_tracer.add_library(fullpath_lib);
     }
 
-    if (process->binary_list.size() == 0) {
-        auto name = vpmu::utils::get_file_name_from_path(fullpath_lib);
-        if (name != program->filename) {
-            // The program is main program, rename the real path and filename
-            program->filename = name;
-            program->path     = fullpath_lib;
-        }
-    } else {
-        event_tracer.attach_to_program(process->get_main_program()->name, program);
-    }
+    // TODO This should be runtime information not program related information
+    // program and loaded program should be two separated class
+    event_tracer.attach_to_program(process->get_main_program()->name, program);
     program->file_size = file_size;
 
     // Remember the latest mapped file for later updating its address range
