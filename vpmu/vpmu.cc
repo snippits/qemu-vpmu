@@ -127,12 +127,20 @@ static void prepare_for_logs(void)
     if (VPMU.output_path[0] == '\'') {
         remove_qemu_quotation(VPMU.output_path);
     }
+    // Use absolute path instead of relative path
+    strncpy(VPMU.output_path,
+            boost::filesystem::absolute(VPMU.output_path).c_str(),
+            sizeof(VPMU.output_path));
+
     std::string output_path   = std::string(VPMU.output_path);
     std::string log_file_path = output_path + "/vpmu.log";
 
     // Remove logs from last execution and create folders for current log
     if (boost::filesystem::exists(output_path)) {
-        boost::filesystem::remove_all(output_path);
+        // Remove only files/folders created by VPMU only.
+        // Users may specify their own directory. Do not remove user files.
+        boost::filesystem::remove(log_file_path);
+        boost::filesystem::remove_all(output_path + "/phase");
     }
     boost::filesystem::create_directories(output_path);
     boost::filesystem::create_directories(output_path + "/phase");
