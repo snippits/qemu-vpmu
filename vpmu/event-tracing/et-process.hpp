@@ -12,6 +12,8 @@
 #include "et-program.hpp"  // ET_Program class
 #include "phase/phase.hpp" // Phase class
 
+// NOTE that binary_list[0] always exists and is the main program
+//
 class ET_Process : public ET_Path
 {
 public:
@@ -32,6 +34,8 @@ public:
         set_name_or_path(new_name);
         pid            = new_pid;
         is_top_process = true;
+
+        binary_list.push_back(std::make_shared<ET_Program>(new_name));
     }
     ET_Process(ET_Process* target_process, uint64_t new_pid)
     {
