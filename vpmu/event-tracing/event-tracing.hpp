@@ -41,26 +41,28 @@ public:
 
     inline std::shared_ptr<ET_Program> add_program(std::string name)
     {
-        auto                        p = std::make_shared<ET_Program>(name);
+        auto program = std::make_shared<ET_Program>(name);
+        // Lock when updating the program_list (thread shared resource)
         std::lock_guard<std::mutex> lock(program_list_lock);
 
         log_debug("Add new binary '%s'", name.c_str());
-        program_list.push_back(p);
+        program_list.push_back(program);
         // debug_dump_program_map();
-        return p;
+        return program;
     }
 
     inline std::shared_ptr<ET_Program> add_library(std::string name)
     {
-        auto                        p = std::make_shared<ET_Program>(name);
+        auto program = std::make_shared<ET_Program>(name);
+        // Lock when updating the program_list (thread shared resource)
         std::lock_guard<std::mutex> lock(program_list_lock);
 
         // Set this flag to true if it's a library
-        p->is_shared_library = true;
+        program->is_shared_library = true;
         log_debug("Add new library '%s'", name.c_str());
-        program_list.push_back(p);
+        program_list.push_back(program);
         // debug_dump_program_map();
-        return p;
+        return program;
     }
 
     inline void remove_program(std::string name)
@@ -82,9 +84,10 @@ public:
 
     inline std::shared_ptr<ET_Process> add_new_process(const char* name, uint64_t pid)
     {
-        auto                        program = find_program(name);
+        // Lock when updating the process_id_map (thread shared resource)
         std::lock_guard<std::mutex> lock(process_id_map_lock);
 
+        auto program = find_program(name);
         // Check if the target program is in the monitoring list
         if (program != nullptr) {
             log_debug("Trace new process %s, pid:%5" PRIu64, name, pid);
@@ -141,6 +144,7 @@ public:
     inline void remove_process(uint64_t pid)
     {
         if (process_id_map.size() == 0) return;
+        // Lock when updating the process_id_map (thread shared resource)
         std::lock_guard<std::mutex> lock(process_id_map_lock);
         // Lock everything below (including the file IO in dump_result)
         auto process = find_process(pid);
