@@ -106,6 +106,8 @@ public:
     Window       current_window;
     VPMUSnapshot snapshot  = VPMUSnapshot(true); /// Take a snapshot at creation
     uint64_t     stack_ptr = 0;
+    // Used for debugging log
+    std::string debug_log;
 
 private:
     void* cpu_state = nullptr; // CPUState *

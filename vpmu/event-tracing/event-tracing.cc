@@ -377,6 +377,7 @@ void ET_Process::dump_process_info(void)
     j["File Name"] = filename;
     j["File Path"] = path;
     j["pid"]       = pid;
+    j["debug_log"] = debug_log;
     for (int i = 0; i < child_list.size(); i++) {
         j["Childrens"][i]["Name"] = child_list[i]->name;
         j["Childrens"][i]["pid"]  = child_list[i]->pid;

@@ -12,6 +12,44 @@ extern "C" {
 LinuxStructOffset g_linux_offset;
 LinuxStructSize   g_linux_size;
 
+static std::string
+genlog_mmap(uint64_t syscall_pid, char* fullpath, uintptr_t vaddr, uintptr_t mode)
+{
+    char buffer[4096] = {};
+
+    snprintf(buffer,
+             sizeof(buffer),
+             "pid %lu on core %2lu mmap file: %s @ %lx mode: (%lx) ",
+             syscall_pid,
+             vpmu::get_core_id(),
+             fullpath,
+             vaddr,
+             mode);
+    if (mode & VM_READ) snprintf(buffer + strlen(buffer), sizeof(buffer), " READ");
+    if (mode & VM_WRITE) snprintf(buffer + strlen(buffer), sizeof(buffer), " WRITE");
+    if (mode & VM_EXEC) snprintf(buffer + strlen(buffer), sizeof(buffer), " EXEC");
+    if (mode & VM_SHARED) snprintf(buffer + strlen(buffer), sizeof(buffer), " SHARED");
+    if (mode & VM_IO) snprintf(buffer + strlen(buffer), sizeof(buffer), " IO");
+    if (mode & VM_HUGETLB) snprintf(buffer + strlen(buffer), sizeof(buffer), " HUGETLB");
+    if (mode & VM_DONTCOPY)
+        snprintf(buffer + strlen(buffer), sizeof(buffer), " DONTCOPY");
+    snprintf(buffer + strlen(buffer), sizeof(buffer), "\n");
+
+    return buffer;
+}
+
+static std::string genlog_mmap_ret(uint64_t start_addr, uint64_t file_size)
+{
+    char buffer[1024] = {};
+
+    snprintf(buffer,
+             sizeof(buffer),
+             "Mapped Address: 0x%lx to 0x%lx\n",
+             start_addr,
+             start_addr + file_size);
+    return buffer;
+}
+
 void et_set_default_linux_struct_offset(uint64_t version)
 {
 #if defined(TARGET_ARM)
@@ -233,6 +271,9 @@ void et_register_callbacks_kernel_events(void)
             // TODO Build a mapping table for data segments and refactor this flag
             // Update address when the flag is exec only
             if (mode & VM_EXEC) process->mmap_updated_flag = false;
+#ifdef CONFIG_VPMU_DEBUG_MSG
+            process->debug_log += genlog_mmap(syscall_pid, fullpath, vaddr, mode);
+#endif
         }
 
         (void)vaddr;
@@ -253,6 +294,10 @@ void et_register_callbacks_kernel_events(void)
                 uint64_t vaddr = et_get_ret_value(env);
                 file->set_mapped_address(vaddr);
                 process->mmap_updated_flag = true;
+#ifdef CONFIG_VPMU_DEBUG_MSG
+                process->debug_log +=
+                  genlog_mmap_ret(et_get_ret_value(env), file->file_size);
+#endif
             }
         }
     });
