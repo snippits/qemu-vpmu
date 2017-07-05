@@ -142,6 +142,10 @@ public:
     {
         if (process_id_map.size() == 0) return;
         std::lock_guard<std::mutex> lock(process_id_map_lock);
+        // Lock everything below (including the file IO in dump_result)
+        auto process = find_process(pid);
+        if (process == nullptr) return;
+        process->dump_phase_result();
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
         // It's not necessary to find, use it in debug only
@@ -151,7 +155,7 @@ public:
             debug_dump_process_map(process);
         }
 #endif
-        log_debug("Try remove process %5" PRIu64, pid);
+        log_debug("Remove process %5" PRIu64, pid);
         process_id_map.erase(pid);
         debug_dump_process_map();
     }

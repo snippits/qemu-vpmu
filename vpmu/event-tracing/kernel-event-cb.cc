@@ -198,7 +198,7 @@ void et_register_callbacks_kernel_events(void)
         // Do nothing if the value is not initialized
         if (g_linux_offset.task_struct.pid == 0) return;
         uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        et_remove_process(syscall_pid);
+        event_tracer.remove_process(syscall_pid);
         return;
 
     });

@@ -353,14 +353,6 @@ void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)
     return event_tracer.attach_to_parent(parent_pid, child_pid);
 }
 
-void et_add_new_process(const char* path, const char* name, uint64_t pid)
-{
-    if (path == nullptr)
-        event_tracer.add_new_process(name, pid);
-    else
-        event_tracer.add_new_process(path, name, pid);
-}
-
 void ET_Process::dump_process_info(void)
 {
     char        file_path[512] = {0};
@@ -520,15 +512,6 @@ void ET_Process::dump_phase_result(void)
     }
 }
 
-void et_remove_process(uint64_t pid)
-{
-    auto process = event_tracer.find_process(pid);
-    if (process != nullptr) {
-        process->dump_phase_result();
-        event_tracer.remove_process(pid);
-    }
-}
-
 void et_set_process_cpu_state(uint64_t pid, void* cs)
 {
     event_tracer.set_process_cpu_state(pid, cs);
@@ -587,41 +570,9 @@ void et_add_process_mapped_file(uint64_t    pid,
     }
 }
 
-void et_attach_shared_library_to_process(uint64_t    pid,
-                                         const char* fullpath_lib,
-                                         uint64_t    file_size)
-{
-    std::shared_ptr<ET_Process> process = event_tracer.find_process(pid);
-    if (process == nullptr) return;
-    std::shared_ptr<ET_Program> program = event_tracer.find_program(fullpath_lib);
-    if (program == nullptr) {
-        DBG(STR_VPMU "Shared library %s was not found in the list "
-                     "create an empty one.\n",
-            fullpath_lib);
-        program = event_tracer.add_library(fullpath_lib);
-    }
-
-    // TODO This should be runtime information not program related information
-    // program and loaded program should be two separated class
-    event_tracer.attach_to_program(process->get_main_program()->name, program);
-    program->file_size = file_size;
-
-    // Remember the latest mapped file for later updating its address range
-    process->last_mapped_file = program;
-    process->push_binary(program);
-}
-
 void et_update_program_elf_dwarf(const char* name, const char* file_name)
 {
     auto program = event_tracer.find_program(name);
     event_tracer.update_elf_dwarf(program, file_name);
 }
 
-// TODO Find a better way
-void et_update_last_mmaped_binary(uint64_t pid, uint64_t vaddr, uint64_t len)
-{
-    auto process = event_tracer.find_process(pid);
-    if (process != nullptr) {
-        process->binary_list.back()->set_mapped_address(vaddr, vaddr + len);
-    }
-}
