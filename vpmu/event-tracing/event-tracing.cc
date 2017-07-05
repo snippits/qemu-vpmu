@@ -534,39 +534,56 @@ void et_set_process_cpu_state(uint64_t pid, void* cs)
     event_tracer.set_process_cpu_state(pid, cs);
 }
 
+static std::shared_ptr<ET_Program> find_library(const char* fullpath)
+{
+    std::shared_ptr<ET_Program> program = event_tracer.find_program(fullpath);
+
+    if (program == nullptr) {
+        DBG(STR_VPMU "Shared library %s was not found in the list "
+                     "create an empty one.\n",
+            fullpath);
+        program = event_tracer.add_library(fullpath);
+    }
+
+    return program;
+}
+
 void et_add_process_mapped_file(uint64_t    pid,
                                 const char* fullpath,
                                 uint64_t    mode,
                                 uint64_t    file_size)
 {
-    // TODO Better looking codes
     auto process = event_tracer.find_process(pid);
-    // TODO why is this size 1?? not 0?
-    if (process && process->binary_list.size() == 1) {
-        auto program = process->get_main_program();
-        // READ or EXEC. TODO why does x86 sometimes has no exec mode but still run?
-        if (((mode & VM_EXEC) || (mode & VM_READ)) && !(mode & VM_WRITE)
-            && program == event_tracer.find_program(fullpath)) {
+    if (process == nullptr) return ;
+
+    if (process->get_main_program()->address_start == 0) {
+        auto&& program = process->get_main_program();
+        // When program size <= 4096. x86 won't map this binary as EXEC again
+        if ((mode & VM_EXEC) || (mode & VM_READ)) {
             // The program is main program, rename the real path and filename
             program->filename  = vpmu::utils::get_file_name_from_path(fullpath);
             program->path      = fullpath;
             program->file_size = file_size;
-
             // Remember the latest mapped file for later updating its address range
             process->last_mapped_file = program;
-            process->push_binary(program);
-            // TODO Where to place this flag update?
             process->mmap_updated_flag = false;
-            return;
         }
-    }
-
-    // The following will be shared library
-    if (mode & VM_EXEC) {
-        // Mapping executable page for shared library
-        et_attach_shared_library_to_process(pid, fullpath, file_size);
     } else {
-        // TODO Just records all non-library files mapped to this process
+        if (mode & VM_EXEC) {
+            // Mapping executable page for shared library
+            auto program = find_library(fullpath);
+            // TODO This should be runtime information not program related information
+            // program and loaded program should be two separated class
+            event_tracer.attach_to_program(process->get_main_program()->name, program);
+            program->file_size = file_size;
+
+            // Remember the latest mapped file for later updating its address range
+            process->last_mapped_file  = program;
+            process->mmap_updated_flag = false;
+            process->push_binary(program);
+        } else {
+            // TODO Just records all non-library files mapped to this process
+        }
     }
 }
 
