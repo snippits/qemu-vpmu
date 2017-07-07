@@ -75,7 +75,7 @@ static inline target_ulong get_input_arg(CPUArchState *env, int num)
     return 0;
 }
 
-static inline target_ulong get_input_arg_in_kernel(CPUArchState *env, int num)
+static inline target_ulong get_syscall_arg(CPUArchState *env, int num)
 {
 #if defined(TARGET_ARM)
     return get_input_arg(env, num);
@@ -231,16 +231,7 @@ uint64_t et_get_syscall_user_thread(void *env)
 
 uint64_t et_get_input_arg(void *env, int num)
 {
-#ifdef TARGET_ARM
     return get_input_arg(env, num);
-#elif defined(TARGET_X86_64) || defined(TARGET_I386)
-    // CPU-Privilege-Level = User(ring3) / Supervisor(ring0)
-    int cpl = ((CPUArchState *)env)->hflags & (3);
-    if (cpl == 3)
-        return get_input_arg(env, num);
-    else
-        return get_input_arg_in_kernel(env, num);
-#endif
 }
 
 uint64_t et_get_ret_addr(void *env)
@@ -258,9 +249,9 @@ uint64_t et_get_syscall_num(void *env)
     return get_syscall_num(env);
 }
 
-uint64_t et_get_syscall_input_arg(void *env, int num)
+uint64_t et_get_syscall_arg(void *env, int num)
 {
-    return get_input_arg_in_kernel(env, num);
+    return get_syscall_arg(env, num);
 }
 
 void et_parse_dentry_path(void *    env,
