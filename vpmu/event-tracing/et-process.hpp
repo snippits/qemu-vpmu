@@ -10,6 +10,7 @@
 #include "vpmu.hpp"        // VPMU common headers
 #include "vpmu-utils.hpp"  // miscellaneous functions
 #include "et-program.hpp"  // ET_Program class
+#include "et-region.hpp"   // Regions of virtual memory for a process
 #include "phase/phase.hpp" // Phase class
 
 // NOTE that binary_list[0] always exists and is the main program
@@ -85,15 +86,34 @@ public:
 
     std::string find_code_line_number(uint64_t pc);
 
+    void dump_vm_map(void);
     void dump_phase_history(void);
     void dump_phase_result(void);
     void dump_process_info(void);
     void dump_phase_code_mapping(FILE* fp, const Phase& phase);
 
+    inline void append_debug_log(std::string mesg)
+    {
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        debug_log += mesg;
+#endif
+    }
+
+    const std::string& get_debug_log(void) { return debug_log; }
+
+    inline void set_last_mapped_addr(uint64_t vaddr)
+    {
+        last_mapped_addr[vpmu::get_core_id()] = vaddr;
+    }
+
+    inline uint64_t get_last_mapped_addr(void)
+    {
+        return last_mapped_addr[vpmu::get_core_id()];
+    }
+
 public:
     // Used to identify the top process parent
     bool is_top_process;
-    bool mmap_updated_flag = true;
     // The root pid
     uint64_t pid = 0;
     // The timing model bind to this program
@@ -101,8 +121,8 @@ public:
     // Lists of shared pointer objects
     std::vector<std::shared_ptr<ET_Program>> binary_list;
     std::vector<std::shared_ptr<ET_Process>> child_list;
-    // Remember the pointer to lastest mapped file for updating its address
-    std::weak_ptr<ET_Program> last_mapped_file;
+    // Flag to indicate whether main program is set
+    bool binary_loaded_flag = false;
 
     std::vector<Phase> phase_list;
     // History records
@@ -110,11 +130,16 @@ public:
     Window       current_window;
     VPMUSnapshot snapshot  = VPMUSnapshot(true); /// Take a snapshot at creation
     uint64_t     stack_ptr = 0;
-    // Used for debugging log
-    std::string debug_log;
+
+    // Process maps
+    ET_Region vm_maps;
 
 private:
     void* cpu_state = nullptr; // CPUState *
+    // Used for debugging log
+    std::string debug_log;
+    // Remember the pointer to lastest mapped region for updating its address
+    int last_mapped_addr[VPMU_MAX_CPU_CORES] = {};
 };
 
 #endif

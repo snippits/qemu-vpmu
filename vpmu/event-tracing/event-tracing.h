@@ -33,10 +33,11 @@ bool et_find_traced_pid(uint64_t pid);
 bool et_find_traced_process(const char* name);
 void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid);
 void et_set_process_cpu_state(uint64_t pid, void* cs);
-void et_add_process_mapped_file(uint64_t    pid,
-                                const char* fullpath,
-                                uint64_t    mode,
-                                uint64_t    file_size);
+void et_add_process_mapped_region(uint64_t    pid,
+                                  const char* fullpath,
+                                  uint64_t    mode,
+                                  uint64_t    start_addr,
+                                  uint64_t    file_size);
 void et_update_program_elf_dwarf(const char* name, const char* file_name);
 
 // End of implementation in C++ side

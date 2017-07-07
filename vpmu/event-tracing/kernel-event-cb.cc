@@ -15,7 +15,8 @@ LinuxStructSize   g_linux_size;
 static std::string
 genlog_mmap(uint64_t syscall_pid, char* fullpath, uintptr_t vaddr, uintptr_t mode)
 {
-    char buffer[4096] = {};
+    char     buffer[4096] = {};
+    uint64_t free_space   = 0;
 
     snprintf(buffer,
              sizeof(buffer),
@@ -25,15 +26,22 @@ genlog_mmap(uint64_t syscall_pid, char* fullpath, uintptr_t vaddr, uintptr_t mod
              fullpath,
              vaddr,
              mode);
-    if (mode & VM_READ) snprintf(buffer + strlen(buffer), sizeof(buffer), " READ");
-    if (mode & VM_WRITE) snprintf(buffer + strlen(buffer), sizeof(buffer), " WRITE");
-    if (mode & VM_EXEC) snprintf(buffer + strlen(buffer), sizeof(buffer), " EXEC");
-    if (mode & VM_SHARED) snprintf(buffer + strlen(buffer), sizeof(buffer), " SHARED");
-    if (mode & VM_IO) snprintf(buffer + strlen(buffer), sizeof(buffer), " IO");
-    if (mode & VM_HUGETLB) snprintf(buffer + strlen(buffer), sizeof(buffer), " HUGETLB");
-    if (mode & VM_DONTCOPY)
-        snprintf(buffer + strlen(buffer), sizeof(buffer), " DONTCOPY");
-    snprintf(buffer + strlen(buffer), sizeof(buffer), "\n");
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mode & VM_READ) strncat(buffer, " READ", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mode & VM_WRITE) strncat(buffer, " WRITE", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mode & VM_EXEC) strncat(buffer, " EXEC", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mode & VM_SHARED) strncat(buffer, " SHARED", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mode & VM_IO) strncat(buffer, " IO", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mode & VM_HUGETLB) strncat(buffer, " HUGETLB", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mode & VM_DONTCOPY) strncat(buffer, " DONTCOPY", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    strncat(buffer, " \n", free_space);
 
     return buffer;
 }
@@ -267,35 +275,29 @@ void et_register_callbacks_kernel_events(void)
 
         auto process = event_tracer.find_process(syscall_pid);
         if (process != nullptr) {
-            et_add_process_mapped_file(syscall_pid, fullpath, mode, mmap_len);
-#ifdef CONFIG_VPMU_DEBUG_MSG
-            process->debug_log += genlog_mmap(syscall_pid, fullpath, vaddr, mode);
-#endif
+            et_add_process_mapped_region(syscall_pid, fullpath, mode, vaddr, mmap_len);
+            // Remember the latest mapped address for later updating this address value
+            process->set_last_mapped_addr(vaddr);
+            process->append_debug_log(genlog_mmap(syscall_pid, fullpath, vaddr, mode));
         }
-
-        (void)vaddr;
-        return;
     });
 
     kernel.register_return_callback(ET_KERNEL_MMAP, [](void* env) {
         uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
         auto     process     = event_tracer.find_process(syscall_pid);
-        if (process && process->mmap_updated_flag == false) {
-            // Has to be copied into a shared_ptr before usage
-            if (auto file = process->last_mapped_file.lock()) {
-                /*
-                DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
-                    (uint64_t)et_get_ret_value(env),
-                    (uint64_t)et_get_ret_value(env) + file->file_size);
-                */
-                uint64_t vaddr = et_get_ret_value(env);
-                file->set_mapped_address(vaddr);
-                process->mmap_updated_flag = true;
-#ifdef CONFIG_VPMU_DEBUG_MSG
-                process->debug_log +=
-                  genlog_mmap_ret(et_get_ret_value(env), file->file_size);
-#endif
-            }
+        if (process && process->get_last_mapped_addr() != 0) {
+            uint64_t prev_vaddr = process->get_last_mapped_addr();
+            uint64_t vaddr      = et_get_ret_value(env);
+            process->vm_maps.update_region(prev_vaddr, vaddr);
+            process->set_last_mapped_addr(0);
+            /*
+            DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
+                vaddr,
+                process->vm_maps.get_end_address(vaddr));
+            */
+            // Clear the flag
+            uint64_t end_addr = process->vm_maps.get_end_address(vaddr);
+            process->append_debug_log(genlog_mmap_ret(vaddr, end_addr));
         }
     });
 

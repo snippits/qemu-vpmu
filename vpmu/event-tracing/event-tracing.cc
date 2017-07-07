@@ -353,10 +353,39 @@ void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)
     return event_tracer.attach_to_parent(parent_pid, child_pid);
 }
 
-void ET_Process::dump_process_info(void)
+void ET_Process::dump_vm_map(void)
 {
     char        file_path[512] = {0};
-    char        temp_str[512]  = {0};
+    std::string output_path =
+      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
+    boost::filesystem::create_directory(output_path);
+
+    // Output in plain text format
+    sprintf(file_path, "%s/vm_maps", output_path.c_str());
+    FILE* fp = fopen(file_path, "wt");
+    for (auto& reg : vm_maps.regions) {
+        std::string out_str = "";
+        out_str += (reg.permission & VM_READ) ? "r" : "-";
+        out_str += (reg.permission & VM_WRITE) ? "w" : "-";
+        out_str += (reg.permission & VM_EXEC) ? "x" : "-";
+        out_str += (reg.permission & VM_SHARED) ? "-" : "p";
+        fprintf(fp,
+                "%16s - %-16s  "
+                "%-5s %-40s %-20s"
+                "\n",
+                vpmu::utils::addr_to_str(reg.address.beg).c_str(),
+                vpmu::utils::addr_to_str(reg.address.end).c_str(),
+                out_str.c_str(),
+                reg.pathname.c_str(),
+                reg.program->name.c_str());
+    }
+    fclose(fp);
+}
+
+void ET_Process::dump_process_info(void)
+{
+    using vpmu::utils::addr_to_str;
+    char        file_path[512] = {0};
     std::string output_path =
       std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
     boost::filesystem::create_directory(output_path);
@@ -375,6 +404,8 @@ void ET_Process::dump_process_info(void)
         j["Childrens"][i]["pid"]  = child_list[i]->pid;
     }
     for (int i = 0; i < binary_list.size(); i++) {
+        auto address = vm_maps.find_address(binary_list[i], VM_EXEC);
+
         j["Binaries"][i]["Name"]      = binary_list[i]->name;
         j["Binaries"][i]["File Name"] = binary_list[i]->filename;
         j["Binaries"][i]["Path"]      = binary_list[i]->path;
@@ -382,11 +413,22 @@ void ET_Process::dump_process_info(void)
         j["Binaries"][i]["DWARF"]     = binary_list[i]->line_table.size();
         j["Binaries"][i]["Libraries"] = binary_list[i]->library_list.size();
         j["Binaries"][i]["isLibrary"] = binary_list[i]->is_shared_library;
-        // TODO these vars would be moved away
-        sprintf(temp_str, "%p", (void*)binary_list[i]->address_start);
-        j["Binaries"][i]["Addr Beg"] = temp_str;
-        sprintf(temp_str, "%p", (void*)binary_list[i]->address_end);
-        j["Binaries"][i]["Addr End"] = temp_str;
+        j["Binaries"][i]["Addr Beg"]  = addr_to_str(address.beg).c_str();
+        j["Binaries"][i]["Addr End"]  = addr_to_str(address.end).c_str();
+    }
+    for (int i = 0; i < vm_maps.regions.size(); i++) {
+        auto        address = vm_maps.regions[i].address;
+        std::string out_str = "";
+        out_str += (vm_maps.regions[i].permission & VM_READ) ? "r" : "-";
+        out_str += (vm_maps.regions[i].permission & VM_WRITE) ? "w" : "-";
+        out_str += (vm_maps.regions[i].permission & VM_EXEC) ? "x" : "-";
+        out_str += (vm_maps.regions[i].permission & VM_SHARED) ? "-" : "p";
+
+        j["VM Maps"][i]["Addr Beg"]        = addr_to_str(address.beg).c_str();
+        j["VM Maps"][i]["Addr End"]        = addr_to_str(address.end).c_str();
+        j["VM Maps"][i]["Permission"]      = out_str;
+        j["VM Maps"][i]["Path Name"]       = vm_maps.regions[i].pathname;
+        j["VM Maps"][i]["Bind to Program"] = vm_maps.regions[i].program->name;
     }
     fprintf(fp, "%s\n", j.dump(4).c_str());
 
@@ -501,6 +543,7 @@ void ET_Process::dump_phase_result(void)
     boost::filesystem::create_directory(output_path);
 
     dump_process_info();
+    dump_vm_map();
     dump_phase_history();
     for (int idx = 0; idx < phase_list.size(); idx++) {
         sprintf(file_path, "%s/phase-%05d", output_path.c_str(), idx);
@@ -531,42 +574,47 @@ static std::shared_ptr<ET_Program> find_library(const char* fullpath)
     return program;
 }
 
-void et_add_process_mapped_file(uint64_t    pid,
-                                const char* fullpath,
-                                uint64_t    mode,
-                                uint64_t    file_size)
+void et_add_process_mapped_region(uint64_t    pid,
+                                  const char* fullpath,
+                                  uint64_t    mode,
+                                  uint64_t    start_addr,
+                                  uint64_t    file_size)
 {
-    auto process = event_tracer.find_process(pid);
-    if (process == nullptr) return ;
+    std::shared_ptr<ET_Program> program = nullptr;
+    auto                        process = event_tracer.find_process(pid);
+    if (process == nullptr) return;
+    // When program size <= 4096. x86 won't map this binary as EXEC again
+    if (process->binary_loaded_flag == false && file_size <= 4096 && (mode & VM_READ)) {
+        // The program is main program, add exec permission for later function calls
+        if (!(mode & VM_WRITE)) mode |= VM_EXEC;
+    }
 
-    if (process->get_main_program()->address_start == 0) {
-        auto&& program = process->get_main_program();
-        // When program size <= 4096. x86 won't map this binary as EXEC again
-        if ((mode & VM_EXEC) || (mode & VM_READ)) {
-            // The program is main program, rename the real path and filename
-            program->filename  = vpmu::utils::get_file_name_from_path(fullpath);
-            program->path      = fullpath;
-            program->file_size = file_size;
-            // Remember the latest mapped file for later updating its address range
-            process->last_mapped_file = program;
-            process->mmap_updated_flag = false;
-        }
+    if (process->binary_loaded_flag == false && (mode & VM_EXEC)) {
+        // The program is main program, rename the real path and filename
+        program           = process->get_main_program();
+        program->filename = vpmu::utils::get_file_name_from_path(fullpath);
+        program->path     = fullpath;
+
+        process->binary_loaded_flag = true;
+        process->append_debug_log("Main Program\n");
     } else {
-        if (mode & VM_EXEC) {
-            // Mapping executable page for shared library
-            auto program = find_library(fullpath);
-            // TODO This should be runtime information not program related information
-            // program and loaded program should be two separated class
-            event_tracer.attach_to_program(process->get_main_program()->name, program);
-            program->file_size = file_size;
-
-            // Remember the latest mapped file for later updating its address range
-            process->last_mapped_file  = program;
-            process->mmap_updated_flag = false;
+        // Mapping executable page for shared library
+        program = find_library(fullpath);
+        if (program != nullptr) {
+            event_tracer.attach_to_program(process->get_main_program(), program);
             process->push_binary(program);
+            process->append_debug_log("Library\n");
         } else {
-            // TODO Just records all non-library files mapped to this process
+            process->append_debug_log("Normal Files / Others\n");
         }
+    }
+
+    // Push the memory region to process with/without pointer to target program
+    uint64_t end_addr = start_addr + file_size;
+    if (program == nullptr) {
+        process->vm_maps.push_range(start_addr, end_addr, mode, fullpath);
+    } else {
+        process->vm_maps.push_range(program, start_addr, end_addr, mode, fullpath);
     }
 }
 
@@ -575,4 +623,3 @@ void et_update_program_elf_dwarf(const char* name, const char* file_name)
     auto program = event_tracer.find_program(name);
     event_tracer.update_elf_dwarf(program, file_name);
 }
-

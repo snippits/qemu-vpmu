@@ -7,9 +7,10 @@
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
 
-#include "vpmu.hpp"       // VPMU common headers
-#include "vpmu-utils.hpp" // miscellaneous functions
-#include "et-path.hpp"    // ET_Path class
+#include "vpmu.hpp"         // VPMU common headers
+#include "vpmu-utils.hpp"   // miscellaneous functions
+#include "et-path.hpp"      // ET_Path class
+#include "beg_eng_pair.hpp" // Pair_beg_end class
 
 // TODO VPMU timing model switch
 class ET_Program : public ET_Path
@@ -23,11 +24,13 @@ public:
 
     void add_symbol(std::string name, uint64_t address)
     {
+        std::lock_guard<std::mutex> lock(program_lock);
         sym_table.insert(std::pair<std::string, uint64_t>(name, address));
     }
 
     void push_binary(std::shared_ptr<ET_Program>& program)
     {
+        std::lock_guard<std::mutex> lock(program_lock);
         if (program.get() == this) return; // No self include
         // Check repeated pointer
         for (auto& binary : library_list) {
@@ -66,13 +69,11 @@ public:
     // Caution! All the data should be process independent!!!
     // An ET_Program instance could be shared by multiple processes.
     // All process dependent information should be stored in ET_Process
-    struct beg_end_pair {
-        uint64_t beg, end;
-    };
+
     // The timing model bind to this program
     uint64_t timing_model;
     // The section address table
-    std::map<std::string, struct beg_end_pair> section_table;
+    std::map<std::string, Pair_beg_end> section_table;
     // The function address table
     std::map<std::string, uint64_t> sym_table;
     // The dwarf file and line table
@@ -87,6 +88,8 @@ public:
     // Used to identify the mapped virtual address of this program
     uint64_t address_start = 0, address_end = 0;
     uint64_t file_size = 0;
+    // This mutex protects whole ET_Program
+    std::mutex program_lock;
 };
 
 #endif

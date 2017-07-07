@@ -187,6 +187,7 @@ namespace utils
     nlohmann::json load_json(const char *vpmu_config_file);
     int get_tty_columns(void);
     int get_tty_rows(void);
+    std::string addr_to_str(uint64_t addr);
 
 } // End of namespace vpmu::utils
 
