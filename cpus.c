@@ -355,7 +355,7 @@ int64_t cpu_get_clock(void)
         ti = cpu_get_clock_locked();
     } while (seqlock_read_retry(&timers_state.vm_clock_seqlock, start));
 
-#if defined(CONFIG_VPMU) && defined(TARGET_ARM)
+#if defined(CONFIG_VPMU)
     //TODO make this support x86
     static uint64_t snapshot_ti = 0, last_ti = 0;
     static uint64_t last_guest_time = 0, last_host_time = 0;
