@@ -68,16 +68,18 @@ void et_set_default_linux_struct_offset(uint64_t version)
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 16);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 12);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 512);
+        et_set_linux_thread_struct_size(8192);
         return;
     }
 #elif defined(TARGET_X86_64)
     if (version == KERNEL_VERSION(4, 4, 0)) {
         // This is kernel v4.4.0
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_FILE_f_path_dentry, 24);
-        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 24);
+        et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_iname, 56);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_DENTRY_d_parent, 24);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_THREAD_INFO_task, 0);
         et_set_linux_struct_offset(VPMU_MMAP_OFFSET_TASK_STRUCT_pid, 1040);
+        et_set_linux_thread_struct_size(16384);
         return;
     }
 #endif
