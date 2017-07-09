@@ -254,12 +254,8 @@ uint64_t et_get_syscall_arg(void *env, int num)
     return get_syscall_arg(env, num);
 }
 
-void et_parse_dentry_path(void *    env,
-                          uintptr_t dentry_addr,
-                          char *    buff,
-                          int *     position,
-                          int       size_buff,
-                          int       max_levels)
+void et_parse_dentry_path(void *env, uint64_t dentry_addr, char *buff, int buff_size)
 {
-    parse_dentry_path(env, dentry_addr, buff, position, size_buff, max_levels);
+    int position = 0; // The buffer position index for recursive function
+    parse_dentry_path(env, dentry_addr, buff, &position, buff_size, 64);
 }
