@@ -233,6 +233,10 @@ static void vpmu_check_and_print_funs(void)
     DBG("------------------------------------------------------------\n");
     print_pass("MMap (mmap_region)",                           // mmap
                kernel.find_vaddr(ET_KERNEL_MMAP));             //
+    print_pass("MProtect (mprotect_fixup)",                    // mprotect
+               kernel.find_vaddr(ET_KERNEL_MPROTECT));         //
+    print_pass("MUnmap (unmap_region)",                        // munmap
+               kernel.find_vaddr(ET_KERNEL_MUNMAP));           //
     print_pass("Fork (do_fork, _do_fork)",                     // fork
                kernel.find_vaddr(ET_KERNEL_FORK));             //
     print_pass("Wake New Task (wake_up_new_task)",             // new task

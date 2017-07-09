@@ -132,19 +132,26 @@ uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
             if (d.type() == elf::stt::func) {
                 kernel.add_symbol(sym.get_name(), d.value);
 
-                bool print_content_flag = true;
-                if (sym.get_name().find("do_execveat_common") != std::string::npos) {
+                bool        print_content_flag = true;
+                std::string sym_name           = sym.get_name();
+                // Linux system call series functions might be either sys_XXXX or SyS_XXXX
+                boost::algorithm::to_lower(sym_name);
+                if (sym_name.find("do_execveat_common") != std::string::npos) {
                     kernel.set_event_address(ET_KERNEL_EXECV, d.value);
-                } else if (sym.get_name() == "__switch_to") {
+                } else if (sym_name == "__switch_to") {
                     kernel.set_event_address(ET_KERNEL_CONTEXT_SWITCH, d.value);
-                } else if (sym.get_name() == "do_exit") {
+                } else if (sym_name == "do_exit") {
                     kernel.set_event_address(ET_KERNEL_EXIT, d.value);
-                } else if (sym.get_name() == "wake_up_new_task") {
+                } else if (sym_name == "wake_up_new_task") {
                     kernel.set_event_address(ET_KERNEL_WAKE_NEW_TASK, d.value);
-                } else if (sym.get_name() == "_do_fork" || sym.get_name() == "do_fork") {
+                } else if (sym_name == "_do_fork" || sym_name == "do_fork") {
                     kernel.set_event_address(ET_KERNEL_FORK, d.value);
-                } else if (sym.get_name() == "mmap_region") {
+                } else if (sym_name == "mmap_region") {
                     kernel.set_event_address(ET_KERNEL_MMAP, d.value);
+                } else if (sym_name == "mprotect_fixup") {
+                    kernel.set_event_address(ET_KERNEL_MPROTECT, d.value);
+                } else if (sym_name == "unmap_region") {
+                    kernel.set_event_address(ET_KERNEL_MUNMAP, d.value);
                 } else {
                     print_content_flag = false;
                 }
@@ -162,6 +169,10 @@ uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
 
         if (kernel.find_vaddr(ET_KERNEL_MMAP) == 0)
             LOG_FATAL("Kernel event \"%s\" was not found!", "mmap_region");
+        if (kernel.find_vaddr(ET_KERNEL_MPROTECT) == 0)
+            LOG_FATAL("Kernel event \"%s\" was not found!", "mprotect_fixup");
+        if (kernel.find_vaddr(ET_KERNEL_MUNMAP) == 0)
+            LOG_FATAL("Kernel event \"%s\" was not found!", "unmap_region");
         if (kernel.find_vaddr(ET_KERNEL_FORK) == 0)
             LOG_FATAL("Kernel event \"%s\" was not found!", "_do_fork");
         if (kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) == 0)

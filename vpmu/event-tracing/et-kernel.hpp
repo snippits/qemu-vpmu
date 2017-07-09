@@ -6,6 +6,8 @@ extern "C" {
 #include "event-tracing-helper.h" // et_get_ret_addr()
 }
 
+#include <boost/algorithm/string.hpp> // boost::algorithm::to_lower
+
 #include "vpmu.hpp"       // for vpmu-qemu.h and VPMU struct
 #include "vpmu-utils.hpp" // miscellaneous functions
 #include "et-program.hpp" // ET_Program class
@@ -75,6 +77,9 @@ public:
     void set_symbol_address(std::string sym_name, uint64_t address)
     {
         DBG(STR_VPMU "Set Linux symbol %s @ %lx\n", sym_name.c_str(), address);
+
+        // Linux system call series functions might be either sys_XXXX or SyS_XXXX
+        boost::algorithm::to_lower(sym_name);
         if (sym_name.find("do_execveat_common") != std::string::npos
             || sym_name.find("do_execve_common") != std::string::npos) {
             set_event_address(ET_KERNEL_EXECV, address);
@@ -88,6 +93,10 @@ public:
             set_event_address(ET_KERNEL_FORK, address);
         } else if (sym_name == "mmap_region") {
             set_event_address(ET_KERNEL_MMAP, address);
+        } else if (sym_name == "mprotect_fixup") {
+            set_event_address(ET_KERNEL_MPROTECT, address);
+        } else if (sym_name == "unmap_region") {
+            set_event_address(ET_KERNEL_MUNMAP, address);
         }
     }
 
