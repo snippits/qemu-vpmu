@@ -375,7 +375,8 @@ void ET_Process::dump_vm_map(void)
     sprintf(file_path, "%s/vm_maps", output_path.c_str());
     FILE* fp = fopen(file_path, "wt");
     for (auto& reg : vm_maps.regions) {
-        std::string out_str = "";
+        std::string out_str   = "";
+        std::string prog_name = (reg.program) ? reg.program->name : "";
         out_str += (reg.permission & VM_READ) ? "r" : "-";
         out_str += (reg.permission & VM_WRITE) ? "w" : "-";
         out_str += (reg.permission & VM_EXEC) ? "x" : "-";
@@ -388,7 +389,7 @@ void ET_Process::dump_vm_map(void)
                 vpmu::utils::addr_to_str(reg.address.end).c_str(),
                 out_str.c_str(),
                 reg.pathname.c_str(),
-                reg.program->name.c_str());
+                prog_name.c_str());
     }
     fclose(fp);
 }
@@ -428,18 +429,20 @@ void ET_Process::dump_process_info(void)
         j["Binaries"][i]["Addr End"]  = addr_to_str(address.end).c_str();
     }
     for (int i = 0; i < vm_maps.regions.size(); i++) {
-        auto        address = vm_maps.regions[i].address;
-        std::string out_str = "";
+        auto        address   = vm_maps.regions[i].address;
+        std::string out_str   = "";
+        std::string prog_name = "";
         out_str += (vm_maps.regions[i].permission & VM_READ) ? "r" : "-";
         out_str += (vm_maps.regions[i].permission & VM_WRITE) ? "w" : "-";
         out_str += (vm_maps.regions[i].permission & VM_EXEC) ? "x" : "-";
         out_str += (vm_maps.regions[i].permission & VM_SHARED) ? "-" : "p";
+        if (vm_maps.regions[i].program) prog_name = vm_maps.regions[i].program->name;
 
         j["VM Maps"][i]["Addr Beg"]        = addr_to_str(address.beg).c_str();
         j["VM Maps"][i]["Addr End"]        = addr_to_str(address.end).c_str();
         j["VM Maps"][i]["Permission"]      = out_str;
         j["VM Maps"][i]["Path Name"]       = vm_maps.regions[i].pathname;
-        j["VM Maps"][i]["Bind to Program"] = vm_maps.regions[i].program->name;
+        j["VM Maps"][i]["Bind to Program"] = prog_name;
     }
     fprintf(fp, "%s\n", j.dump(4).c_str());
 
