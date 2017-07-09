@@ -130,6 +130,13 @@ uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
                   "Index",
                   "Name");
 
+        // NOTE: The following functions are core functions for these events.
+        // We use these instead of system calls because some other system calls
+        // might also trigger events of others.
+        // Ex: In mmap syscall, i.e. mmap_region(), unmap_region is called in order to
+        // undo any partial mapping done by a device driver.
+        // If one uses system calls instead of these functions,
+        // all mechanisms should still work..... well, in most cases. :P
         for (auto sym : sec.as_symtab()) {
             auto& d = sym.get_data();
             if (d.type() == elf::stt::func) {

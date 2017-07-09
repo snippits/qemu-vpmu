@@ -78,6 +78,13 @@ public:
     {
         DBG(STR_VPMU "Set Linux symbol %s @ %lx\n", sym_name.c_str(), address);
 
+        // NOTE: The following functions are core functions for these events.
+        // We use these instead of system calls because some other system calls
+        // might also trigger events of others.
+        // Ex: In mmap syscall, i.e. mmap_region(), unmap_region is called in order to
+        // undo any partial mapping done by a device driver.
+        // If one uses system calls instead of these functions,
+        // all mechanisms should still work..... well, in most cases. :P
         // Linux system call series functions might be either sys_XXXX or SyS_XXXX
         boost::algorithm::to_lower(sym_name);
         if (sym_name.find("do_execveat_common") != std::string::npos
