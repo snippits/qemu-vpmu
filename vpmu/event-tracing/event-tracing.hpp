@@ -53,6 +53,7 @@ public:
 
     inline std::shared_ptr<ET_Program> add_library(std::string name)
     {
+        if (name.length() == 0) return nullptr;
         auto program = std::make_shared<ET_Program>(name);
         // Lock when updating the program_list (thread shared resource)
         std::lock_guard<std::mutex> lock(program_list_lock);

@@ -7,11 +7,11 @@
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
 
-#include "vpmu.hpp"        // VPMU common headers
-#include "vpmu-utils.hpp"  // miscellaneous functions
-#include "et-program.hpp"  // ET_Program class
-#include "et-region.hpp"   // Regions of virtual memory for a process
-#include "phase/phase.hpp" // Phase class
+#include "vpmu.hpp"             // VPMU common headers
+#include "vpmu-utils.hpp"       // miscellaneous functions
+#include "et-program.hpp"       // ET_Program class
+#include "et-memory-region.hpp" // ET_MemoryRegion class for linux/mm
+#include "phase/phase.hpp"      // Phase class
 
 // NOTE that binary_list[0] always exists and is the main program
 //
@@ -101,14 +101,19 @@ public:
 
     const std::string& get_debug_log(void) { return debug_log; }
 
-    inline void set_last_mapped_addr(uint64_t vaddr)
+    inline void set_last_mapped_info(MMapInfo new_info)
     {
-        last_mapped_addr[vpmu::get_core_id()] = vaddr;
+        last_mapped_addr[vpmu::get_core_id()] = new_info;
     }
 
-    inline uint64_t get_last_mapped_addr(void)
+    inline MMapInfo& get_last_mapped_info(void)
     {
         return last_mapped_addr[vpmu::get_core_id()];
+    }
+
+    inline void clear_last_mapped_info(void)
+    {
+        last_mapped_addr[vpmu::get_core_id()] = {};
     }
 
 public:
@@ -132,14 +137,14 @@ public:
     uint64_t     stack_ptr = 0;
 
     // Process maps
-    ET_Region vm_maps;
+    ET_MemoryRegion vm_maps;
 
 private:
     void* cpu_state = nullptr; // CPUState *
     // Used for debugging log
     std::string debug_log;
     // Remember the pointer to lastest mapped region for updating its address
-    int last_mapped_addr[VPMU_MAX_CPU_CORES] = {};
+    MMapInfo last_mapped_addr[VPMU_MAX_CPU_CORES] = {};
 };
 
 #endif

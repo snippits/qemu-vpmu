@@ -7,10 +7,13 @@ extern "C" {
 #include "event-tracing.hpp" // EventTracer
 #include "phase/phase.hpp"   // Phase class
 #include "json.hpp"          // nlohmann::json
+#include "region-info.hpp"   // RegionInfo class
 
-#include <boost/filesystem.hpp> // boost::filesystem
+#include <boost/algorithm/string.hpp> // boost::algorithm::to_lower
+#include <boost/filesystem.hpp>       // boost::filesystem
 
 EventTracer event_tracer;
+RegionInfo  RegionInfo::not_found = {};
 
 void et_set_linux_sym_addr(const char* sym_name, uint64_t addr)
 {
@@ -576,32 +579,20 @@ void et_set_process_cpu_state(uint64_t pid, void* cs)
 
 static std::shared_ptr<ET_Program> find_library(const char* fullpath)
 {
-    std::shared_ptr<ET_Program> program = event_tracer.find_program(fullpath);
-
-    if (program == nullptr) {
-        DBG(STR_VPMU "Shared library %s was not found in the list "
-                     "create an empty one.\n",
-            fullpath);
-        program = event_tracer.add_library(fullpath);
-    }
-
-    return program;
+    if (fullpath == nullptr || strlen(fullpath) == 0) return nullptr;
+    return event_tracer.find_program(fullpath);
 }
 
-void et_add_process_mapped_region(uint64_t    pid,
-                                  const char* fullpath,
-                                  uint64_t    mode,
-                                  uint64_t    start_addr,
-                                  uint64_t    file_size)
+void et_add_process_mapped_region(uint64_t pid, MMapInfo mmap_info)
 {
     std::shared_ptr<ET_Program> program = nullptr;
-    auto                        process = event_tracer.find_process(pid);
+
+    uint64_t start_addr = mmap_info.vaddr;
+    uint64_t end_addr   = mmap_info.vaddr + mmap_info.len;
+    uint64_t mode       = mmap_info.mode;
+    char*    fullpath   = mmap_info.fullpath;
+    auto     process    = event_tracer.find_process(pid);
     if (process == nullptr) return;
-    // When program size <= 4096. x86 won't map this binary as EXEC again
-    if (process->binary_loaded_flag == false && file_size <= 4096 && (mode & VM_READ)) {
-        // The program is main program, add exec permission for later function calls
-        if (!(mode & VM_WRITE)) mode |= VM_EXEC;
-    }
 
     if (process->binary_loaded_flag == false && (mode & VM_EXEC)) {
         // The program is main program, rename the real path and filename
@@ -612,23 +603,35 @@ void et_add_process_mapped_region(uint64_t    pid,
         process->binary_loaded_flag = true;
         process->append_debug_log("Main Program\n");
     } else {
-        // Mapping executable page for shared library
-        program = find_library(fullpath);
-        if (program != nullptr) {
-            event_tracer.attach_to_program(process->get_main_program(), program);
-            process->push_binary(program);
-            process->append_debug_log("Library\n");
+        if (strlen(fullpath) == 0) {
+            process->append_debug_log("Anonymous Mapping\n");
         } else {
-            process->append_debug_log("Normal Files / Others\n");
+            // Mapping executable page for shared library
+            program = find_library(fullpath);
+            if ((mode & VM_EXEC) && program == nullptr) {
+                DBG(STR_VPMU "Shared library %s was not found in the list "
+                             "create an empty one.\n",
+                    fullpath);
+                program = event_tracer.add_library(fullpath);
+            }
+            if (program != nullptr) {
+                if (mode & VM_EXEC) {
+                    // TODO Recording the library info for binaries might be unnecessary
+                    event_tracer.attach_to_program(process->get_main_program(), program);
+                }
+                process->push_binary(program);
+                process->append_debug_log("Library\n");
+            } else {
+                process->append_debug_log("Normal Files / Others\n");
+            }
         }
     }
 
     // Push the memory region to process with/without pointer to target program
-    uint64_t end_addr = start_addr + file_size;
     if (program == nullptr) {
-        process->vm_maps.push_range(start_addr, end_addr, mode, fullpath);
+        process->vm_maps.map_region(start_addr, end_addr, mode, fullpath);
     } else {
-        process->vm_maps.push_range(program, start_addr, end_addr, mode, fullpath);
+        process->vm_maps.map_region(program, start_addr, end_addr, mode, fullpath);
     }
 }
 

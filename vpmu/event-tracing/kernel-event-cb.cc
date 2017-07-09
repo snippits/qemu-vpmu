@@ -12,8 +12,7 @@ extern "C" {
 LinuxStructOffset g_linux_offset;
 LinuxStructSize   g_linux_size;
 
-static std::string
-genlog_mmap(uint64_t syscall_pid, char* fullpath, uintptr_t vaddr, uintptr_t mode)
+static std::string genlog_mmap(uint64_t syscall_pid, MMapInfo mmap_info)
 {
     char     buffer[4096] = {};
     uint64_t free_space   = 0;
@@ -23,23 +22,48 @@ genlog_mmap(uint64_t syscall_pid, char* fullpath, uintptr_t vaddr, uintptr_t mod
              "pid %lu on core %2lu mmap file: %s @ %lx mode: (%lx) ",
              syscall_pid,
              vpmu::get_core_id(),
-             fullpath,
-             vaddr,
-             mode);
+             mmap_info.fullpath,
+             mmap_info.vaddr,
+             mmap_info.mode);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
-    if (mode & VM_READ) strncat(buffer, " READ", free_space);
+    if (mmap_info.mode & VM_READ) strncat(buffer, " READ", free_space);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
-    if (mode & VM_WRITE) strncat(buffer, " WRITE", free_space);
+    if (mmap_info.mode & VM_WRITE) strncat(buffer, " WRITE", free_space);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
-    if (mode & VM_EXEC) strncat(buffer, " EXEC", free_space);
+    if (mmap_info.mode & VM_EXEC) strncat(buffer, " EXEC", free_space);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
-    if (mode & VM_SHARED) strncat(buffer, " SHARED", free_space);
+    if (mmap_info.mode & VM_SHARED) strncat(buffer, " SHARED", free_space);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
-    if (mode & VM_IO) strncat(buffer, " IO", free_space);
+    if (mmap_info.mode & VM_IO) strncat(buffer, " IO", free_space);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
-    if (mode & VM_HUGETLB) strncat(buffer, " HUGETLB", free_space);
+    if (mmap_info.mode & VM_HUGETLB) strncat(buffer, " HUGETLB", free_space);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
-    if (mode & VM_DONTCOPY) strncat(buffer, " DONTCOPY", free_space);
+    if (mmap_info.mode & VM_DONTCOPY) strncat(buffer, " DONTCOPY", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    strncat(buffer, " \n", free_space);
+
+    return buffer;
+}
+
+static std::string genlog_mprotect(uint64_t syscall_pid, MMapInfo mmap_info)
+{
+    char     buffer[4096] = {};
+    uint64_t free_space   = 0;
+
+    snprintf(buffer,
+             sizeof(buffer),
+             "pid %lu on core %2lu mprotect: %lx - %lx mode: (%lx) ",
+             syscall_pid,
+             vpmu::get_core_id(),
+             mmap_info.vaddr,
+             mmap_info.vaddr + mmap_info.len,
+             mmap_info.mode);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mmap_info.mode & VM_READ) strncat(buffer, " READ", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mmap_info.mode & VM_WRITE) strncat(buffer, " WRITE", free_space);
+    free_space = sizeof(buffer) - strlen(buffer) - 1;
+    if (mmap_info.mode & VM_EXEC) strncat(buffer, " EXEC", free_space);
     free_space = sizeof(buffer) - strlen(buffer) - 1;
     strncat(buffer, " \n", free_space);
 
@@ -237,70 +261,126 @@ void et_register_callbacks_kernel_events(void)
 
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
-        // DBG(STR_VPMU "fork from %lu\n", syscall_pid);
-        char      fullpath[1024] = {0};
-        int       position       = 0;
-        uintptr_t dentry_addr    = 0;
-        uintptr_t mode           = 0;
-        uintptr_t vaddr          = 0;
-        uint64_t  mmap_len       = 0;
+        MMapInfo mmap_info = {};
 
-        if (et_get_input_arg(env, 1) == 0) return; // struct file * is NULL
-        dentry_addr = vpmu_read_uintptr_from_guest(
-          env, et_get_input_arg(env, 1), g_linux_offset.file.fpath.dentry);
-        if (dentry_addr == 0) return; // pointer to dentry is zero
-        et_parse_dentry_path(env, dentry_addr, fullpath, &position, sizeof(fullpath), 64);
-        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 9, 0)) {
-            mode = et_get_input_arg(env, 5);
-        } else {
-            mode = et_get_input_arg(env, 4);
+        // struct file * is NULL (anonymous mapping)
+        if (et_get_input_arg(env, 1) != 0) {
+            uint64_t addr        = et_get_input_arg(env, 1);
+            uint64_t offset      = g_linux_offset.file.fpath.dentry;
+            uint64_t dentry_addr = vpmu_read_uintptr_from_guest(env, addr, offset);
+            if (dentry_addr == 0) return; // pointer to dentry is zero
+            et_parse_dentry_path(
+              env, dentry_addr, mmap_info.fullpath, sizeof(mmap_info.fullpath));
         }
-        vaddr    = et_get_input_arg(env, 2);
-        mmap_len = et_get_input_arg(env, 3);
+        if (VPMU.platform.linux_version < KERNEL_VERSION(3, 9, 0)) {
+            mmap_info.mode = et_get_input_arg(env, 5);
+        } else {
+            mmap_info.mode = et_get_input_arg(env, 4);
+        }
+        mmap_info.vaddr = et_get_input_arg(env, 2);
+        mmap_info.len   = et_get_input_arg(env, 3);
 
         /*
-        DBG(STR_VPMU "pid %lu on core %2lu mmap file: %s @ %lx mode: (%lx) ",
+        DBG(STR_VPMU "pid %lu on core %2lu mmap file: %s @ %lx - %lx mode: (%lx) ",
             syscall_pid,
             vpmu::get_core_id(),
-            fullpath,
-            vaddr,
-            mode);
-        print_mode(mode, VM_READ, " READ");
-        print_mode(mode, VM_WRITE, " WRITE");
-        print_mode(mode, VM_EXEC, " EXEC");
-        print_mode(mode, VM_SHARED, " SHARED");
-        print_mode(mode, VM_IO, " IO");
-        print_mode(mode, VM_HUGETLB, " HUGETLB");
-        print_mode(mode, VM_DONTCOPY, " DONTCOPY");
+            mmap_info.fullpath,
+            mmap_info.vaddr,
+            mmap_info.vaddr + mmap_info.len,
+            mmap_info.mode);
+        print_mode(mmap_info.mode, VM_READ, " READ");
+        print_mode(mmap_info.mode, VM_WRITE, " WRITE");
+        print_mode(mmap_info.mode, VM_EXEC, " EXEC");
+        print_mode(mmap_info.mode, VM_SHARED, " SHARED");
+        print_mode(mmap_info.mode, VM_IO, " IO");
+        print_mode(mmap_info.mode, VM_HUGETLB, " HUGETLB");
+        print_mode(mmap_info.mode, VM_DONTCOPY, " DONTCOPY");
         DBG("\n");
         */
 
         auto process = event_tracer.find_process(syscall_pid);
         if (process != nullptr) {
-            et_add_process_mapped_region(syscall_pid, fullpath, mode, vaddr, mmap_len);
             // Remember the latest mapped address for later updating this address value
-            process->set_last_mapped_addr(vaddr);
-            process->append_debug_log(genlog_mmap(syscall_pid, fullpath, vaddr, mode));
+            process->set_last_mapped_info(mmap_info);
+            // process->append_debug_log(genlog_mmap(syscall_pid, mmap_info));
         }
     });
 
     kernel.register_return_callback(ET_KERNEL_MMAP, [](void* env) {
         uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
         auto     process     = event_tracer.find_process(syscall_pid);
-        if (process && process->get_last_mapped_addr() != 0) {
-            uint64_t prev_vaddr = process->get_last_mapped_addr();
-            uint64_t vaddr      = et_get_ret_value(env);
-            process->vm_maps.update_region(prev_vaddr, vaddr);
-            process->set_last_mapped_addr(0);
+        if (process && process->get_last_mapped_info().vaddr != 0) {
+            uint64_t vaddr     = et_get_ret_value(env);
+            auto&    mmap_info = process->get_last_mapped_info();
+            mmap_info.vaddr    = vaddr;
             /*
             DBG(STR_VPMU "Mapped Address: 0x%lx to 0x%lx\n",
-                vaddr,
-                process->vm_maps.get_end_address(vaddr));
+                mmap_info.vaddr,
+                mmap_info.vaddr + mmap_info.len);
             */
+            et_add_process_mapped_region(syscall_pid, mmap_info);
+            // process->append_debug_log(genlog_mmap_ret(vaddr, vaddr + mmap_info.len));
             // Clear the flag
-            uint64_t end_addr = process->vm_maps.get_end_address(vaddr);
-            process->append_debug_log(genlog_mmap_ret(vaddr, end_addr));
+            process->clear_last_mapped_info();
+            // process->vm_maps.debug_print_vm_map();
         }
+    });
+
+    kernel.register_callback(ET_KERNEL_MPROTECT, [](void* env) {
+        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+        if (syscall_pid == -1) return; // Not found / some error
+
+        // Do nothing if the value is not initialized
+        if (g_linux_offset.dentry.d_iname == 0) return;
+        uint64_t start_addr = et_get_input_arg(env, 3);
+        uint64_t end_addr   = et_get_input_arg(env, 4);
+        uint64_t mode       = et_get_input_arg(env, 5);
+
+        /*
+        DBG(STR_VPMU "pid %lu on core %2lu mprotect: %lx - %lx mode: (%lx) ",
+            syscall_pid,
+            vpmu::get_core_id(),
+            start_addr,
+            end_addr,
+            mode);
+        print_mode(mode, VM_READ, " READ");
+        print_mode(mode, VM_WRITE, " WRITE");
+        print_mode(mode, VM_EXEC, " EXEC");
+        print_mode(mode, VM_SHARED, " SHARED");
+        DBG("\n");
+        */
+
+        auto process = event_tracer.find_process(syscall_pid);
+        if (process) {
+            process->vm_maps.update(start_addr, end_addr, mode);
+            // auto buff = genlog_mprotect(syscall_pid, {start_addr, end_addr, mode});
+            // process->append_debug_log(buff);
+        }
+        // if (process) process->vm_maps.debug_print_vm_map();
+    });
+
+    kernel.register_callback(ET_KERNEL_MUNMAP, [](void* env) {
+        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+        if (syscall_pid == -1) return; // Not found / some error
+
+        // Do nothing if the value is not initialized
+        if (g_linux_offset.dentry.d_iname == 0) return;
+        uint64_t start_addr = et_get_input_arg(env, 4);
+        uint64_t end_addr   = et_get_input_arg(env, 5);
+
+        /*
+        DBG(STR_VPMU "pid %lu on core %2lu unmap: %lx - %lx\n",
+            syscall_pid,
+            vpmu::get_core_id(),
+            start_addr,
+            end_addr);
+        */
+
+        auto process = event_tracer.find_process(syscall_pid);
+        if (process) {
+            process->vm_maps.unmap(start_addr, end_addr);
+        }
+        // if (process) process->vm_maps.debug_print_vm_map();
     });
 
     // This is to prevent compiler warning of unused warning
