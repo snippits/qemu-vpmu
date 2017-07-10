@@ -6651,6 +6651,10 @@ case "$target_name" in
       echo "VPMU_CC=$vpmu_cc" >> $config_host_mak
       echo "VPMU_CXX=$vpmu_cxx" >> $config_host_mak
 
+      # Set optimization levels in config-host.mak for customization
+      echo "VPMU_CFLAGS=-O3" >> $config_host_mak
+      echo "VPMU_CXXFLAGS=-O3" >> $config_host_mak
+
       if test "$qemu_version" = "0.15.1" ; then
           echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_target_mak
           echo "CONFIG_QEMU_VERSION_0_15=y" >> $config_host_mak

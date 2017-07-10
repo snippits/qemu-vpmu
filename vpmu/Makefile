@@ -37,8 +37,8 @@ VPMU_CXXFLAGS+=-xHost
 endif
 
 # C, CXX flags
-VPMU_CFLAGS=$(VPMU_FLAGS) -O3 -std=gnu11
-VPMU_CXXFLAGS=$(VPMU_FLAGS) -O3 -std=c++14
+VPMU_CFLAGS+=$(VPMU_FLAGS) -std=gnu11
+VPMU_CXXFLAGS+=$(VPMU_FLAGS) -std=c++14
 
 vpmu_doxygen_found=$(shell command -v doxygen 2> /dev/null)
 
