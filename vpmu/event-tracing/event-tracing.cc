@@ -488,9 +488,6 @@ void ET_Process::dump_phase_history(void)
 
 std::string ET_Program::find_code_line_number(uint64_t pc)
 {
-    if (is_shared_library) {
-        pc -= address_start;
-    }
     if (pc < section_table[".text"].beg || pc > section_table[".text"].end) {
         // Return not found to all non-text sections
         return "";
@@ -523,35 +520,75 @@ std::string ET_Process::find_code_line_number(uint64_t pc)
 
 void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
 {
+#if defined(TARGET_X86_64)
+    const uint64_t step_size = 8;
+#elif defined(TARGET_I386)
+    const uint64_t step_size = 4;
+#else
+    const uint64_t step_size = 2;
+#endif
+    struct RegionWithCounters {
+        Pair_beg_end                addr;
+        std::shared_ptr<ET_Program> program;
+        bool                        has_dwarf;
+        std::vector<uint64_t>       walk_count;
+    };
+    std::vector<struct RegionWithCounters> walk_count_vectors;
+
     nlohmann::json j;
 
-    // Reset this walk count vector for counting current phase only
-    for (auto& binary : binary_list) {
-        binary->reset_walk_count();
+    for (auto& region : vm_maps.regions) {
+        if (region.permission & VM_EXEC && region.program != nullptr) {
+            walk_count_vectors.push_back({region.address, region.program, false, {}});
+        }
+    }
+
+    // Reset all walk count vectors
+    for (auto& region : walk_count_vectors) {
+        if (region.program->line_table.size() > 0) {
+            region.walk_count.resize(region.addr.end - region.addr.beg);
+            std::fill(region.walk_count.begin(), region.walk_count.end(), 0);
+            region.has_dwarf = true;
+        } else {
+            // No DRAWF info, use only one counter
+            region.walk_count.resize(1);
+            region.walk_count[0] = 0;
+        }
     }
 
     for (auto&& wc : phase.code_walk_count) {
         auto&& key   = wc.first;
         auto&& value = wc.second;
-        for (auto& binary : binary_list) {
-            if (binary->address_start == 0) continue;
-            if (key.first >= binary->address_start && key.second <= binary->address_end) {
-                // Consider both ARM and Thumb mode
-                for (uint64_t i = key.first; i < key.second; i += 2) {
-                    binary->walk_count_vector[i - binary->address_start] += value;
+        for (auto& region : walk_count_vectors) {
+            if (key.first >= region.addr.beg && key.second <= region.addr.end) {
+                if (region.walk_count.size() == 1) {
+                    // NOTE This line has problem on Thumb mode, but who cares?
+                    region.walk_count[0] += (key.second - key.first) / step_size;
+                } else {
+                    // Consider both ARM and Thumb mode
+                    for (uint64_t i = key.first; i < key.second; i += step_size) {
+                        region.walk_count[i - region.addr.beg] += value;
+                    }
                 }
             }
         }
     }
 
-    for (auto& binary : binary_list) {
-        for (int offset = 0; offset < binary->walk_count_vector.size(); offset++) {
-            if (binary->walk_count_vector[offset] != 0) {
-                auto key = binary->find_code_line_number(offset + binary->address_start);
-                if (key.size() == 0) continue; // Skip unknown lines
-                // If two keys are the same, this assignment would solve it anyway
-                j[key] = binary->walk_count_vector[offset];
-            }
+    for (auto& region : walk_count_vectors) {
+        if (!region.has_dwarf) {
+            j[region.program->name] = region.walk_count[0];
+            continue;
+        }
+
+        auto&    program   = region.program;
+        uint64_t base_addr = region.addr.beg;
+        for (int offset = 0; offset < region.walk_count.size(); offset++) {
+            if (region.walk_count[offset] == 0) continue;
+            uint64_t addr = (program->is_shared_library) ? offset : base_addr + offset;
+            auto     key  = program->find_code_line_number(addr);
+            if (key.size() == 0) continue; // Skip unknown lines
+            // If two keys are the same, this assignment would solve it anyway
+            j[key] = region.walk_count[offset];
         }
     }
     fprintf(fp, "%s\n\n\n", j.dump(4).c_str());

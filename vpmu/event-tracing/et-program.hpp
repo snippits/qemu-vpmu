@@ -41,30 +41,6 @@ public:
 
     std::string find_code_line_number(uint64_t pc);
 
-    // TODO These two are run time info, should be moved out of here.
-    void set_mapped_address(uint64_t start_addr, uint64_t end_addr)
-    {
-        address_start = start_addr;
-        address_end   = end_addr;
-        if (address_end < address_start) {
-            ERR_MSG("Address range format incorrect\n");
-        }
-        walk_count_vector.resize(address_end - address_start);
-    }
-
-    void set_mapped_address(uint64_t start_addr)
-    {
-        set_mapped_address(start_addr, start_addr + file_size);
-    }
-
-    void set_file_size(uint64_t value) { file_size = value; }
-
-    void reset_walk_count(void)
-    {
-        // Reset all elements to zeros
-        std::fill(walk_count_vector.begin(), walk_count_vector.end(), 0);
-    }
-
 public:
     // Caution! All the data should be process independent!!!
     // An ET_Program instance could be shared by multiple processes.
@@ -82,12 +58,6 @@ public:
     std::vector<std::shared_ptr<ET_Program>> library_list;
     // Used to identify the top process parent
     bool is_shared_library = false;
-    // TODO These two are run time info, should be moved out of here.
-    // Used to count the walk count
-    std::vector<uint32_t> walk_count_vector;
-    // Used to identify the mapped virtual address of this program
-    uint64_t address_start = 0, address_end = 0;
-    uint64_t file_size = 0;
     // This mutex protects whole ET_Program
     std::mutex program_lock;
 };
