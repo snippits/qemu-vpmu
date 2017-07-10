@@ -26,9 +26,9 @@ void et_set_linux_sym_addr(const char* sym_name, uint64_t addr);
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);
 
 typedef struct {
-    uint64_t mode;
     uint64_t vaddr;
     uint64_t len;
+    uint64_t mode;
     char     fullpath[1024];
 } MMapInfo;
 

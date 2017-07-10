@@ -266,7 +266,7 @@ namespace utils
     std::string addr_to_str(uint64_t addr)
     {
         char tmp_str[32] = {};
-        snprintf(tmp_str, sizeof(tmp_str), "0x%" PRIx64, addr);
+        snprintf(tmp_str, sizeof(tmp_str), "%" PRIx64, addr);
         return tmp_str;
     }
 
