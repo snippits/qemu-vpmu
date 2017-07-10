@@ -385,4 +385,7 @@ void et_register_callbacks_kernel_events(void)
 
     // This is to prevent compiler warning of unused warning
     (void)print_mode;
+    (void)genlog_mmap;
+    (void)genlog_mmap_ret;
+    (void)genlog_mprotect;
 }

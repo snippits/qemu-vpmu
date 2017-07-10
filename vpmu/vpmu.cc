@@ -87,9 +87,9 @@ static void init_simulators(const char *vpmu_config_file)
     // vpmu_cache_stream.build(vpmu_config["cache_models"]);
     // sleep(2);
 
-    CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
     InstructionStream::Model cpu_model    = vpmu_insn_stream.get_model(0);
     BranchStream::Model      branch_model = vpmu_branch_stream.get_model(0);
+    CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
     VPMU.platform.cpu.frequency           = cpu_model.frequency;
     std::function<void(std::string)> func(
       [=](auto i) { std::cout << i << cpu_model.name << std::endl; });
@@ -194,9 +194,9 @@ static void vpmu_check_and_print_funs(void)
         (VPMU.platform.linux_version >> 8) & 0xff,
         (VPMU.platform.linux_version >> 0) & 0xff);
 
-    auto cache_model            = vpmu_cache_stream.get_model(0);
-    auto cpu_model              = vpmu_insn_stream.get_model(0);
-    auto branch_model           = vpmu_branch_stream.get_model(0);
+    InstructionStream::Model cpu_model    = vpmu_insn_stream.get_model(0);
+    BranchStream::Model      branch_model = vpmu_branch_stream.get_model(0);
+    CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
     DBG("\nConfigs / Settings:\n");
     DBG("------------------------------------------------------------\n");
     print_pass("Disabled KVM", !VPMU.platform.kvm_enabled);
@@ -249,6 +249,9 @@ static void vpmu_check_and_print_funs(void)
                kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH));   //
 
     DBG("\n\n");
+    (void)cpu_model;
+    (void)branch_model;
+    (void)cache_model;
 }
 
 void VPMU_dump_result(void)
