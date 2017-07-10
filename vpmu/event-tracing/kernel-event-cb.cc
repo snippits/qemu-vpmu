@@ -214,9 +214,8 @@ void et_register_callbacks_kernel_events(void)
     auto& kernel = event_tracer.get_kernel();
 
     // Linux Kernel: New process creation
-    kernel.register_callback(ET_KERNEL_EXECV, [](void* env) {
-        uint64_t    syscall_pid = et_get_syscall_user_thread_id(env);
-        const char* bash_path   = nullptr;
+    kernel.register_callback(ET_KERNEL_EXECV, [](void* env, uint64_t irq_pid) {
+        const char* bash_path = nullptr;
 
         if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
@@ -238,12 +237,12 @@ void et_register_callbacks_kernel_events(void)
         DBG(STR_VPMU "Exec file: %s on core %lu (pid=%lu)\n",
             bash_path,
             vpmu::get_core_id(),
-            syscall_pid);
+            irq_pid);
         */
 
         if (et_find_program_in_list(bash_path)) {
-            event_tracer.add_new_process(bash_path, syscall_pid);
-            // DBG(STR_VPMU "Start tracing %s (pid=%lu)\n", bash_path, syscall_pid);
+            event_tracer.add_new_process(bash_path, irq_pid);
+            // DBG(STR_VPMU "Start tracing %s (pid=%lu)\n", bash_path, irq_pid);
             tic(&(VPMU.start_time));
             VPMU_reset();
             vpmu_print_status(&VPMU);
@@ -252,21 +251,21 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Context switch
-    kernel.register_callback(ET_KERNEL_CONTEXT_SWITCH, [](void* env) {
-        uint64_t pid = -1;
+    kernel.register_callback(ET_KERNEL_CONTEXT_SWITCH, [](void* env, uint64_t irq_pid) {
+        uint64_t pid        = -1;
+        uint64_t pid_offset = g_linux_offset.task_struct.pid;
 
-        // Do nothing if the value is not initialized
-        if (g_linux_offset.task_struct.pid == 0) return;
 #if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
         // Only ARM 32 bits has a different arrangement of arguments
         // Refer to "arch/arm/include/asm/switch_to.h"
-        uint32_t task_ptr = vpmu_read_uint32_from_guest(
-          env, et_get_input_arg(env, 3), g_linux_offset.thread_info.task);
-        pid = vpmu_read_uint32_from_guest(env, task_ptr, g_linux_offset.task_struct.pid);
+        uint64_t task_offset = g_linux_offset.thread_info.task;
+        uint64_t ptr         = et_get_input_arg(env, 3);
+        uint32_t task_ptr    = vpmu_read_uint32_from_guest(env, ptr, task_offset);
+        pid                  = vpmu_read_uint32_from_guest(env, task_ptr, pid_offset);
 #elif defined(TARGET_X86_64) || defined(TARGET_I386)
-            // Refer to "arch/x86/include/asm/switch_to.h"
-            pid = vpmu_read_uint32_from_guest(
-              env, et_get_input_arg(env, 2), g_linux_offset.task_struct.pid);
+        // Refer to "arch/x86/include/asm/switch_to.h"
+        uint64_t ptr = et_get_input_arg(env, 2);
+        pid          = vpmu_read_uint32_from_guest(env, ptr, pid_offset);
 #endif
         VPMU.core[vpmu::get_core_id()].current_pid = pid;
         // ERR_MSG("core %2lu switch pid to %lu\n", vpmu::get_core_id(), pid);
@@ -285,39 +284,31 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Process End
-    kernel.register_callback(ET_KERNEL_EXIT, [](void* env) {
-        // Do nothing if the value is not initialized
-        if (g_linux_offset.task_struct.pid == 0) return;
-        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        event_tracer.remove_process(syscall_pid);
+    kernel.register_callback(ET_KERNEL_EXIT, [](void* env, uint64_t irq_pid) {
+        event_tracer.remove_process(irq_pid);
         return;
 
     });
 
     // Linux Kernel: wake up the newly forked process
-    kernel.register_callback(ET_KERNEL_WAKE_NEW_TASK, [](void* env) {
-        // Do nothing if the value is not initialized
-        if (g_linux_offset.task_struct.pid == 0) return;
+    kernel.register_callback(ET_KERNEL_WAKE_NEW_TASK, [](void* env, uint64_t irq_pid) {
         uint32_t target_pid = vpmu_read_uint32_from_guest(
           env, et_get_input_arg(env, 1), g_linux_offset.task_struct.pid);
-        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        if (syscall_pid != 0 && et_find_traced_pid(syscall_pid)) {
-            et_attach_to_parent_pid(syscall_pid, target_pid);
+        if (irq_pid != 0 && et_find_traced_pid(irq_pid)) {
+            et_attach_to_parent_pid(irq_pid, target_pid);
         }
     });
 
     // Linux Kernel: Fork a process
-    kernel.register_callback(ET_KERNEL_FORK, [](void* env) {
-        // uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        // DBG(STR_VPMU "fork from %lu\n", syscall_pid);
+    kernel.register_callback(ET_KERNEL_FORK, [](void* env, uint64_t irq_pid) {
+        // uint64_t irq_pid = et_get_syscall_user_thread_id(env);
+        // DBG(STR_VPMU "fork from %lu\n", irq_pid);
     });
 
-    kernel.register_callback(ET_KERNEL_MMAP, [](void* env) {
-        MMapInfo mmap_info   = {};
-        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        if (syscall_pid == -1) return; // Not found / some error
+    kernel.register_callback(ET_KERNEL_MMAP, [](void* env, uint64_t irq_pid) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
+        MMapInfo mmap_info = {};
 
         // Is struct file * nullptr (anonymous mapping)
         if (et_get_input_arg(env, 1) != 0) {
@@ -336,24 +327,25 @@ void et_register_callbacks_kernel_events(void)
         mmap_info.vaddr = et_get_input_arg(env, 2);
         mmap_info.len   = et_get_input_arg(env, 3);
 
-        auto process = event_tracer.find_process(syscall_pid);
+        auto process = event_tracer.find_process(irq_pid);
         if (process != nullptr) {
             // Remember the latest mapped address for later updating this address value
             process->set_last_mapped_info(mmap_info);
-            // process->append_debug_log(genlog_mmap(syscall_pid, mmap_info));
+            // process->append_debug_log(genlog_mmap(irq_pid, mmap_info));
         }
     });
 
-    kernel.register_return_callback(ET_KERNEL_MMAP, [](void* env) {
-        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        auto     process     = event_tracer.find_process(syscall_pid);
+    kernel.register_return_callback(ET_KERNEL_MMAP, [](void* env, uint64_t irq_pid) {
+        // Do nothing if the value is not initialized
+        if (g_linux_offset.dentry.d_iname == 0) return;
+        auto process = event_tracer.find_process(irq_pid);
         if (process && process->get_last_mapped_info().vaddr != 0) {
             uint64_t vaddr     = et_get_ret_value(env);
             auto&    mmap_info = process->get_last_mapped_info();
             // Update new base address
             mmap_info.vaddr = vaddr;
-            et_add_process_mapped_region(syscall_pid, mmap_info);
-            // process->append_debug_log(genlog_mmap_ret(syscall_pid, mmap_info));
+            et_add_process_mapped_region(irq_pid, mmap_info);
+            // process->append_debug_log(genlog_mmap_ret(irq_pid, mmap_info));
             // process->vm_maps.debug_print_vm_map();
 
             // Clear the flag
@@ -361,38 +353,32 @@ void et_register_callbacks_kernel_events(void)
         }
     });
 
-    kernel.register_callback(ET_KERNEL_MPROTECT, [](void* env) {
-        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        if (syscall_pid == -1) return; // Not found / some error
-
+    kernel.register_callback(ET_KERNEL_MPROTECT, [](void* env, uint64_t irq_pid) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
         uint64_t start_addr = et_get_input_arg(env, 3);
         uint64_t end_addr   = et_get_input_arg(env, 4);
         uint64_t mode       = et_get_input_arg(env, 5);
 
-        auto process = event_tracer.find_process(syscall_pid);
+        auto process = event_tracer.find_process(irq_pid);
         if (process) {
             process->vm_maps.update(start_addr, end_addr, mode);
-            auto buff = genlog_mprotect(syscall_pid, {start_addr, end_addr, mode, ""});
+            auto buff = genlog_mprotect(irq_pid, {start_addr, end_addr, mode, ""});
             // process->append_debug_log(buff);
             // process->vm_maps.debug_print_vm_map();
         }
     });
 
-    kernel.register_callback(ET_KERNEL_MUNMAP, [](void* env) {
-        uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-        if (syscall_pid == -1) return; // Not found / some error
-
+    kernel.register_callback(ET_KERNEL_MUNMAP, [](void* env, uint64_t irq_pid) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
         uint64_t start_addr = et_get_input_arg(env, 4);
         uint64_t end_addr   = et_get_input_arg(env, 5);
 
-        auto process = event_tracer.find_process(syscall_pid);
+        auto process = event_tracer.find_process(irq_pid);
         if (process) {
             process->vm_maps.unmap(start_addr, end_addr);
-            // process->append_debug_log(genlog_unmap(syscall_pid, start_addr, end_addr));
+            // process->append_debug_log(genlog_unmap(irq_pid, start_addr, end_addr));
             // process->vm_maps.debug_print_vm_map();
         }
     });

@@ -14,7 +14,7 @@ extern "C" {
 
 class ET_Kernel : public ET_Program
 {
-    using fun_callback = std::function<void(void* env)>;
+    using fun_callback = std::function<void(void* env, uint64_t syscall_pid)>;
 
 public:
     ET_Kernel() : ET_Program("kernel") {}
@@ -44,8 +44,10 @@ public:
     {
         for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
             if (kernel_event_table[i] == vaddr) {
+                uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+                if (syscall_pid == (uint64_t)-1) return false; // Not found / some error
                 // DBG(STR_VPMU "Found event-%d \n",i);
-                cb[i].fun(env);
+                cb[i].fun(env, syscall_pid);
                 if (cb[i].fun_ret)
                     event_return_table[core_id].push_back(
                       {et_get_ret_addr(env), cb[i].fun_ret});
@@ -53,8 +55,10 @@ public:
             }
             if (event_return_table[core_id].size() > 0
                 && event_return_table[core_id].back().first == vaddr) {
+                uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
+                if (syscall_pid == (uint64_t)-1) return false; // Not found / some error
                 auto& r = event_return_table[core_id].back();
-                r.second(env);
+                r.second(env, syscall_pid);
                 event_return_table[core_id].pop_back();
             }
         }
