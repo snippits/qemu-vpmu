@@ -520,13 +520,6 @@ std::string ET_Process::find_code_line_number(uint64_t pc)
 
 void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
 {
-#if defined(TARGET_X86_64)
-    const uint64_t step_size = 8;
-#elif defined(TARGET_I386)
-    const uint64_t step_size = 4;
-#else
-    const uint64_t step_size = 2;
-#endif
     struct RegionWithCounters {
         Pair_beg_end                addr;
         std::shared_ptr<ET_Program> program;
@@ -537,6 +530,7 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
 
     nlohmann::json j;
 
+    // Find out all executable and tracked regions
     for (auto& region : vm_maps.regions) {
         if (region.permission & VM_EXEC && region.program != nullptr) {
             walk_count_vectors.push_back({region.address, region.program, false, {}});
@@ -557,18 +551,22 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
     }
 
     for (auto&& wc : phase.code_walk_count) {
-        auto&& addr  = wc.first;
-        auto&& value = wc.second;
+        auto&&   addr       = wc.first;
+        auto&&   value      = wc.second;
+        uint64_t start_addr = addr.beg;
+        uint64_t end_addr   = addr.end;
         for (auto& region : walk_count_vectors) {
+            // Find regions that matches
             if (addr.end >= region.addr.beg && addr.end <= region.addr.end) {
-                if (region.walk_count.size() == 1) {
-                    // NOTE This line has problem on Thumb mode, but who cares?
-                    region.walk_count[0] += (addr.end - addr.beg) / step_size;
-                } else {
-                    // Consider both ARM and Thumb mode
-                    for (uint64_t i = addr.beg; i < addr.end; i += step_size) {
-                        region.walk_count[i - region.addr.beg] += value;
+                uint64_t base_addr = region.addr.beg;
+                if (region.has_dwarf) {
+                    for (uint64_t i = start_addr; i <= end_addr; i++) {
+                        region.walk_count[i - base_addr] += value;
                     }
+                } else {
+                    // Let's roughly count the byte (ranges / 4) as the counts of walks
+                    // This is not correct... but there is no way to solve it here...
+                    region.walk_count[0] += 1 + (end_addr - start_addr) / 4;
                 }
             }
         }
@@ -576,7 +574,7 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
 
     for (auto& region : walk_count_vectors) {
         if (!region.has_dwarf) {
-            j[region.program->name] = region.walk_count[0];
+            j["[" + region.program->name + "]"] = region.walk_count[0];
             continue;
         }
 
@@ -584,8 +582,8 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
         uint64_t base_addr = region.addr.beg;
         for (int offset = 0; offset < region.walk_count.size(); offset++) {
             if (region.walk_count[offset] == 0) continue;
-            uint64_t addr = (program->is_shared_library) ? offset : base_addr + offset;
-            auto     key  = program->find_code_line_number(addr);
+            uint64_t    addr = (program->is_shared_library) ? offset : base_addr + offset;
+            std::string key  = program->find_code_line_number(addr);
             if (key.size() == 0) continue; // Skip unknown lines
             // If two keys are the same, this assignment would solve it anyway
             j[key] = region.walk_count[offset];
