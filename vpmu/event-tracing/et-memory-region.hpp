@@ -141,9 +141,8 @@ public:
         update_mapping_table_for_region(start_addr, end_addr);
         // Update the permission of target region
         this->get(start_addr, end_addr).permission = mode;
-        this->sort_regions();
-        // Rebuild exec mode cache
-        this->rebuild_cache();
+        this->sort_regions();  // Sort the regions
+        this->rebuild_cache(); // Rebuild exec mode cache
     }
 
     bool find_exec_region(uint64_t vaddr)

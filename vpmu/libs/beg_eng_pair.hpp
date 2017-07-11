@@ -2,7 +2,8 @@
 #define _BEG_END_PAIR_HPP_
 
 extern "C" {
-#include <stdint.h> // uint64_t types
+#include <stdbool.h> // bool, true, false
+#include <stdint.h>  // uint64_t types
 };
 
 class Pair_beg_end

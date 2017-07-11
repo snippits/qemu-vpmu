@@ -6,6 +6,7 @@
 #include <utility>   // std::forward
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
+#include <mutex>     // std::mutex
 
 #include "vpmu.hpp"         // VPMU common headers
 #include "vpmu-utils.hpp"   // miscellaneous functions
