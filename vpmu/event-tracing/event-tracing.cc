@@ -557,16 +557,16 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
     }
 
     for (auto&& wc : phase.code_walk_count) {
-        auto&& key   = wc.first;
+        auto&& addr  = wc.first;
         auto&& value = wc.second;
         for (auto& region : walk_count_vectors) {
-            if (key.first >= region.addr.beg && key.second <= region.addr.end) {
+            if (addr.end >= region.addr.beg && addr.end <= region.addr.end) {
                 if (region.walk_count.size() == 1) {
                     // NOTE This line has problem on Thumb mode, but who cares?
-                    region.walk_count[0] += (key.second - key.first) / step_size;
+                    region.walk_count[0] += (addr.end - addr.beg) / step_size;
                 } else {
                     // Consider both ARM and Thumb mode
-                    for (uint64_t i = key.first; i < key.second; i += step_size) {
+                    for (uint64_t i = addr.beg; i < addr.end; i += step_size) {
                         region.walk_count[i - region.addr.beg] += value;
                     }
                 }

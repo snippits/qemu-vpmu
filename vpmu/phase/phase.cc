@@ -212,7 +212,7 @@ inline void Window::update(const ExtraTBInfo* extra_tb_info)
     update_counter(extra_tb_info);
     instruction_count += extra_tb_info->counters.total;
 
-    auto&& key = std::make_pair(pc, pc_end);
+    Pair_beg_end key = {pc, pc_end};
     code_walk_count[key] += 1;
 }
 

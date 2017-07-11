@@ -11,6 +11,7 @@ extern "C" {
 #include "phase-common.hpp"  // Common definitions of phase detection
 #include "window.hpp"        // Window class
 #include "vpmu-snapshot.hpp" // VPMUSanpshot
+#include "beg_eng_pair.hpp"  // Pair_beg_end
 
 class Phase
 {
@@ -59,7 +60,7 @@ public:
 
     uint64_t get_insn_count(void) { return counters.insn; }
 
-    void update_walk_count(std::map<CodeRange, uint32_t>& new_walk_count)
+    void update_walk_count(std::map<Pair_beg_end, uint32_t>& new_walk_count)
     {
         for (auto&& wc : new_walk_count) {
             code_walk_count[wc.first] += wc.second;
@@ -118,7 +119,7 @@ private:
 
 public: // FIXME, make it private
     VPMUSnapshot snapshot = {};
-    std::map<CodeRange, uint32_t> code_walk_count;
+    std::map<Pair_beg_end, uint32_t> code_walk_count;
     // An ID to identify the number of this phase
     uint64_t id             = 0;
     bool     sub_phase_flag = false;

@@ -6,8 +6,6 @@
 
 #include <utility> // std::pair
 
-using CodeRange = std::pair<uint64_t, uint64_t>;
-
 struct GPUFriendnessCounter {
     uint64_t insn;
     uint64_t load;
