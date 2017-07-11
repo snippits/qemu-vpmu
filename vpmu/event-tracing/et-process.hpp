@@ -18,6 +18,8 @@
 class ET_Process : public ET_Path
 {
 public:
+    ET_Process() = delete; // A process can not be null initialized
+
     // This program should be the main program
     ET_Process(std::shared_ptr<ET_Program>& program, uint64_t new_pid)
     {
@@ -52,11 +54,6 @@ public:
     inline bool operator==(const ET_Process& rhs) { return (this == &rhs); }
     inline bool operator!=(const ET_Process& rhs) { return !(this == &rhs); }
 
-    void attach_child_pid(uint64_t child_pid)
-    {
-        child_list.push_back(std::make_shared<ET_Process>(this, child_pid));
-    }
-
     // CPUState *
     inline void set_cpu_state(void* cs)
     {
@@ -68,38 +65,7 @@ public:
         }
     }
 
-    void push_binary(std::shared_ptr<ET_Program>& program)
-    {
-        // Check repeated pointer
-        for (auto& binary : binary_list) {
-            if (binary == program) return;
-        }
-        if (program != nullptr) binary_list.push_back(program);
-    }
-
-    void push_child_process(std::shared_ptr<ET_Process>& process)
-    {
-        if (process != nullptr) child_list.push_back(process);
-    }
-
     inline std::shared_ptr<ET_Program> get_main_program(void) { return binary_list[0]; }
-
-    std::string find_code_line_number(uint64_t pc);
-
-    void dump_vm_map(void);
-    void dump_phase_history(void);
-    void dump_phase_result(void);
-    void dump_process_info(void);
-    void dump_phase_code_mapping(FILE* fp, const Phase& phase);
-
-    inline void append_debug_log(std::string mesg)
-    {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        debug_log += mesg;
-#endif
-    }
-
-    const std::string& get_debug_log(void) { return debug_log; }
 
     inline void set_last_mapped_info(MMapInfo new_info)
     {
@@ -116,34 +82,55 @@ public:
         last_mapped_addr[vpmu::get_core_id()] = {};
     }
 
+    void dump_vm_map(void);
+    void dump_phase_history(void);
+    void dump_phase_result(void);
+    void dump_process_info(void);
+    void dump_phase_code_mapping(FILE* fp, const Phase& phase);
+
+    std::string find_code_line_number(uint64_t pc);
+
+    void attach_child_pid(uint64_t child_pid);
+    void push_child_process(std::shared_ptr<ET_Process>& process);
+    void push_binary(std::shared_ptr<ET_Program>& program);
+
+    void append_debug_log(std::string mesg);
+    const std::string& get_debug_log(void) { return debug_log; }
+
 public:
-    // Used to identify the top process parent
-    bool is_top_process;
-    // The root pid
-    uint64_t pid = 0;
-    // The timing model bind to this program
-    uint64_t timing_model = 0;
-    // Lists of shared pointer objects
-    std::vector<std::shared_ptr<ET_Program>> binary_list;
-    std::vector<std::shared_ptr<ET_Process>> child_list;
-    // Flag to indicate whether main program is set
-    bool binary_loaded_flag = false;
+    bool     is_top_process = false; ///< Identify if this is the top parent
+    uint64_t pid            = 0;     ///< The pid of this process
+    uint64_t stack_ptr      = 0;     ///< The current stack pointer of this process
+    uint64_t timing_model   = 0;     ///< The timing model bound to this program
+    bool     binary_loaded  = false; ///< Flag to indicate whether main program is set
+    /// \brief Snapshot of timing counters
+    //
+    /// When a process object is created, a snapshot will be taken in order to
+    /// snapshot the start time of this process.
+    VPMUSnapshot snapshot = VPMUSnapshot(true);
+    /// Process memory map
+    ET_MemoryRegion vm_maps = {};
+    /// Binaries bound to this process. (vector of shared pointers)
+    std::vector<std::shared_ptr<ET_Program>> binary_list = {};
+    /// Processes forked by this process. (vector of shared pointers)
+    std::vector<std::shared_ptr<ET_Process>> child_list = {};
 
-    std::vector<Phase> phase_list;
-    // History records
-    std::vector<std::pair<uint64_t, uint64_t>> phase_history;
-    Window       current_window;
-    VPMUSnapshot snapshot  = VPMUSnapshot(true); /// Take a snapshot at creation
-    uint64_t     stack_ptr = 0;
-
-    // Process maps
-    ET_MemoryRegion vm_maps;
+    /// Phases of this process
+    std::vector<Phase> phase_list = {};
+    /// The current window of this process
+    Window current_window = {};
+    /// History records of phase ID with a timestamp. pair<timestamp, phase ID>
+    std::vector<std::pair<uint64_t, uint64_t>> phase_history = {};
 
 private:
-    void* cpu_state = nullptr; // CPUState *
-    // Used for debugging log
-    std::string debug_log;
-    // Remember the pointer to lastest mapped region for updating its address
+    /// \brief A pointer of type "CPUState *" from QEMU.
+    //
+    /// This pointer can be used to translate guest VA to host VA.
+    /// i.e. accessing guest data from host.
+    void* cpu_state = nullptr;
+    /// Used for debugging (logging) things happened on this process
+    std::string debug_log = "";
+    /// Remember the pointer to lastest mapped region for updating its address at return
     MMapInfo last_mapped_addr[VPMU_MAX_CPU_CORES] = {};
 };
 
