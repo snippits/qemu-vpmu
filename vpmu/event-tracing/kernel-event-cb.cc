@@ -363,7 +363,7 @@ void et_register_callbacks_kernel_events(void)
         auto process = event_tracer.find_process(irq_pid);
         if (process) {
             process->vm_maps.update(start_addr, end_addr, mode);
-            auto buff = genlog_mprotect(irq_pid, {start_addr, end_addr, mode, ""});
+            // auto buff = genlog_mprotect(irq_pid, {start_addr, end_addr, mode, ""});
             // process->append_debug_log(buff);
             // process->vm_maps.debug_print_vm_map();
         }
