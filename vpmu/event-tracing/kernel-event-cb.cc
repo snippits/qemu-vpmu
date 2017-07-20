@@ -204,9 +204,9 @@ void et_set_linux_struct_offset(uint64_t type, uint64_t value)
     }
 }
 
-bool et_kernel_call_event(uint64_t vaddr, void* env, int core_id)
+bool et_kernel_call_event(void* env, int core_id, uint64_t vaddr)
 {
-    return event_tracer.get_kernel().call_event(vaddr, env, core_id);
+    return event_tracer.get_kernel().call_event(env, core_id, vaddr);
 }
 
 void et_register_callbacks_kernel_events(void)
@@ -270,8 +270,9 @@ void et_register_callbacks_kernel_events(void)
         VPMU.core[vpmu::get_core_id()].current_pid = pid;
         // ERR_MSG("core %2lu switch pid to %lu\n", vpmu::get_core_id(), pid);
 
-        if (et_find_traced_pid(pid)) {
-            et_set_process_cpu_state(pid, env);
+        auto process = event_tracer.find_process(pid);
+        if (process) {
+            process->set_cpu_state(env);
             vpmu::enable_vpmu_on_core();
         } else {
             // Switching VPMU when current process is traced

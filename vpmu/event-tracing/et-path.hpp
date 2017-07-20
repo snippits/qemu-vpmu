@@ -59,11 +59,10 @@ public:
 
     void set_name_or_path(std::string& new_name)
     {
-        int index = vpmu::utils::get_index_of_file_name(new_name.c_str());
-        if (index < 0) return; // Maybe we should throw?
-        filename             = new_name.substr(index);
-        name                 = new_name.substr(index);
-        if (index != 0) path = new_name;
+        filename = vpmu::utils::basename(new_name);
+        name     = vpmu::utils::basename(new_name);
+
+        if (name != new_name) path = new_name;
     }
 
     void set_name(std::string& new_name) { name = new_name; }

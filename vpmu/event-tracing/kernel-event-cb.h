@@ -43,7 +43,7 @@ extern LinuxStructSize   g_linux_size;
 void et_set_default_linux_struct_offset(uint64_t version);
 void et_set_linux_thread_struct_size(uint64_t value);
 void et_set_linux_struct_offset(uint64_t type, uint64_t value);
-bool et_kernel_call_event(uint64_t vaddr, void* env, int core_id);
+bool et_kernel_call_event(void* env, int core_id, uint64_t vaddr);
 void et_register_callbacks_kernel_events(void);
 
 #endif

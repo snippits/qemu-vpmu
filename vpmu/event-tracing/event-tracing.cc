@@ -38,32 +38,31 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
                 // Updata section map table
                 program->section_table[sec.get_name()].beg = hdr.addr;
                 program->section_table[sec.get_name()].end = hdr.addr + hdr.size;
+                if (hdr.type != elf::sht::symtab && hdr.type != elf::sht::dynsym)
+                    continue;
             }
-            if (sec.get_hdr().type != elf::sht::symtab
-                && sec.get_hdr().type != elf::sht::dynsym)
-                continue;
 // Read only symbol sections
 #if 0
-        log_debug("Symbol table '%s':", sec.get_name().c_str());
-        log_debug("%-16s %-5s %-7s %-7s %-5s %s",
-                  "Value",
-                  "Size",
-                  "Type",
-                  "Binding",
-                  "Index",
-                  "Name");
+            log_debug("Symbol table '%s':", sec.get_name().c_str());
+            log_debug("%-16s %-5s %-7s %-7s %-5s %s",
+                      "Value",
+                      "Size",
+                      "Type",
+                      "Binding",
+                      "Index",
+                      "Name");
 #endif
             for (auto sym : sec.as_symtab()) {
                 auto& d = sym.get_data();
                 if (d.type() == elf::stt::func) {
 #if 0
-                log_debug("%016" PRIx64 " %5" PRId64 " %-7s %-7s %5s %s",
-                          d.value,
-                          d.size,
-                          to_string(d.type()).c_str(),
-                          to_string(d.binding()).c_str(),
-                          to_string(d.shnxd).c_str(),
-                          sym.get_name().c_str());
+                    log_debug("%016" PRIx64 " %5" PRId64 " %-7s %-7s %5s %s",
+                              d.value,
+                              d.size,
+                              to_string(d.type()).c_str(),
+                              to_string(d.binding()).c_str(),
+                              to_string(d.shnxd).c_str(),
+                              sym.get_name().c_str());
 #endif
                     program->sym_table[sym.get_name()] = d.value;
                 }
@@ -344,7 +343,10 @@ enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr)
 
 void et_add_program_to_list(const char* name)
 {
-    event_tracer.add_program(name);
+    if (vpmu::utils::string_match(vpmu::utils::basename(name), "*.so*"))
+        event_tracer.add_library(name);
+    else
+        event_tracer.add_program(name);
 }
 
 void et_remove_program_from_list(const char* name)
@@ -370,11 +372,6 @@ bool et_find_traced_process(const char* name)
 void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)
 {
     return event_tracer.attach_to_parent(parent_pid, child_pid);
-}
-
-void et_set_process_cpu_state(uint64_t pid, void* cs)
-{
-    event_tracer.set_process_cpu_state(pid, cs);
 }
 
 static std::shared_ptr<ET_Program> find_library(const char* fullpath)
@@ -428,15 +425,42 @@ void et_add_process_mapped_region(uint64_t pid, MMapInfo mmap_info)
     }
 
     // Push the memory region to process with/without pointer to target program
+    uint64_t pc = process->pc_called_mmap;
     if (program == nullptr) {
-        process->vm_maps.map_region(start_addr, end_addr, mode, fullpath);
+        process->vm_maps.map_region(pc, start_addr, end_addr, mode, fullpath);
     } else {
-        process->vm_maps.map_region(program, start_addr, end_addr, mode, fullpath);
+        process->vm_maps.map_region(program, pc, start_addr, end_addr, mode, fullpath);
+    }
+    if (mode & VM_EXEC) {
+        uint64_t addr = process->get_symbol_addr("mmap");
+        process->functions.register_call(addr, [](void* env, ET_Process* self) {
+            self->pc_called_mmap = et_get_ret_addr(env);
+            DBG(STR_PROC "'%s'(pid %lu) called mmap from PC: %lx\n",
+                self->name.c_str(),
+                self->pid,
+                self->pc_called_mmap);
+        });
     }
 }
 
-void et_update_program_elf_dwarf(const char* name, const char* file_name)
+void et_update_program_elf_dwarf(const char* name, const char* host_file_path)
 {
-    auto program = event_tracer.find_program(name);
-    event_tracer.update_elf_dwarf(program, file_name);
+    auto program = event_tracer.find_program(vpmu::utils::basename(name).c_str());
+    event_tracer.update_elf_dwarf(program, host_file_path);
+}
+
+void et_check_function_call(void*    env,
+                            uint64_t core_id,
+                            bool     user_mode,
+                            uint64_t target_addr)
+{
+    if (user_mode) {
+        auto process = event_tracer.find_process(VPMU.core[core_id].current_pid);
+        if (process != nullptr) {
+            process->call_event(env, target_addr);
+        }
+    } else {
+        et_kernel_call_event(env, core_id, target_addr);
+    }
+    return;
 }

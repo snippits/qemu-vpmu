@@ -45,7 +45,7 @@ public:
         // Lock when updating the program_list (thread shared resource)
         std::lock_guard<std::mutex> lock(program_list_lock);
 
-        log_debug("Add new binary '%s'", name.c_str());
+        log_debug("Add new binary '%s'", program->name.c_str());
         program_list.push_back(program);
         // debug_dump_program_map();
         return program;
@@ -60,7 +60,7 @@ public:
 
         // Set this flag to true if it's a library
         program->is_shared_library = true;
-        log_debug("Add new library '%s'", name.c_str());
+        log_debug("Add new library '%s'", program->name.c_str());
         program_list.push_back(program);
         // debug_dump_program_map();
         return program;
@@ -167,6 +167,7 @@ public:
 
     inline std::shared_ptr<ET_Process> find_process(uint64_t pid)
     {
+        if (pid == 0) return nullptr; // pid should never be 0
         for (auto& p_pair : process_id_map) {
             auto& p = p_pair.second;
             if (p->pid == pid) return p;
@@ -217,13 +218,6 @@ public:
                                   std::shared_ptr<ET_Program>& program)
     {
         attach_to_program(find_program(target_program_name.c_str()), program);
-    }
-
-    void set_process_cpu_state(uint64_t pid, void* cs)
-    {
-        std::lock_guard<std::mutex> lock(process_lock);
-        auto                        process = find_process(pid);
-        if (process != nullptr) process->set_cpu_state(cs);
     }
 
     ET_Kernel& get_kernel(void) { return kernel; }

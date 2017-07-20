@@ -1,5 +1,6 @@
 #ifndef __VPMU_CONF_H_
 #define __VPMU_CONF_H_
+// clang-format off
 
 #define VPMU_MAX_CPU_CORES 64
 #define VPMU_MAX_NUM_WORKERS 16
@@ -30,5 +31,7 @@
 
 #define STR_VPMU   BASH_COLOR_GREEN "[VPMU]" BASH_COLOR_NONE "      "
 #define STR_PHASE  BASH_COLOR_GREEN "[PHASE]" BASH_COLOR_NONE "     "
+#define STR_PROC   BASH_COLOR_GREEN "[PROCESS]" BASH_COLOR_NONE "   "
 
+// clang-format on
 #endif

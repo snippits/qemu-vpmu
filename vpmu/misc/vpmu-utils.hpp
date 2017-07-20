@@ -107,18 +107,23 @@ namespace utils
 
         if (path == nullptr) return "";
         for (i = 0; path[i] != '\0'; i++) {
-            if (path[i] == '/') {
-                index = i + 1;
-            }
+            if (path[i] == '\\') i++;
+            if (path[i] == '/') index = i + 1;
         }
-        i -= 1; // Set i to the length of string
-        if (index == i) {
+        if (index == strlen(path)) {
             // The path ends with '/' without a file name
             return "";
         }
 
         return std::string(&path[index]);
     }
+
+    inline std::string basename(std::string path)
+    {
+        return get_file_name_from_path(path.c_str());
+    }
+
+    bool string_match(std::string path, const std::string pattern);
 
     inline int get_index_of_file_name(const char *path)
     {
@@ -185,8 +190,8 @@ namespace utils
     std::string read_text_content(const char *filename);
     std::unique_ptr<char> read_binary_content(const char *filename);
     nlohmann::json load_json(const char *vpmu_config_file);
-    int get_tty_columns(void);
-    int get_tty_rows(void);
+    int         get_tty_columns(void);
+    int         get_tty_rows(void);
     std::string addr_to_str(uint64_t addr);
 
 } // End of namespace vpmu::utils

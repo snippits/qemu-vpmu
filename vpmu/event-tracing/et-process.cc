@@ -56,13 +56,15 @@ void ET_Process::dump_vm_map(void)
         out_str += (reg.permission & VM_SHARED) ? "-" : "p";
         fprintf(fp,
                 "%16s - %-16s  "
-                "%-5s %-40s %-20s"
+                "%-5s %-40s %-20s %16s@%-16lx"
                 "\n",
                 vpmu::utils::addr_to_str(reg.address.beg).c_str(),
                 vpmu::utils::addr_to_str(reg.address.end).c_str(),
                 out_str.c_str(),
                 reg.pathname.c_str(),
-                prog_name.c_str());
+                prog_name.c_str(),
+                reg.mapper.first.c_str(), // name
+                reg.mapper.second);       // pc address
     }
     fclose(fp);
 }
@@ -116,6 +118,8 @@ void ET_Process::dump_process_info(void)
         j["VM Maps"][i]["Permission"]      = out_str;
         j["VM Maps"][i]["Path Name"]       = vm_maps.regions[i].pathname;
         j["VM Maps"][i]["Bind to Program"] = prog_name;
+        j["VM Maps"][i]["Mapped By"]       = vm_maps.regions[i].mapper.first;
+        j["VM Maps"][i]["Map PC"]          = vm_maps.regions[i].mapper.second;
     }
     fprintf(fp, "%s\n", j.dump(4).c_str());
 
@@ -253,4 +257,31 @@ std::string ET_Process::find_code_line_number(uint64_t pc)
         if (ret != "") return ret;
     }
     return "";
+}
+
+uint64_t ET_Process::get_symbol_addr(std::string name)
+{
+    for (auto& region : this->vm_maps.regions) {
+        if (auto binary = region.program) {
+            if (binary->sym_table.size() == 0) continue;
+            if (binary->sym_table.find(name) == binary->sym_table.end()) continue;
+
+            // addr == 0 means the symbol is externed from other libs (relocation sym.)
+            if (uint64_t addr = binary->sym_table[name]) {
+                // Add offsets if it is a shared library
+                if (binary->is_shared_library)
+                    return addr + region.address.beg;
+                else
+                    return addr;
+            }
+        }
+    }
+    return 0;
+}
+
+bool ET_Process::call_event(void* env, uint64_t vaddr)
+{
+    if (functions.call(vaddr, et_get_ret_addr(env), env, this)) return true;
+    if (functions.call_return(vaddr, env, this)) return true;
+    return false;
 }

@@ -40,7 +40,7 @@ public:
         return ET_KERNEL_NONE;
     }
 
-    bool call_event(uint64_t vaddr, void* env, uint64_t core_id)
+    bool call_event(void* env, uint64_t core_id, uint64_t vaddr)
     {
         for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
             if (kernel_event_table[i] == vaddr) {

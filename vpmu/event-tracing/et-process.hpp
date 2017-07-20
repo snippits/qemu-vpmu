@@ -12,6 +12,7 @@
 #include "et-program.hpp"       // ET_Program class
 #include "et-memory-region.hpp" // ET_MemoryRegion class for linux/mm
 #include "phase/phase.hpp"      // Phase class
+#include "function-map.hpp"     // FunctionMap class
 
 // NOTE that binary_list[0] always exists and is the main program
 //
@@ -57,6 +58,8 @@ public:
     // CPUState *
     inline void set_cpu_state(void* cs)
     {
+        // Update the core number that runs this process
+        core_id = vpmu::get_core_id();
         if (cpu_state == nullptr) {
             cpu_state = vpmu_qemu_clone_cpu_arch_state(cs);
         } else {
@@ -64,6 +67,9 @@ public:
             // vpmu_qemu_update_cpu_arch_state(cs, cpu_state);
         }
     }
+
+    uint64_t get_symbol_addr(std::string name);
+    bool call_event(void* env, uint64_t vaddr);
 
     inline std::shared_ptr<ET_Program> get_main_program(void) { return binary_list[0]; }
 
@@ -103,6 +109,8 @@ public:
     uint64_t stack_ptr      = 0;     ///< The current stack pointer of this process
     uint64_t timing_model   = 0;     ///< The timing model bound to this program
     bool     binary_loaded  = false; ///< Flag to indicate whether main program is set
+    uint64_t core_id        = 0;     ///< Identify the core it runs on
+    uint64_t pc_called_mmap = 0;     ///< Remember the PC of calling mmap
     /// \brief Snapshot of timing counters
     //
     /// When a process object is created, a snapshot will be taken in order to
@@ -121,6 +129,8 @@ public:
     Window current_window = {};
     /// History records of phase ID with a timestamp. pair<timestamp, phase ID>
     std::vector<std::pair<uint64_t, uint64_t>> phase_history = {};
+    // The monitored functions of this process
+    FunctionMap<uint64_t, void*, ET_Process*> functions;
 
 private:
     /// \brief A pointer of type "CPUState *" from QEMU.

@@ -136,7 +136,8 @@ void HELPER(vpmu_accumulate_tb_info)(CPUArchState *env, void *opaque)
 #ifdef CONFIG_VPMU_SET
     // Only need to check function calls when TB is not contiguous
     if (!contiguous_pc_flag) {
-        et_check_function_call(env, extra_tb_info->start_addr);
+        et_check_function_call(
+          env, cs->cpu_index, (mode == VPMU_ARCH_MODE_USR), extra_tb_info->start_addr);
     }
     if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
         phasedet_ref((mode == VPMU_ARCH_MODE_USR), extra_tb_info, vpmu_arch_sp, core_id);

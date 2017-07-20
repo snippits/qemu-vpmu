@@ -31,17 +31,22 @@ public:
     }
 
     void map_region(std::shared_ptr<ET_Program> prog,
+                    uint64_t                    pc,
                     uint64_t                    start_addr,
                     uint64_t                    end_addr,
                     uint64_t                    permission,
                     std::string                 pathname)
     {
+        // return "" when not found
+        auto mepper_file_name = vpmu::utils::basename(this->get(pc).pathname);
+
         RegionInfo r = {};
 
         r.address    = {start_addr, end_addr};
         r.permission = permission;
         r.pathname   = pathname;
         r.program    = prog;
+        r.mapper     = {mepper_file_name, pc};
 
         // Overwrite repeated/overlapped regions
         this->update(start_addr, end_addr - start_addr, permission);
@@ -57,12 +62,13 @@ public:
         regions_dirty = true;
     }
 
-    void map_region(uint64_t    start_addr,
+    void map_region(uint64_t    pc,
+                    uint64_t    start_addr,
                     uint64_t    end_addr,
                     uint64_t    permission,
                     std::string pathname)
     {
-        this->map_region({}, start_addr, end_addr, permission, pathname);
+        this->map_region({}, pc, start_addr, end_addr, permission, pathname);
     }
 
     void split(uint64_t split_addr, bool tail_reset_rw, bool rebuild_cache_flag)

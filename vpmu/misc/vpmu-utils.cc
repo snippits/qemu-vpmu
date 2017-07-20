@@ -10,6 +10,8 @@
 #include "vpmu-cache.hpp"  // vpmu_cache_stream
 #include "vpmu-branch.hpp" // vpmu_branch_stream
 
+#include <boost/algorithm/string.hpp> // String processing
+
 // Pointer to argv[0] for modifying process name in htop
 extern char *global_argv_0;
 
@@ -268,6 +270,24 @@ namespace utils
         char tmp_str[32] = {};
         snprintf(tmp_str, sizeof(tmp_str), "%" PRIx64, addr);
         return tmp_str;
+    }
+
+    bool string_match(std::string path, const std::string pattern)
+    {
+        if (path.length() == 0 || pattern.length() == 0) return false;
+        std::vector<std::string> sub_patterns;
+        boost::split(sub_patterns, pattern, boost::is_any_of("*"));
+
+        std::size_t idx = 0;
+
+        for (auto &pat : sub_patterns) {
+            if (pat.length() == 0) continue;
+            idx = path.find(pat, idx);
+            if (idx == std::string::npos) return false;
+            idx += pat.length();
+        }
+        // All sub-patterns are found
+        return true;
     }
 
 } // End of namespace vpmu::utils
