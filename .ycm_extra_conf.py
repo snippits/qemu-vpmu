@@ -36,7 +36,7 @@ import ycm_core
 flags = [
     '-x',
     'c++',
-    '-std=c++11',
+    '-std=c++14',
     '-DVPMU_CONFIG',
     '-DVPMU_CONFIG_SET',
     '-DVPMU_CONFIG_DEBUG',
@@ -200,14 +200,10 @@ flags = [
     '-I./vpmu/libs/d4-7',
     '-I./vpmu/simulator',
     '-I./vpmu/stream',
-    '-I./vpmu/include',
-    '-I./vpmu/include/arch',
-    '-I./vpmu/include/arch/i386',
-    '-I./vpmu/include/arch/arm',
-    '-I./vpmu/include/event-tracing',
-    '-I./vpmu/include/packet',
-    '-I./vpmu/include/stream',
-    '-I./vpmu/include/simulator',
+    '-I./vpmu/component',
+    '-I./vpmu/packet',
+    '-I./vpmu/phase',
+    '-I./vpmu/misc',
     '-I/usr/include/SDL',
     '-I/usr/include/atk-1.0',
     '-I/usr/include/cacard',
@@ -342,7 +338,7 @@ if os.path.exists( compilation_database_folder ):
 else:
   database = None
 
-SOURCE_EXTENSIONS = [ '.C', '.cpp', '.cxx', '.cc', '.c', '.m', '.mm' ]
+SOURCE_EXTENSIONS = [ '.cpp', '.cxx', '.cc', '.c', '.m', '.mm' ]
 
 def DirectoryOfThisScript():
   return os.path.dirname( os.path.abspath( __file__ ) )
@@ -379,7 +375,13 @@ def MakeRelativePathsInFlagsAbsolute( flags, working_directory ):
 
 def IsHeaderFile( filename ):
   extension = os.path.splitext( filename )[ 1 ]
-  return extension in [ '.H', '.h', '.hxx', '.hpp', '.hh' ]
+  hs = open("/tmp/hst.txt","a")
+  hs.write(filename)
+  hs.write(":")
+  hs.write(extension)
+  hs.write("\n")
+  hs.close()
+  return extension in [ '.h', '.hxx', '.hpp', '.hh' ]
 
 
 def GetCompilationInfoForFile( filename ):
