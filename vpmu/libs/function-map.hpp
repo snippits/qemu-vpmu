@@ -41,7 +41,7 @@ int main(int argc, char* argv[]) {
     register_my_callbacks(functions);
 
     // Call without giving/assigning the return event.
-    functions.call(1, "no assign");
+    functions.call_no_ret(1, "no assign");
     functions.call_return(1, "not gonna be called");
     // Call with giving/assigning the return event.
     functions.call(1, 2, "assign key of return to 2");
@@ -96,7 +96,7 @@ public:
     /// @param[in] key The key to "function address".
     /// @param[in] args The arguments passed to the callback function.
     /// @return true on success. false when no function found/executed.
-    bool call(K key, Args... args)
+    bool call_no_ret(K key, Args... args)
     {
         auto f = funs.find(key);
         if (f != funs.end()) {
