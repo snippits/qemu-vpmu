@@ -7,6 +7,10 @@
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
 
+extern "C" {
+#include "event-tracing.h" // MMapInfo
+}
+
 #include "vpmu.hpp"             // VPMU common headers
 #include "vpmu-utils.hpp"       // miscellaneous functions
 #include "et-program.hpp"       // ET_Program class

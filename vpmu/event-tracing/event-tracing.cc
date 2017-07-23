@@ -8,6 +8,8 @@ extern "C" {
 #include "phase/phase.hpp"   // Phase class
 #include "json.hpp"          // nlohmann::json
 
+#include "function-tracing.hpp" // Tracing user functions and custom callbacks
+
 #include <boost/algorithm/string.hpp> // boost::algorithm::to_lower
 #include <boost/filesystem.hpp>       // boost::filesystem
 
@@ -431,16 +433,7 @@ void et_add_process_mapped_region(uint64_t pid, MMapInfo mmap_info)
     } else {
         process->vm_maps.map_region(program, pc, start_addr, end_addr, mode, fullpath);
     }
-    if (mode & VM_EXEC) {
-        uint64_t addr = process->get_symbol_addr("mmap");
-        process->functions.register_call(addr, [](void* env, ET_Process* self) {
-            self->pc_called_mmap = et_get_ret_addr(env);
-            DBG(STR_PROC "'%s'(pid %lu) called mmap from PC: %lx\n",
-                self->name.c_str(),
-                self->pid,
-                self->pc_called_mmap);
-        });
-    }
+    if (mode & VM_EXEC) ft_register_callbacks(process);
 }
 
 void et_update_program_elf_dwarf(const char* name, const char* host_file_path)
