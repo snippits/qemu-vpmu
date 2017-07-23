@@ -116,7 +116,8 @@ public:
         // Check if the target program is in the monitoring list
         if (process != nullptr) {
             auto program  = process->get_main_program();
-            auto filename = vpmu::utils::get_file_name_from_path(path);
+            auto filename = vpmu::file::basename(path);
+            // Lock this section
             std::lock_guard<std::mutex> lock(program_list_lock);
 
             if (name != program->filename) {

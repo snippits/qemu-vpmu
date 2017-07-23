@@ -55,32 +55,6 @@ namespace math
 
 namespace utils
 {
-    std::vector<std::string> str_split(std::string const &input)
-    {
-        std::istringstream       buffer(input);
-        std::vector<std::string> ret((std::istream_iterator<std::string>(buffer)),
-                                     std::istream_iterator<std::string>());
-        return ret;
-    }
-
-    std::vector<std::string> str_split(std::string const &input, const char *ch)
-    {
-        char *txt = strdup(input.c_str());
-        // return vector of string
-        std::vector<std::string> ret;
-
-        char *pch;
-        pch = strtok(txt, ch);
-        while (pch != NULL) {
-            if (pch[0] == 0) continue;
-            ret.push_back(pch);
-            pch = strtok(NULL, ch);
-        }
-
-        free(txt);
-        return ret;
-    }
-
     std::string get_version_from_vmlinux(const char *file_path)
     {
         char version_string[1024] = {};
@@ -191,7 +165,7 @@ namespace utils
         CONSOLE_LOG(BASH_COLOR_NONE "\n\n"); // Terminate Color Code
     }
 
-    inline uint64_t time_difference(struct timespec *t1, struct timespec *t2)
+    uint64_t time_difference(struct timespec *t1, struct timespec *t2)
     {
         uint64_t period = 0;
 
@@ -201,6 +175,106 @@ namespace utils
         return period;
     }
 
+    nlohmann::json load_json(const char *vpmu_config_file)
+    {
+        // Read file in
+        std::string vpmu_config_str = vpmu::file::read_text_content(vpmu_config_file);
+
+        // Parse json
+        auto j = nlohmann::json::parse(vpmu_config_str);
+        // DBG("%s\n", j.dump(4).c_str());
+
+        return j;
+    }
+
+    int get_tty_columns(void)
+    {
+        struct winsize w;
+        ioctl(0, TIOCGWINSZ, &w);
+        return w.ws_col;
+    }
+
+    int get_tty_rows(void)
+    {
+        struct winsize w;
+        ioctl(0, TIOCGWINSZ, &w);
+        return w.ws_row;
+    }
+
+} // End of namespace vpmu::utils
+
+namespace str
+{
+    std::vector<std::string> split(std::string const &input)
+    {
+        std::istringstream       buffer(input);
+        std::vector<std::string> ret((std::istream_iterator<std::string>(buffer)),
+                                     std::istream_iterator<std::string>());
+        return ret;
+    }
+
+    std::vector<std::string> split(std::string const &input, const char *ch)
+    {
+        char *txt = strdup(input.c_str());
+        // return vector of string
+        std::vector<std::string> ret;
+
+        char *pch;
+        pch = strtok(txt, ch);
+        while (pch != NULL) {
+            if (pch[0] == 0) continue;
+            ret.push_back(pch);
+            pch = strtok(NULL, ch);
+        }
+
+        free(txt);
+        return ret;
+    }
+
+    bool simple_match(std::string path, const std::string pattern)
+    {
+        if (path.length() == 0 || pattern.length() == 0) return false;
+        std::vector<std::string> sub_patterns;
+        boost::split(sub_patterns, pattern, boost::is_any_of("*"));
+
+        std::size_t idx = 0;
+
+        for (auto &pat : sub_patterns) {
+            if (pat.length() == 0) continue;
+            idx = path.find(pat, idx);
+            if (idx == std::string::npos) return false;
+            idx += pat.length();
+        }
+        // All sub-patterns are found
+        return true;
+    }
+
+    std::string addr_to_str(uint64_t addr)
+    {
+        char tmp_str[32] = {};
+        snprintf(tmp_str, sizeof(tmp_str), "%" PRIx64, addr);
+        return tmp_str;
+    }
+} // End of namespace vpmu::str
+
+namespace file
+{
+    std::string basename(std::string path)
+    {
+        int index = 0; // Default name of file starts from the first letter
+
+        if (path.length() == 0) return "";
+        for (int i = 0; i < path.length(); i++) {
+            if (path[i] == '\\') i++;
+            if (path[i] == '/') index = i + 1;
+        }
+        if (index == path.length()) {
+            // The path ends with '/' without a file name
+            return "";
+        }
+
+        return path.substr(index);
+    }
     std::ifstream::pos_type get_file_size(const char *filename)
     {
         std::ifstream fin(filename, std::ifstream::ate | std::ifstream::binary);
@@ -238,59 +312,7 @@ namespace utils
         ERR_MSG("File not found: %s\n", filename);
         exit(EXIT_FAILURE);
     }
-
-    nlohmann::json load_json(const char *vpmu_config_file)
-    {
-        // Read file in
-        std::string vpmu_config_str = read_text_content(vpmu_config_file);
-
-        // Parse json
-        auto j = nlohmann::json::parse(vpmu_config_str);
-        // DBG("%s\n", j.dump(4).c_str());
-
-        return j;
-    }
-
-    int get_tty_columns(void)
-    {
-        struct winsize w;
-        ioctl(0, TIOCGWINSZ, &w);
-        return w.ws_col;
-    }
-
-    int get_tty_rows(void)
-    {
-        struct winsize w;
-        ioctl(0, TIOCGWINSZ, &w);
-        return w.ws_row;
-    }
-
-    std::string addr_to_str(uint64_t addr)
-    {
-        char tmp_str[32] = {};
-        snprintf(tmp_str, sizeof(tmp_str), "%" PRIx64, addr);
-        return tmp_str;
-    }
-
-    bool string_match(std::string path, const std::string pattern)
-    {
-        if (path.length() == 0 || pattern.length() == 0) return false;
-        std::vector<std::string> sub_patterns;
-        boost::split(sub_patterns, pattern, boost::is_any_of("*"));
-
-        std::size_t idx = 0;
-
-        for (auto &pat : sub_patterns) {
-            if (pat.length() == 0) continue;
-            idx = path.find(pat, idx);
-            if (idx == std::string::npos) return false;
-            idx += pat.length();
-        }
-        // All sub-patterns are found
-        return true;
-    }
-
-} // End of namespace vpmu::utils
+} // End of namespace vpmu::file
 
 namespace host
 {

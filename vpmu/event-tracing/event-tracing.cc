@@ -102,10 +102,10 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
 uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
 {
     std::string version     = vpmu::utils::get_version_from_vmlinux(filename);
-    auto        s_strs      = vpmu::utils::str_split(version);
+    auto        s_strs      = vpmu::str::split(version);
     uint64_t    version_num = 0;
 
-    auto v = vpmu::utils::str_split(s_strs[2], ".");
+    auto v = vpmu::str::split(s_strs[2], ".");
     version_num =
       KERNEL_VERSION(atoi(v[0].c_str()), atoi(v[1].c_str()), atoi(v[2].c_str()));
 
@@ -345,7 +345,7 @@ enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr)
 
 void et_add_program_to_list(const char* name)
 {
-    if (vpmu::utils::string_match(vpmu::utils::basename(name), "*.so*"))
+    if (vpmu::str::simple_match(vpmu::file::basename(name), "*.so*"))
         event_tracer.add_library(name);
     else
         event_tracer.add_program(name);
@@ -396,7 +396,7 @@ void et_add_process_mapped_region(uint64_t pid, MMapInfo mmap_info)
     if (process->binary_loaded == false && (mode & VM_EXEC)) {
         // The program is main program, rename the real path and filename
         program           = process->get_main_program();
-        program->filename = vpmu::utils::get_file_name_from_path(fullpath);
+        program->filename = vpmu::file::basename(fullpath);
         program->path     = fullpath;
 
         process->binary_loaded = true;
@@ -438,7 +438,7 @@ void et_add_process_mapped_region(uint64_t pid, MMapInfo mmap_info)
 
 void et_update_program_elf_dwarf(const char* name, const char* host_file_path)
 {
-    auto program = event_tracer.find_program(vpmu::utils::basename(name).c_str());
+    auto program = event_tracer.find_program(vpmu::file::basename(name).c_str());
     event_tracer.update_elf_dwarf(program, host_file_path);
 }
 

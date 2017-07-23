@@ -58,8 +58,8 @@ void ET_Process::dump_vm_map(void)
                 "%16s - %-16s  "
                 "%-5s %-40s %-20s %16s@%-16lx"
                 "\n",
-                vpmu::utils::addr_to_str(reg.address.beg).c_str(),
-                vpmu::utils::addr_to_str(reg.address.end).c_str(),
+                vpmu::str::addr_to_str(reg.address.beg).c_str(),
+                vpmu::str::addr_to_str(reg.address.end).c_str(),
                 out_str.c_str(),
                 reg.pathname.c_str(),
                 prog_name.c_str(),
@@ -71,7 +71,7 @@ void ET_Process::dump_vm_map(void)
 
 void ET_Process::dump_process_info(void)
 {
-    using vpmu::utils::addr_to_str;
+    using vpmu::str::addr_to_str;
     char        file_path[512] = {0};
     std::string output_path =
       std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);

@@ -13,6 +13,9 @@ extern "C" {
 #include "json.hpp"     // nlohmann::json
 #include "vpmu-log.hpp" // VPMULog
 
+// Include other vpmu utilities
+#include "vpmu-math.hpp" // vpmu::math
+
 // A thread local storage for saving the running core id of each thread
 extern thread_local uint64_t vpmu_running_core_id;
 
@@ -55,45 +58,8 @@ inline void disable_vpmu_on_core(void)
     vpmu::disable_vpmu_on_core(get_core_id());
 }
 
-namespace math
-{
-    double l2_norm(const std::vector<double> &u);
-    void normalize(const std::vector<double> &in_v, std::vector<double> &out_v);
-    void normalize(std::vector<double> &vec);
-
-    inline uint64_t simple_hash(uint64_t key, uint64_t m) { return (key % m); }
-
-    // http://zimbry.blogspot.tw/2011/09/better-bit-mixing-improving-on.html
-    inline uint64_t bitmix_hash(uint64_t key)
-    {
-        key = (key ^ (key >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
-        key = (key ^ (key >> 27)) * UINT64_C(0x94d049bb133111eb);
-        key = key ^ (key >> 31);
-
-        return key;
-    }
-
-    inline uint32_t ilog2(uint32_t x)
-    {
-        uint32_t i;
-        for (i = -1; x != 0; i++) x >>= 1;
-        return i;
-    }
-
-    inline uint64_t sum_cores(uint64_t value[])
-    {
-        uint64_t sum = 0;
-        for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
-            sum += value[i];
-        }
-        return sum;
-    }
-} // End of namespace vpmu::math
-
 namespace utils
 {
-    std::vector<std::string> str_split(std::string const &input);
-    std::vector<std::string> str_split(std::string const &input, const char *ch);
     std::string get_version_from_vmlinux(const char *file_path);
     std::string get_random_hash_name(uint32_t string_length);
 
@@ -102,50 +68,7 @@ namespace utils
     void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
 
-    inline std::string get_file_name_from_path(const char *path)
-    {
-        int index = 0; // Default name of file starts from the first letter
-        int i     = 0;
-
-        if (path == nullptr) return "";
-        for (i = 0; path[i] != '\0'; i++) {
-            if (path[i] == '\\') i++;
-            if (path[i] == '/') index = i + 1;
-        }
-        if (index == strlen(path)) {
-            // The path ends with '/' without a file name
-            return "";
-        }
-
-        return std::string(&path[index]);
-    }
-
-    inline std::string basename(std::string path)
-    {
-        return get_file_name_from_path(path.c_str());
-    }
-
-    bool string_match(std::string path, const std::string pattern);
-
-    inline int get_index_of_file_name(const char *path)
-    {
-        int index = 0; // Default name of file starts from the first letter
-        int i     = 0;
-
-        if (path == nullptr) return -1;
-        for (i = 0; path[i] != '\0'; i++) {
-            if (path[i] == '/') {
-                index = i + 1;
-            }
-        }
-        i -= 1; // Set i to the length of string
-        if (index == i) {
-            // The path ends with '/' without a file name
-            return -1;
-        }
-
-        return index;
-    }
+    uint64_t time_difference(struct timespec *t1, struct timespec *t2);
 
     inline void json_check_or_exit(nlohmann::json config, std::string field)
     {
@@ -188,15 +111,27 @@ namespace utils
         exit(EXIT_FAILURE);
     }
 
+    nlohmann::json load_json(const char *vpmu_config_file);
+    int get_tty_columns(void);
+    int get_tty_rows(void);
+
+} // End of namespace vpmu::utils
+
+namespace str
+{
+    std::vector<std::string> split(std::string const &input);
+    std::vector<std::string> split(std::string const &input, const char *ch);
+    bool simple_match(std::string path, const std::string pattern);
+    std::string addr_to_str(uint64_t addr);
+} // End of namespace vpmu::str
+
+namespace file
+{
+    std::string basename(std::string path);
     std::ifstream::pos_type get_file_size(const char *filename);
     std::string read_text_content(const char *filename);
     std::unique_ptr<char> read_binary_content(const char *filename);
-    nlohmann::json load_json(const char *vpmu_config_file);
-    int         get_tty_columns(void);
-    int         get_tty_rows(void);
-    std::string addr_to_str(uint64_t addr);
-
-} // End of namespace vpmu::utils
+} // End of namespace vpmu::file
 
 namespace host
 {

@@ -40,7 +40,7 @@ public:
                     std::string                 pathname)
     {
         // return "" when not found
-        auto mepper_file_name = vpmu::utils::basename(this->get(pc).pathname);
+        auto mepper_file_name = vpmu::file::basename(this->get(pc).pathname);
 
         RegionInfo r = {};
 
@@ -249,8 +249,8 @@ public:
             DBG("%16s - %-16s  "
                 "%-5s %-40s %-20s"
                 "\n",
-                vpmu::utils::addr_to_str(reg.address.beg).c_str(),
-                vpmu::utils::addr_to_str(reg.address.end).c_str(),
+                vpmu::str::addr_to_str(reg.address.beg).c_str(),
+                vpmu::str::addr_to_str(reg.address.end).c_str(),
                 out_str.c_str(),
                 reg.pathname.c_str(),
                 prog_name.c_str());

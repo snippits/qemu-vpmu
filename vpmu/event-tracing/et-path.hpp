@@ -60,8 +60,8 @@ public:
 
     void set_name_or_path(std::string& new_name)
     {
-        filename = vpmu::utils::basename(new_name);
-        name     = vpmu::utils::basename(new_name);
+        filename = vpmu::file::basename(new_name);
+        name     = vpmu::file::basename(new_name);
 
         if (name != new_name) path = new_name;
     }
