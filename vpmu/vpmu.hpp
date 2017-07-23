@@ -1,5 +1,7 @@
 #ifndef __VPMU_HPP_
 #define __VPMU_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu.h" // VPMU common header
 }

@@ -1,5 +1,6 @@
-#ifndef _REGION_INFO_HPP_
-#define _REGION_INFO_HPP_
+#ifndef __REGION_INFO_HPP_
+#define __REGION_INFO_HPP_
+#pragma once
 
 #include <memory> // std::shared_ptr
 #include <string> // std::string

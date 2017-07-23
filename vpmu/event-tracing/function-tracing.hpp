@@ -1,5 +1,5 @@
-#ifndef _FUNCTION_TRACING_HPP_
-#define _FUNCTION_TRACING_HPP_
+#ifndef __FUNCTION_TRACING_HPP_
+#define __FUNCTION_TRACING_HPP_
 #pragma once
 
 #include "et-process.hpp" // ET_Process class

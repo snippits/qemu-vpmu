@@ -1,5 +1,7 @@
-#ifndef __VPMU_UTILS_HPP
-#define __VPMU_UTILS_HPP
+#ifndef __VPMU_UTILS_HPP_
+#define __VPMU_UTILS_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu-qemu.h" // VPMU struct
 }

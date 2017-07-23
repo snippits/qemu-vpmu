@@ -1,5 +1,7 @@
-#ifndef __BRANCH_ALPHA_HPP__
-#define __BRANCH_ALPHA_HPP__
+#ifndef __BRANCH_ALPHA_HPP_
+#define __BRANCH_ALPHA_HPP_
+#pragma once
+
 #include "vpmu-sim.hpp"             // VPMUSimulator
 #include "vpmu-packet.hpp"          // VPMU_Branch::Reference
 #include "vpmu-template-output.hpp" // Template output format

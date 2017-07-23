@@ -1,5 +1,6 @@
 #ifndef __VPMU_EVENT_TRACING_HPP_
 #define __VPMU_EVENT_TRACING_HPP_
+#pragma once
 
 extern "C" {
 #include "config-target.h" // Target configuration

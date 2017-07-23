@@ -1,5 +1,6 @@
 #ifndef __PHASE_HPP_
 #define __PHASE_HPP_
+#pragma once
 
 extern "C" {
 #include "vpmu/vpmu-extratb.h" // Insn_Counters, ExtraTBInfo

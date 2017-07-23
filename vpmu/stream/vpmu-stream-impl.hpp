@@ -1,5 +1,7 @@
 #ifndef __VPMU_STREAM_IMPL_HPP_
 #define __VPMU_STREAM_IMPL_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu-qemu.h" // VPMUPlatformInfo
 }

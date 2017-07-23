@@ -1,5 +1,7 @@
-#ifndef __CPU_CORTEX_A9_HPP__
-#define __CPU_CORTEX_A9_HPP__
+#ifndef __CPU_CORTEX_A9_HPP_
+#define __CPU_CORTEX_A9_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu-qemu.h"        // ExtraTBInfo
 #include "vpmu-arm-insnset.h" // Instruction Set

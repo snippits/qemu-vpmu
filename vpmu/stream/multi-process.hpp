@@ -1,5 +1,7 @@
 #ifndef __VPMU_STREAM_MULTI_PROCESS_HPP_
 #define __VPMU_STREAM_MULTI_PROCESS_HPP_
+#pragma once
+
 extern "C" {
 #include <sys/types.h> // Types of kernel related (pid_t, etc.)
 #include <signal.h>    // kill()

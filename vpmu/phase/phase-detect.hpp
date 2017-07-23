@@ -1,5 +1,6 @@
 #ifndef __PHASE_DETECT_HPP_
 #define __PHASE_DETECT_HPP_
+#pragma once
 
 #include "vpmu.hpp"             // Include types and basic headers
 #include "vpmu-log.hpp"         // VPMULog

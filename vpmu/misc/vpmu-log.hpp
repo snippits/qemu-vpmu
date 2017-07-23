@@ -1,5 +1,7 @@
 #ifndef __VPMU_LOG_HPP_
 #define __VPMU_LOG_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu-log.h"
 }
@@ -89,10 +91,9 @@ protected:
         // Print the prefix of log
         snprintf(o_str,
                  sizeof(o_str),
-                 LOG_PREFIX_FORMAT "%s" \
-                 BASH_COLOR_RED "FATAL" BASH_COLOR_NONE "(" \
-                 BASH_COLOR_PURPLE "%s:" BASH_COLOR_GREEN "%d" BASH_COLOR_NONE "): " \
-                 BASH_COLOR_NONE, \
+                 LOG_PREFIX_FORMAT "%s" BASH_COLOR_RED "FATAL" BASH_COLOR_NONE
+                                   "(" BASH_COLOR_PURPLE "%s:" BASH_COLOR_GREEN
+                                   "%d" BASH_COLOR_NONE "): " BASH_COLOR_NONE,
                  name.c_str(),
                  spaces.c_str(),
                  file_name,

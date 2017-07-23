@@ -1,5 +1,7 @@
 #ifndef __VPMU_SIM_HPP_
 #define __VPMU_SIM_HPP_
+#pragma once
+
 #include <vector>             // std::vector
 #include <string>             // std::string
 #include <thread>             // std::thread

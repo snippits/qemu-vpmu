@@ -1,5 +1,7 @@
 #ifndef __VPMU_STREAM_SINGLE_THREAD_HPP_
 #define __VPMU_STREAM_SINGLE_THREAD_HPP_
+#pragma once
+
 #include "vpmu-stream-impl.hpp" // VPMUStream_Impl
 #include <thread>               // std::thread
 #include <memory>               // Smart pointers and mem management

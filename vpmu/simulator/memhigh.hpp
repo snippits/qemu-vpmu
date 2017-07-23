@@ -1,5 +1,7 @@
-#ifndef __CACHE_MEMHIGH_HPP__
-#define __CACHE_MEMHIGH_HPP__
+#ifndef __CACHE_MEMHIGH_HPP_
+#define __CACHE_MEMHIGH_HPP_
+#pragma once
+
 #include <string>                   // std::string
 #include "vpmu-sim.hpp"             // VPMUSimulator
 #include "vpmu-packet.hpp"          // VPMU_Cache::Reference

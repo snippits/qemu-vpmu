@@ -1,5 +1,6 @@
-#ifndef _BEG_END_PAIR_HPP_
-#define _BEG_END_PAIR_HPP_
+#ifndef __BEG_END_PAIR_HPP_
+#define __BEG_END_PAIR_HPP_
+#pragma once
 
 extern "C" {
 #include <stdbool.h> // bool, true, false

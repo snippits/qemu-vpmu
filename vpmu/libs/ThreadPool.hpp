@@ -1,5 +1,5 @@
-#ifndef _THREAD_POOL_HPP_
-#define _THREAD_POOL_HPP_
+#ifndef __THREAD_POOL_HPP_
+#define __THREAD_POOL_HPP_
 #pragma once
 
 #include <vector>

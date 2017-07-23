@@ -1,5 +1,6 @@
 #ifndef __VPMU_PROGRAM_HPP_
 #define __VPMU_PROGRAM_HPP_
+#pragma once
 
 #include <string>    // std::string
 #include <vector>    // std::vector

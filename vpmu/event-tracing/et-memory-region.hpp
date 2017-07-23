@@ -1,5 +1,7 @@
 #ifndef __VPMU_ET_MEMORY_REGION_HPP_
 #define __VPMU_ET_MEMORY_REGION_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu/linux-mm.h" // VM_EXEC and other mmap() mode states
 }

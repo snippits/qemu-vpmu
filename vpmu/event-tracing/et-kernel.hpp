@@ -1,5 +1,6 @@
 #ifndef __VPMU_ET_KERNEL_HPP_
 #define __VPMU_ET_KERNEL_HPP_
+#pragma once
 
 extern "C" {
 #include "kernel-event-cb.h"      // Kernel related header

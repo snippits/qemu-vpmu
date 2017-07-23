@@ -1,5 +1,6 @@
-#ifndef __VPMU_PACKET_HPP__
-#define __VPMU_PACKET_HPP__
+#ifndef __VPMU_PACKET_HPP_
+#define __VPMU_PACKET_HPP_
+#pragma once
 
 extern "C" {
 #include "config-target.h"  // Target Configuration (CONFIG_ARM)

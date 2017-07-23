@@ -1,5 +1,5 @@
-#ifndef _FUNCTION_MAP_HPP_
-#define _FUNCTION_MAP_HPP_
+#ifndef __FUNCTION_MAP_HPP_
+#define __FUNCTION_MAP_HPP_
 #pragma once
 
 #include <map>

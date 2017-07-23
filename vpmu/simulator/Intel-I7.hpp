@@ -1,5 +1,7 @@
-#ifndef __CPU_INTEL_I7_HPP__
-#define __CPU_INTEL_I7_HPP__
+#ifndef __CPU_INTEL_I7_HPP_
+#define __CPU_INTEL_I7_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu-qemu.h"         // ExtraTBInfo
 #include "vpmu-i386-insnset.h" // Instruction Set

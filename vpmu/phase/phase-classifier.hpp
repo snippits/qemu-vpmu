@@ -1,5 +1,6 @@
 #ifndef __PHASE_CLASSIFIER_HPP_
 #define __PHASE_CLASSIFIER_HPP_
+#pragma once
 
 #include "vpmu.hpp"  // Include types and basic headers
 #include "phase.hpp" // Phase class

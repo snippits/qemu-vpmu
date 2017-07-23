@@ -1,5 +1,7 @@
 #ifndef __VPMU_INSN_HPP_
 #define __VPMU_INSN_HPP_
+#pragma once
+
 extern "C" {
 #include "config-target.h" // Target Configuration (CONFIG_ARM)
 #include "vpmu-insn.h"

@@ -1,5 +1,6 @@
 #ifndef __WINDOW_HPP_
 #define __WINDOW_HPP_
+#pragma once
 
 // #include <eigen3/Eigen/Dense> // Use Eigen for vector and its operations
 

@@ -1,5 +1,7 @@
 #ifndef __VPMU_TRANSLATE_HPP_
 #define __VPMU_TRANSLATE_HPP_
+#pragma once
+
 /**
  * @file vpmu-translate.hpp
  * @author Medicine Yeh
@@ -55,7 +57,6 @@ public:
     // TODO x86 models
     virtual uint16_t get_x86_64_ticks(uint64_t insn) { return 0; }
     virtual uint16_t get_i386_ticks(uint32_t insn) { return 0; }
-
 };
 
 #if defined(TARGET_ARM)

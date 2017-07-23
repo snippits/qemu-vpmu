@@ -1,5 +1,6 @@
 #ifndef __PHASE_CLASSIFIER_NN_HPP_
 #define __PHASE_CLASSIFIER_NN_HPP_
+#pragma once
 
 #include "phase.hpp"            // Phase class
 #include "phase-classifier.hpp" // PhaseClassifier class

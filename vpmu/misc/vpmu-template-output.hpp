@@ -1,5 +1,6 @@
 #ifndef __VPMU_TEMPLATE_CONSOLE_OUTPUT_
 #define __VPMU_TEMPLATE_CONSOLE_OUTPUT_
+#pragma once
 
 #include "vpmu-log.hpp"    // CONSOLE_LOG
 #include "vpmu-utils.hpp"  // vpmu::utils and vpmu::math

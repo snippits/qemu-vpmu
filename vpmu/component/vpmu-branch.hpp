@@ -1,5 +1,7 @@
 #ifndef __VPMU_BRANCH_HPP_
 #define __VPMU_BRANCH_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu-branch.h"
 }

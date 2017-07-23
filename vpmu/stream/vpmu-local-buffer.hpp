@@ -1,5 +1,6 @@
 #ifndef __VPMU_LOCAL_BUFFER_HPP_
 #define __VPMU_LOCAL_BUFFER_HPP_
+#pragma once
 
 #include <mutex> // Mutex
 

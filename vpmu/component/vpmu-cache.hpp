@@ -1,5 +1,7 @@
 #ifndef __VPMU_CACHE_HPP_
 #define __VPMU_CACHE_HPP_
+#pragma once
+
 extern "C" {
 #include "vpmu-cache.h"
 }
