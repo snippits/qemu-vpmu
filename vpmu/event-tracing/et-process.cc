@@ -63,8 +63,8 @@ void ET_Process::dump_vm_map(void)
                 out_str.c_str(),
                 reg.pathname.c_str(),
                 prog_name.c_str(),
-                reg.mapper.first.c_str(), // name
-                reg.mapper.second);       // pc address
+                reg.owner.first.c_str(), // name
+                reg.owner.second);       // pc address
     }
     fclose(fp);
 }
@@ -118,8 +118,8 @@ void ET_Process::dump_process_info(void)
         j["VM Maps"][i]["Permission"]      = out_str;
         j["VM Maps"][i]["Path Name"]       = vm_maps.regions[i].pathname;
         j["VM Maps"][i]["Bind to Program"] = prog_name;
-        j["VM Maps"][i]["Mapped By"]       = vm_maps.regions[i].mapper.first;
-        j["VM Maps"][i]["Map PC"]          = vm_maps.regions[i].mapper.second;
+        j["VM Maps"][i]["Mapped By"]       = vm_maps.regions[i].owner.first;
+        j["VM Maps"][i]["Map PC"]          = vm_maps.regions[i].owner.second;
     }
     fprintf(fp, "%s\n", j.dump(4).c_str());
 

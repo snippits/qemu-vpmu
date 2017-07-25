@@ -30,7 +30,7 @@ public:
     // Target program belonging to this region
     std::shared_ptr<ET_Program> program = nullptr;
     // Who mapped this region
-    std::pair<std::string, uint64_t> mapper = {};
+    std::pair<std::string, uint64_t> owner = {};
 
     // This is used for returning not found in search
     static RegionInfo not_found;

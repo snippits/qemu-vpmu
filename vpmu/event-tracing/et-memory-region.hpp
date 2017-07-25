@@ -40,7 +40,7 @@ public:
                     std::string                 pathname)
     {
         // return "" when not found
-        auto mepper_file_name = vpmu::file::basename(this->get(pc).pathname);
+        auto owner_file_name = vpmu::file::basename(this->get(pc).pathname);
 
         RegionInfo r = {};
 
@@ -48,7 +48,7 @@ public:
         r.permission = permission;
         r.pathname   = pathname;
         r.program    = prog;
-        r.mapper     = {mepper_file_name, pc};
+        r.owner      = {owner_file_name, pc};
 
         // Overwrite repeated/overlapped regions
         this->update(start_addr, end_addr - start_addr, permission);
