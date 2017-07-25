@@ -169,6 +169,11 @@ namespace utils
     {
         uint64_t period = 0;
 
+        // Never return big positive number when using unsigned
+        if (t1->tv_sec > t2->tv_sec
+            || (t1->tv_sec == t2->tv_sec && t1->tv_nsec >= t2->tv_nsec)) {
+            return 0;
+        }
         period = t2->tv_nsec - t1->tv_nsec;
         period += (t2->tv_sec - t1->tv_sec) * 1000000000;
 
