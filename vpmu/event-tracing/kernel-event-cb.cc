@@ -240,7 +240,7 @@ void et_register_callbacks_kernel_events(void)
             irq_pid);
         */
 
-        if (et_find_program_in_list(bash_path)) {
+        if (event_tracer.find_program(bash_path)) {
             event_tracer.add_new_process(bash_path, irq_pid);
             // DBG(STR_VPMU "Start tracing %s (pid=%lu)\n", bash_path, irq_pid);
             tic(&(VPMU.start_time));
