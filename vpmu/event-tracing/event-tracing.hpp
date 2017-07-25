@@ -38,51 +38,14 @@ public:
     EventTracer(const EventTracer&) = delete;
     EventTracer& operator=(const EventTracer&) = delete;
 
-    void update_elf_dwarf(std::shared_ptr<ET_Program> program, const char* file_name);
+    std::shared_ptr<ET_Program> add_program(std::string name);
+    std::shared_ptr<ET_Program> add_library(std::string name);
+    std::shared_ptr<ET_Program> find_program(const char* path);
+    void remove_program(std::string name);
+    void clear_shared_libraries(void);
+    void update_elf_dwarf(std::shared_ptr<ET_Program>& program, const char* file_name);
 
-    inline std::shared_ptr<ET_Program> add_program(std::string name)
-    {
-        auto program = std::make_shared<ET_Program>(name);
-        // Lock when updating the program_list (thread shared resource)
-        std::lock_guard<std::mutex> lock(program_list_lock);
-
-        log_debug("Add new binary '%s'", program->name.c_str());
-        program_list.push_back(program);
-        // debug_dump_program_map();
-        return program;
-    }
-
-    inline std::shared_ptr<ET_Program> add_library(std::string name)
-    {
-        if (name.length() == 0) return nullptr;
-        auto program = std::make_shared<ET_Program>(name);
-        // Lock when updating the program_list (thread shared resource)
-        std::lock_guard<std::mutex> lock(program_list_lock);
-
-        // Set this flag to true if it's a library
-        program->is_shared_library = true;
-        log_debug("Add new library '%s'", program->name.c_str());
-        program_list.push_back(program);
-        // debug_dump_program_map();
-        return program;
-    }
-
-    inline void remove_program(std::string name)
-    {
-        if (program_list.size() == 0) return;
-        std::lock_guard<std::mutex> lock(program_list_lock);
-
-        log_debug("Try remove program '%s'", name.c_str());
-        // The STL way cost a little more time than hand coding,
-        // but it's much more SAFE!
-        program_list.erase(std::remove_if(program_list.begin(),
-                                          program_list.end(),
-                                          [&](std::shared_ptr<ET_Program>& p) {
-                                              return p->fuzzy_compare_name(name);
-                                          }),
-                           program_list.end());
-        debug_dump_program_map();
-    }
+    void attach_mapped_region(std::shared_ptr<ET_Process>& process, MMapInfo mmap_info);
 
     inline std::shared_ptr<ET_Process> add_new_process(const char* name, uint64_t pid)
     {
@@ -105,41 +68,6 @@ public:
             process_id_map[pid] = process;
             debug_dump_process_map();
             return process;
-        }
-        return nullptr;
-    }
-
-    inline std::shared_ptr<ET_Process>
-    add_new_process(const char* path, const char* name, uint64_t pid)
-    {
-        auto process = add_new_process(name, pid);
-        // Check if the target program is in the monitoring list
-        if (process != nullptr) {
-            auto program  = process->get_main_program();
-            auto filename = vpmu::file::basename(path);
-            // Lock this section
-            std::lock_guard<std::mutex> lock(program_list_lock);
-
-            if (name != program->filename) {
-                log_debug(
-                  "Rename program '%s' attributes to: real path '%s', filename '%s'",
-                  program->name.c_str(),
-                  path,
-                  filename.c_str());
-                // The program is main program, rename the real path and filename
-                program->filename = filename;
-                program->path     = path;
-            }
-        }
-        return nullptr;
-    }
-
-    std::shared_ptr<ET_Program> find_program(const char* path)
-    {
-        if (path == nullptr) return nullptr;
-
-        for (auto& p : program_list) {
-            if (p->fuzzy_compare_name(path)) return p;
         }
         return nullptr;
     }
@@ -198,11 +126,6 @@ public:
         // debug_dump_process_map();
     }
 
-    inline void attach_to_parent(uint64_t parent_pid, uint64_t child_pid)
-    {
-        attach_to_parent(find_process(parent_pid), child_pid);
-    }
-
     inline void attach_to_program(std::shared_ptr<ET_Program>  target_program,
                                   std::shared_ptr<ET_Program>& program)
     {
@@ -216,41 +139,17 @@ public:
         // debug_dump_process_map();
     }
 
-    inline void attach_to_program(std::string                  target_program_name,
-                                  std::shared_ptr<ET_Program>& program)
-    {
-        attach_to_program(find_program(target_program_name.c_str()), program);
-    }
-
     ET_Kernel& get_kernel(void) { return kernel; }
 
     // Return 0 when parse fail, return linux version number when succeed
     uint64_t parse_and_set_kernel_symbol(const char* filename);
 
-    void clear_shared_libraries(void)
-    {
-        std::lock_guard<std::mutex> lock(program_list_lock);
-        // The STL way cost a little more time than hand coding, but it's much more SAFE!
-        program_list.erase(std::remove_if(program_list.begin(),
-                                          program_list.end(),
-                                          [&](std::shared_ptr<ET_Program>& p) {
-                                              return p->is_shared_library;
-                                          }),
-                           program_list.end());
-    }
-
     void debug_dump_process_map(void);
-
     void debug_dump_process_map(std::shared_ptr<ET_Process> marked_process);
-
     void debug_dump_program_map(void);
-
     void debug_dump_program_map(std::shared_ptr<ET_Program> marked_program);
-
     void debug_dump_child_list(const ET_Process& process);
-
     void debug_dump_binary_list(const ET_Process& process);
-
     void debug_dump_library_list(const ET_Program& program);
 
 private:

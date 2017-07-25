@@ -8,16 +8,19 @@
 #include <map>       // std::map
 #include <algorithm> // std::remove_if
 
-extern "C" {
-#include "event-tracing.h" // MMapInfo
-}
-
 #include "vpmu.hpp"             // VPMU common headers
 #include "vpmu-utils.hpp"       // miscellaneous functions
 #include "et-program.hpp"       // ET_Program class
 #include "et-memory-region.hpp" // ET_MemoryRegion class for linux/mm
 #include "phase/phase.hpp"      // Phase class
 #include "function-map.hpp"     // FunctionMap class
+
+typedef struct {
+    uint64_t vaddr;
+    uint64_t len;
+    uint64_t mode;
+    char     fullpath[1024];
+} MMapInfo;
 
 // NOTE that binary_list[0] always exists and is the main program
 //

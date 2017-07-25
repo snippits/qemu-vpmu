@@ -293,11 +293,11 @@ void et_register_callbacks_kernel_events(void)
 
     // Linux Kernel: wake up the newly forked process
     kernel.register_callback(ET_KERNEL_WAKE_NEW_TASK, [](void* env, uint64_t irq_pid) {
-        uint32_t target_pid = vpmu_read_uint32_from_guest(
-          env, et_get_input_arg(env, 1), g_linux_offset.task_struct.pid);
-        if (irq_pid != 0 && et_find_traced_pid(irq_pid)) {
-            et_attach_to_parent_pid(irq_pid, target_pid);
-        }
+        uint64_t addr       = et_get_input_arg(env, 1);
+        uint64_t offset     = g_linux_offset.task_struct.pid;
+        uint32_t target_pid = vpmu_read_uint32_from_guest(env, addr, offset);
+        // Safe checks are done in this call
+        event_tracer.attach_to_parent(event_tracer.find_process(irq_pid), target_pid);
     });
 
     // Linux Kernel: Fork a process
@@ -345,7 +345,7 @@ void et_register_callbacks_kernel_events(void)
             auto&    mmap_info = process->get_last_mapped_info();
             // Update new base address
             mmap_info.vaddr = vaddr;
-            et_add_process_mapped_region(irq_pid, mmap_info);
+            event_tracer.attach_mapped_region(process, mmap_info);
             // process->append_debug_log(genlog_mmap_ret(irq_pid, mmap_info));
             // process->vm_maps.debug_print_vm_map();
 

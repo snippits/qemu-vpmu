@@ -15,13 +15,73 @@ extern "C" {
 
 EventTracer event_tracer;
 
-void et_set_linux_sym_addr(const char* sym_name, uint64_t addr)
+std::shared_ptr<ET_Program> EventTracer::add_program(std::string name)
 {
-    event_tracer.get_kernel().set_symbol_address(sym_name, addr);
+    auto program = std::make_shared<ET_Program>(name);
+    // Lock when updating the program_list (thread shared resource)
+    std::lock_guard<std::mutex> lock(program_list_lock);
+
+    log_debug("Add new binary '%s'", program->name.c_str());
+    program_list.push_back(program);
+    // debug_dump_program_map();
+    return program;
 }
 
-// TODO Implement updating dwarf as well.
-void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
+std::shared_ptr<ET_Program> EventTracer::add_library(std::string name)
+{
+    if (name.length() == 0) return nullptr;
+    auto program = std::make_shared<ET_Program>(name);
+    // Lock when updating the program_list (thread shared resource)
+    std::lock_guard<std::mutex> lock(program_list_lock);
+
+    // Set this flag to true if it's a library
+    program->is_shared_library = true;
+    log_debug("Add new library '%s'", program->name.c_str());
+    program_list.push_back(program);
+    // debug_dump_program_map();
+    return program;
+}
+
+std::shared_ptr<ET_Program> EventTracer::find_program(const char* path)
+{
+    if (path == nullptr || strlen(path) == 0) return nullptr;
+
+    for (auto& p : program_list) {
+        if (p->fuzzy_compare_name(path)) return p;
+    }
+    return nullptr;
+}
+
+void EventTracer::remove_program(std::string name)
+{
+    if (program_list.size() == 0) return;
+    std::lock_guard<std::mutex> lock(program_list_lock);
+
+    log_debug("Try remove program '%s'", name.c_str());
+    // The STL way cost a little more time than hand coding,
+    // but it's much more SAFE!
+    program_list.erase(std::remove_if(program_list.begin(),
+                                      program_list.end(),
+                                      [&](std::shared_ptr<ET_Program>& p) {
+                                          return p->fuzzy_compare_name(name);
+                                      }),
+                       program_list.end());
+    debug_dump_program_map();
+}
+
+void EventTracer::clear_shared_libraries(void)
+{
+    std::lock_guard<std::mutex> lock(program_list_lock);
+    // The STL way cost a little more time than hand coding, but it's much more SAFE!
+    program_list.erase(std::remove_if(program_list.begin(),
+                                      program_list.end(),
+                                      [&](std::shared_ptr<ET_Program>& p) {
+                                          return p->is_shared_library;
+                                      }),
+                       program_list.end());
+}
+
+void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program>& program,
                                    const char*                 file_name)
 {
     if (program == nullptr) return;
@@ -97,6 +157,61 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program> program,
                   program->name.c_str());
         return;
     }
+}
+
+void EventTracer::attach_mapped_region(std::shared_ptr<ET_Process>& process,
+                                       MMapInfo                     mmap_info)
+{
+    std::shared_ptr<ET_Program> program = nullptr;
+
+    uint64_t start_addr = mmap_info.vaddr;
+    uint64_t end_addr   = mmap_info.vaddr + mmap_info.len;
+    uint64_t mode       = mmap_info.mode;
+    char*    fullpath   = mmap_info.fullpath;
+    // auto     process    = event_tracer.find_process(pid);
+    if (process == nullptr) return;
+
+    if (process->binary_loaded == false && (mode & VM_EXEC)) {
+        // The program is main program, rename the real path and filename
+        program           = process->get_main_program();
+        program->filename = vpmu::file::basename(fullpath);
+        program->path     = fullpath;
+
+        process->binary_loaded = true;
+        process->append_debug_log("Main Program\n");
+    } else {
+        if (strlen(fullpath) == 0) {
+            process->append_debug_log("Anonymous Mapping\n");
+        } else {
+            // Mapping executable page for shared library
+            program = event_tracer.find_program(fullpath);
+            if ((mode & VM_EXEC) && program == nullptr) {
+                DBG(STR_VPMU "Shared library %s was not found in the list "
+                             "create an empty one.\n",
+                    fullpath);
+                program = event_tracer.add_library(fullpath);
+            }
+            if (program != nullptr) {
+                if (mode & VM_EXEC) {
+                    // TODO Recording the library info for binaries might be unnecessary
+                    event_tracer.attach_to_program(process->get_main_program(), program);
+                }
+                process->push_binary(program);
+                process->append_debug_log("Library\n");
+            } else {
+                process->append_debug_log("Normal Files / Others\n");
+            }
+        }
+    }
+
+    // Push the memory region to process with/without pointer to target program
+    uint64_t pc = process->pc_called_mmap;
+    if (program == nullptr) {
+        process->vm_maps.map_region(pc, start_addr, end_addr, mode, fullpath);
+    } else {
+        process->vm_maps.map_region(program, pc, start_addr, end_addr, mode, fullpath);
+    }
+    if (mode & VM_EXEC) ft_register_callbacks(process);
 }
 
 uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
@@ -292,6 +407,11 @@ void EventTracer::debug_dump_library_list(const ET_Program& program)
 #endif
 }
 
+void et_set_linux_sym_addr(const char* sym_name, uint64_t addr)
+{
+    event_tracer.get_kernel().set_symbol_address(sym_name, addr);
+}
+
 enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr)
 {
     return event_tracer.get_kernel().find_event(vaddr);
@@ -313,81 +433,6 @@ void et_remove_program_from_list(const char* name)
 bool et_find_program_in_list(const char* name)
 {
     return (event_tracer.find_program(name) != nullptr);
-}
-
-bool et_find_traced_pid(uint64_t pid)
-{
-    return (event_tracer.find_process(pid) != nullptr);
-}
-
-bool et_find_traced_process(const char* name)
-{
-    return (event_tracer.find_process(name) != nullptr);
-}
-
-void et_attach_to_parent_pid(uint64_t parent_pid, uint64_t child_pid)
-{
-    return event_tracer.attach_to_parent(parent_pid, child_pid);
-}
-
-static std::shared_ptr<ET_Program> find_library(const char* fullpath)
-{
-    if (fullpath == nullptr || strlen(fullpath) == 0) return nullptr;
-    return event_tracer.find_program(fullpath);
-}
-
-void et_add_process_mapped_region(uint64_t pid, MMapInfo mmap_info)
-{
-    std::shared_ptr<ET_Program> program = nullptr;
-
-    uint64_t start_addr = mmap_info.vaddr;
-    uint64_t end_addr   = mmap_info.vaddr + mmap_info.len;
-    uint64_t mode       = mmap_info.mode;
-    char*    fullpath   = mmap_info.fullpath;
-    auto     process    = event_tracer.find_process(pid);
-    if (process == nullptr) return;
-
-    if (process->binary_loaded == false && (mode & VM_EXEC)) {
-        // The program is main program, rename the real path and filename
-        program           = process->get_main_program();
-        program->filename = vpmu::file::basename(fullpath);
-        program->path     = fullpath;
-
-        process->binary_loaded = true;
-        process->append_debug_log("Main Program\n");
-    } else {
-        if (strlen(fullpath) == 0) {
-            process->append_debug_log("Anonymous Mapping\n");
-        } else {
-            // Mapping executable page for shared library
-            program = find_library(fullpath);
-            if ((mode & VM_EXEC) && program == nullptr) {
-                DBG(STR_VPMU "Shared library %s was not found in the list "
-                             "create an empty one.\n",
-                    fullpath);
-                program = event_tracer.add_library(fullpath);
-            }
-            if (program != nullptr) {
-                if (mode & VM_EXEC) {
-                    // TODO Recording the library info for binaries might be unnecessary
-                    event_tracer.attach_to_program(process->get_main_program(), program);
-                }
-                process->push_binary(program);
-                process->append_debug_log("Library\n");
-            } else {
-                process->append_debug_log("Normal Files / Others\n");
-            }
-        }
-    }
-
-    // Push the memory region to process with/without pointer to target program
-    uint64_t pc = process->pc_called_mmap;
-    if (program == nullptr) {
-        process->vm_maps.map_region(pc, start_addr, end_addr, mode, fullpath);
-    } else {
-        process->vm_maps.map_region(program, pc, start_addr, end_addr, mode, fullpath);
-    }
-    if (mode & VM_EXEC) ft_register_callbacks(process);
 }
 
 void et_update_program_elf_dwarf(const char* name, const char* host_file_path)
