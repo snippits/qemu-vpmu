@@ -105,9 +105,10 @@ uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
     auto        s_strs      = vpmu::str::split(version);
     uint64_t    version_num = 0;
 
-    auto v = vpmu::str::split(s_strs[2], ".");
-    version_num =
-      KERNEL_VERSION(atoi(v[0].c_str()), atoi(v[1].c_str()), atoi(v[2].c_str()));
+    auto ver    = vpmu::str::split(s_strs[2], ".");
+    version_num = KERNEL_VERSION(atoi(ver[0].c_str()),  // Major number
+                                 atoi(ver[1].c_str()),  // Minor number
+                                 atoi(ver[2].c_str())); // Revision number
 
     int fd = open(filename, O_RDONLY);
     if (fd < 0) {
@@ -120,84 +121,37 @@ uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
         if (sec.get_hdr().type != elf::sht::symtab
             && sec.get_hdr().type != elf::sht::dynsym)
             continue;
-        log_debug("Symbol table '%s':", sec.get_name().c_str());
-        log_debug("%-16s %-5s %-7s %-7s %-5s %s",
-                  "Value",
-                  "Size",
-                  "Type",
-                  "Binding",
-                  "Index",
-                  "Name");
 
-        // NOTE: The following functions are core functions for these events.
-        // We use these instead of system calls because some other system calls
-        // might also trigger events of others.
-        // Ex: In mmap syscall, i.e. mmap_region(), unmap_region is called in order to
-        // undo any partial mapping done by a device driver.
-        // If one uses system calls instead of these functions,
-        // all mechanisms should still work..... well, in most cases. :P
         for (auto sym : sec.as_symtab()) {
             auto& d = sym.get_data();
             if (d.type() == elf::stt::func) {
                 kernel.add_symbol(sym.get_name(), d.value);
-
-                bool        print_content_flag = true;
-                std::string sym_name           = sym.get_name();
-                // Linux system call series functions might be either sys_XXXX or SyS_XXXX
-                boost::algorithm::to_lower(sym_name);
-                if (sym_name.find("do_execveat_common") != std::string::npos) {
-                    kernel.set_event_address(ET_KERNEL_EXECV, d.value);
-                } else if (sym_name == "__switch_to") {
-                    kernel.set_event_address(ET_KERNEL_CONTEXT_SWITCH, d.value);
-                } else if (sym_name == "do_exit") {
-                    kernel.set_event_address(ET_KERNEL_EXIT, d.value);
-                } else if (sym_name == "wake_up_new_task") {
-                    kernel.set_event_address(ET_KERNEL_WAKE_NEW_TASK, d.value);
-                } else if (sym_name == "_do_fork" || sym_name == "do_fork") {
-                    kernel.set_event_address(ET_KERNEL_FORK, d.value);
-                } else if (sym_name == "mmap_region") {
-                    kernel.set_event_address(ET_KERNEL_MMAP, d.value);
-                } else if (sym_name == "mprotect_fixup") {
-                    kernel.set_event_address(ET_KERNEL_MPROTECT, d.value);
-                } else if (sym_name == "unmap_region") {
-                    kernel.set_event_address(ET_KERNEL_MUNMAP, d.value);
-                } else {
-                    print_content_flag = false;
-                }
-                if (print_content_flag) {
-                    log_debug("%016" PRIx64 " %5" PRId64 " %-7s %-7s %5s %s\n",
-                              d.value,
-                              d.size,
-                              to_string(d.type()).c_str(),
-                              to_string(d.binding()).c_str(),
-                              to_string(d.shnxd).c_str(),
-                              sym.get_name().c_str());
-                }
+                kernel.set_symbol_address(sym.get_name(), d.value);
             }
         }
-
-        if (kernel.find_vaddr(ET_KERNEL_MMAP) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "mmap_region");
-        if (kernel.find_vaddr(ET_KERNEL_MPROTECT) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "mprotect_fixup");
-        if (kernel.find_vaddr(ET_KERNEL_MUNMAP) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "unmap_region");
-        if (kernel.find_vaddr(ET_KERNEL_FORK) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "_do_fork");
-        if (kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "wake_up_new_task");
-        if (kernel.find_vaddr(ET_KERNEL_EXIT) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "do_exit");
-        if (kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "__switch_to");
-        if (kernel.find_vaddr(ET_KERNEL_EXECV) == 0)
-            LOG_FATAL("Kernel event \"%s\" was not found!", "do_execveat_common");
-
-        // TODO Make some functions work without setting structure offset
-        // This must be done when kernel symbol is set, or emulation would hang or SEGV
-        // TODO This should be written in x86/ARM protable and use KERNEL_VERSION macro
-        et_set_default_linux_struct_offset(version_num);
     }
+
+    if (kernel.find_vaddr(ET_KERNEL_MMAP) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "mmap_region");
+    if (kernel.find_vaddr(ET_KERNEL_MPROTECT) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "mprotect_fixup");
+    if (kernel.find_vaddr(ET_KERNEL_MUNMAP) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "unmap_region");
+    if (kernel.find_vaddr(ET_KERNEL_FORK) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "_do_fork");
+    if (kernel.find_vaddr(ET_KERNEL_WAKE_NEW_TASK) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "wake_up_new_task");
+    if (kernel.find_vaddr(ET_KERNEL_EXIT) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "do_exit");
+    if (kernel.find_vaddr(ET_KERNEL_CONTEXT_SWITCH) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "__switch_to");
+    if (kernel.find_vaddr(ET_KERNEL_EXECV) == 0)
+        LOG_FATAL("Kernel event \"%s\" was not found!", "do_execveat_common");
+
+    // TODO Make some functions work without setting structure offset
+    // This must be done when kernel symbol is set, or emulation would hang or SEGV
+    // TODO This should be written in x86/ARM protable and use KERNEL_VERSION macro
+    et_set_default_linux_struct_offset(version_num);
     close(fd);
     // TODO load kernel elf,dwarf information to an appropriate place.
     return version_num;

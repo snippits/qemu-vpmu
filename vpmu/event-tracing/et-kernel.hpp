@@ -79,10 +79,8 @@ public:
         kernel_event_table[event] = address;
     }
 
-    void set_symbol_address(std::string sym_name, uint64_t address)
+    bool set_symbol_address(std::string sym_name, uint64_t address)
     {
-        DBG(STR_VPMU "Set Linux symbol %s @ %lx\n", sym_name.c_str(), address);
-
         // NOTE: The following functions are core functions for these events.
         // We use these instead of system calls because some other system calls
         // might also trigger events of others.
@@ -109,7 +107,12 @@ public:
             set_event_address(ET_KERNEL_MPROTECT, address);
         } else if (sym_name == "unmap_region") {
             set_event_address(ET_KERNEL_MUNMAP, address);
+        } else {
+            return false; // Not Found
         }
+        DBG(STR_VPMU "Set Linux symbol %s @ %lx\n", sym_name.c_str(), address);
+
+        return true; // Found
     }
 
     void register_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f)
