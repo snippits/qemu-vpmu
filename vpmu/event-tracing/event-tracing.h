@@ -23,6 +23,7 @@ enum ET_KERNEL_EVENT_TYPE et_find_kernel_event(uint64_t vaddr);
 void et_add_program_to_list(const char* name);
 void et_remove_program_from_list(const char* name);
 bool et_find_program_in_list(const char* name);
+bool et_find_process_in_list(const char* name);
 
 void et_update_program_elf_dwarf(const char* name, const char* host_file_path);
 void et_check_function_call(void*    env,

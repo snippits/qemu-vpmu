@@ -24,7 +24,7 @@ static std::string genlog_unmap(uint64_t pid, uint64_t saddr, uint64_t eaddr)
 {
     char buffer[4096] = {};
 
-    DBG(STR_VPMU "pid %lu on core %2lu unmap: %lx - %lx\n",
+    DBG(STR_KERNEL "pid %lu on core %2lu unmap: %lx - %lx\n",
         pid,
         vpmu::get_core_id(),
         saddr,
@@ -46,7 +46,7 @@ static std::string genlog_mmap(uint64_t pid, MMapInfo mmap_info)
     char     buffer[4096] = {};
     uint64_t free_space   = 0;
 
-    DBG(STR_VPMU "pid %lu on core %2lu mmap file: %s @ %lx - %lx mode: (%lx) ",
+    DBG(STR_KERNEL "pid %lu on core %2lu mmap file: %s @ %lx - %lx mode: (%lx) ",
         pid,
         vpmu::get_core_id(),
         mmap_info.fullpath,
@@ -95,7 +95,7 @@ static std::string genlog_mprotect(uint64_t pid, MMapInfo mmap_info)
     char     buffer[4096] = {};
     uint64_t free_space   = 0;
 
-    DBG(STR_VPMU "pid %lu on core %2lu mprotect: %lx - %lx mode: (%lx) ",
+    DBG(STR_KERNEL "pid %lu on core %2lu mprotect: %lx - %lx mode: (%lx) ",
         pid,
         vpmu::get_core_id(),
         mmap_info.vaddr,
@@ -131,7 +131,7 @@ static std::string genlog_mmap_ret(uint64_t pid, MMapInfo mmap_info)
 {
     char buffer[1024] = {};
 
-    DBG(STR_VPMU "pid %lu on core %2lu mmap: %lx - %lx\n",
+    DBG(STR_KERNEL "pid %lu on core %2lu mmap: %lx - %lx\n",
         pid,
         vpmu::get_core_id(),
         mmap_info.vaddr,
@@ -234,15 +234,39 @@ void et_register_callbacks_kernel_events(void)
             bash_path = (const char*)vpmu_read_ptr_from_guest(env, name_addr, 0);
         }
         /*
-        DBG(STR_VPMU "Exec file: %s on core %lu (pid=%lu)\n",
+        DBG(STR_KERNEL "Exec file: %s on core %lu (pid=%lu)\n",
             bash_path,
             vpmu::get_core_id(),
             irq_pid);
         */
 
-        if (event_tracer.find_program(bash_path)) {
+        auto process = event_tracer.find_process(irq_pid);
+        // If process exists and it's forked by others (not top process)
+        if (process && !process->is_top_process) {
+            // Enter when a script executes a sub-process
+            auto timing_model = process->timing_model;
+            // Create a new process and overwrite all its original contents.
+            // This immitates the actual behavior in Linux kernel.
+            if (auto program = event_tracer.find_program(bash_path)) {
+                // Try to use existing program info. if there is one.
+                ET_Process empty_process(program, irq_pid);
+                *process = empty_process;
+            } else {
+                ET_Process empty_process(bash_path, irq_pid);
+                *process = empty_process;
+            }
+            // Rename the process by the bash name (same as htop)
+            process->name = bash_path;
+            // Reset the timing model to its original value
+            process->timing_model = timing_model;
+            // DBG(STR_KERNEL "Exec a new process %s (pid=%lu)\n", bash_path, irq_pid);
+        } else if (event_tracer.find_program(bash_path)) {
+            // Enter this condition when this process is not executed by
+            // any monitored process, e.g. program run by a user.
             event_tracer.add_new_process(bash_path, irq_pid);
-            // DBG(STR_VPMU "Start tracing %s (pid=%lu)\n", bash_path, irq_pid);
+            // DBG(STR_KERNEL "Start tracing %s (pid=%lu)\n", bash_path, irq_pid);
+            // TODO These might be unwanted behavior when monitoring multiple processes
+            // Use no reset unless user triggered one. And use snapshot instead.
             tic(&(VPMU.start_time));
             VPMU_reset();
             vpmu_print_status(&VPMU);
@@ -303,7 +327,7 @@ void et_register_callbacks_kernel_events(void)
     // Linux Kernel: Fork a process
     kernel.register_callback(ET_KERNEL_FORK, [](void* env, uint64_t irq_pid) {
         // uint64_t irq_pid = et_get_syscall_user_thread_id(env);
-        // DBG(STR_VPMU "fork from %lu\n", irq_pid);
+        // DBG(STR_KERNEL "fork from %lu\n", irq_pid);
     });
 
     kernel.register_callback(ET_KERNEL_MMAP, [](void* env, uint64_t irq_pid) {

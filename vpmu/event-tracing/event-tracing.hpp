@@ -119,10 +119,17 @@ public:
     inline void attach_to_parent(std::shared_ptr<ET_Process> parent, uint64_t child_pid)
     {
         if (parent == nullptr) return;
-        std::lock_guard<std::mutex> lock(process_lock);
-
+        // Fork a new child process
+        auto process = std::make_shared<ET_Process>(*parent, child_pid);
         log_debug("Attach process %5" PRIu64 " to %5" PRIu64, child_pid, parent->pid);
-        parent->attach_child_pid(child_pid);
+        {
+            std::lock_guard<std::mutex> lock(process_lock);
+            parent->push_child_process(process);
+        }
+        {
+            std::lock_guard<std::mutex> lock(process_id_map_lock);
+            process_id_map[child_pid] = process;
+        }
         // debug_dump_process_map();
     }
 

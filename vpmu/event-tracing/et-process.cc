@@ -18,11 +18,6 @@ void ET_Process::append_debug_log(std::string mesg)
 #endif
 }
 
-void ET_Process::attach_child_pid(uint64_t child_pid)
-{
-    child_list.push_back(std::make_shared<ET_Process>(this, child_pid));
-}
-
 void ET_Process::push_child_process(std::shared_ptr<ET_Process>& process)
 {
     if (process != nullptr) child_list.push_back(process);

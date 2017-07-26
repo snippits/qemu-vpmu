@@ -33,6 +33,8 @@ inline void set_core_id(uint64_t core_id)
 
 inline void enable_vpmu_on_core(uint64_t core_id)
 {
+    if (!VPMU.core[core_id].vpmu_enabled)
+        DBG(STR_VPMU "VPMU is now enabled on core %lu\n", core_id);
     VPMU.core[core_id].vpmu_enabled = true;
     // Set the global/general flag as well
     VPMU.enabled = true;
@@ -40,6 +42,8 @@ inline void enable_vpmu_on_core(uint64_t core_id)
 
 inline void disable_vpmu_on_core(uint64_t core_id)
 {
+    if (VPMU.core[core_id].vpmu_enabled)
+        DBG(STR_VPMU "VPMU is now disabled on core %lu\n", core_id);
     VPMU.core[core_id].vpmu_enabled = false;
     // Set the global/general flag as well
     VPMU.enabled = false;

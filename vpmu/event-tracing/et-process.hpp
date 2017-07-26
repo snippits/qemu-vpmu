@@ -49,14 +49,14 @@ public:
 
         binary_list.push_back(std::make_shared<ET_Program>(new_name));
     }
-    ET_Process(ET_Process* target_process, uint64_t new_pid)
+    ET_Process(ET_Process& target_process, uint64_t new_pid)
     {
-        name         = target_process->name;
-        filename     = target_process->filename;
-        path         = target_process->path;
+        name         = target_process.name;
+        filename     = target_process.filename;
+        path         = target_process.path;
         pid          = new_pid;
-        binary_list  = target_process->binary_list;
-        timing_model = target_process->timing_model;
+        binary_list  = target_process.binary_list;
+        timing_model = target_process.timing_model;
     }
     ~ET_Process() { vpmu_qemu_free_cpu_arch_state(cpu_state); }
 
@@ -104,7 +104,6 @@ public:
 
     std::string find_code_line_number(uint64_t pc);
 
-    void attach_child_pid(uint64_t child_pid);
     void push_child_process(std::shared_ptr<ET_Process>& process);
     void push_binary(std::shared_ptr<ET_Program>& program);
 

@@ -82,7 +82,7 @@ void EventTracer::clear_shared_libraries(void)
 }
 
 void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program>& program,
-                                   const char*                 file_name)
+                                   const char*                  file_name)
 {
     if (program == nullptr) return;
     int fd = open(file_name, O_RDONLY);
@@ -151,7 +151,9 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program>& program,
             // log_debug("\n");
         }
     } catch (elf::format_error e) {
-        LOG_FATAL("bad ELF magic number");
+        // Do nothing if the file is not a valid ELF binary
+        // LOG_FATAL("bad ELF magic number");
+        return;
     } catch (dwarf::format_error e) {
         log_debug("Warning: Target binary '%s' does not contatin dwarf sections",
                   program->name.c_str());
@@ -435,9 +437,24 @@ bool et_find_program_in_list(const char* name)
     return (event_tracer.find_program(name) != nullptr);
 }
 
+bool et_find_process_in_list(const char* name)
+{
+    return (event_tracer.find_process(name) != nullptr);
+}
+
 void et_update_program_elf_dwarf(const char* name, const char* host_file_path)
 {
     auto program = event_tracer.find_program(vpmu::file::basename(name).c_str());
+    // Some processes are monitored but binary does not exist in the list.
+    // This usually happens when using attach mode (attach to a running process).
+    if (program == nullptr) {
+        // Get the binary from process directly and update its info.
+        // Do not push this binary to the program list for keeping life-cycle of
+        // binary to the monitored process.
+        if (auto process = event_tracer.find_process(name)) {
+            program = process->get_main_program();
+        }
+    }
     event_tracer.update_elf_dwarf(program, host_file_path);
 }
 

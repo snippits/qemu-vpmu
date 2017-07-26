@@ -126,7 +126,11 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         paddr        = vpmu_tlb_get_host_addr(per_core_env, value);
         binary_name  = (char *)paddr;
         DBG(STR_VPMU "Trace process name: %s\n", binary_name);
-        if (!et_find_program_in_list(binary_name)) {
+        // Check neither program nor process exists before updating a new one.
+        // Some processes are monitored but binary does not exist in the list.
+        // This usually happens when using attach mode (attach to a running process).
+        if (!et_find_program_in_list(binary_name)
+            && !et_find_process_in_list(binary_name)) {
             // Only push to the list when it's not duplicated
             DBG(STR_VPMU "Push process: %s into list\n", binary_name);
             et_add_program_to_list(binary_name);
