@@ -90,6 +90,8 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     switch (addr) {
     case VPMU_MMAP_SET_TIMING_MODEL:
         VPMU.timing_model = value;
+        vpmu_print_status(&VPMU);
+
         break;
     case VPMU_MMAP_ENABLE:
         VPMU_reset();

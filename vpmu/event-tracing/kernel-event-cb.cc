@@ -265,11 +265,6 @@ void et_register_callbacks_kernel_events(void)
             // any monitored process, e.g. program run by a user.
             event_tracer.add_new_process(bash_path, irq_pid);
             // DBG(STR_KERNEL "Start tracing %s (pid=%lu)\n", bash_path, irq_pid);
-            // TODO These might be unwanted behavior when monitoring multiple processes
-            // Use no reset unless user triggered one. And use snapshot instead.
-            tic(&(VPMU.start_time));
-            VPMU_reset();
-            vpmu_print_status(&VPMU);
             vpmu::enable_vpmu_on_core();
         }
     });
