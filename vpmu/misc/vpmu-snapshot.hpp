@@ -38,6 +38,7 @@ public:
         time_ns[3] = vpmu::target::memory_time_ns();
         time_ns[4] = vpmu::target::io_time_ns();
         time_ns[5] = vpmu::target::time_ns();
+        time_ns[6] = vpmu::host::get_timestamp_us();
     }
 
     void reset(void)
@@ -86,7 +87,7 @@ public:
     VPMU_Insn::Data         insn_data   = {};
     VPMU_Branch::Data       branch_data = {};
     VPMU_Cache::Data        cache_data  = {};
-    std::valarray<uint64_t> time_ns     = std::valarray<uint64_t>(6);
+    std::valarray<uint64_t> time_ns     = std::valarray<uint64_t>(7);
 };
 
 #endif
