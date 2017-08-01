@@ -178,7 +178,7 @@ void Phase::update_snapshot(VPMUSnapshot& process_snapshot)
     {
         // If this is implemented in async mode, this force sync could be removed
         VPMU_sync();
-        VPMUSnapshot new_snapshot(true);
+        VPMUSnapshot new_snapshot(true, vpmu::get_core_id());
 
         this->snapshot += new_snapshot - process_snapshot;
         process_snapshot = new_snapshot;

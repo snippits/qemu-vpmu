@@ -26,6 +26,11 @@ public:
         if (take_a_shot_flag) take_snapshot();
     }
 
+    VPMUSnapshot(bool take_a_shot_flag, uint64_t core)
+    {
+        if (take_a_shot_flag) take_snapshot(core);
+    }
+
     void take_snapshot(void)
     {
         insn_data   = vpmu_insn_stream.get_data();
@@ -39,6 +44,21 @@ public:
         time_ns[4] = vpmu::target::io_time_ns();
         time_ns[5] = vpmu::target::time_ns();
         time_ns[6] = vpmu::host::get_timestamp_us();
+    }
+
+    void take_snapshot(uint64_t core)
+    {
+        take_snapshot();
+        insn_data.mask_out_except(core);
+        branch_data.mask_out_except(core);
+        cache_data.mask_out_except(core);
+    }
+
+    void sum_cores(void)
+    {
+        insn_data.reduce();
+        branch_data.reduce();
+        cache_data.reduce();
     }
 
     void reset(void)

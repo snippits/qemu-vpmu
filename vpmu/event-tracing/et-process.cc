@@ -246,6 +246,10 @@ void ET_Process::dump_phase_result(void)
     }
     sprintf(file_path, "%s/profiling", output_path.c_str());
     FILE* fp = fopen(file_path, "wt");
+    fprintf(fp, "====== Per-core information  ======\n");
+    vpmu::dump::snapshot(fp, this->prof_counters);
+    fprintf(fp, "\n\n====== Total information  ======\n");
+    this->prof_counters.sum_cores();
     vpmu::dump::snapshot(fp, this->prof_counters);
     fclose(fp);
 }
