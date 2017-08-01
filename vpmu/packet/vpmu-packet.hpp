@@ -210,7 +210,7 @@ public:
             for (int c = 0; c < ALL_PROC; c++) {
                 // Skip if that processing core does not exist
                 if (c == PROCESSOR_GPU && VPMU.platform.gpu.cores == 0) continue;
-                for (int m = 0; m < MAX_LEVEL; m++) {
+                for (int m = L1_CACHE; m < MAX_LEVEL; m++) {
                     for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
                         for (int j = 0; j < SIZE_OF_INDEX; j++) {
                             out.insn_cache[c][m][i][j] =
@@ -234,7 +234,7 @@ public:
             for (int c = 0; c < ALL_PROC; c++) {
                 // Skip if that processing core does not exist
                 if (c == PROCESSOR_GPU && VPMU.platform.gpu.cores == 0) continue;
-                for (int m = 0; m < MAX_LEVEL; m++) {
+                for (int m = L1_CACHE; m < MAX_LEVEL; m++) {
                     for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
                         for (int j = 0; j < SIZE_OF_INDEX; j++) {
                             out.insn_cache[c][m][i][j] =
