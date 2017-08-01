@@ -111,6 +111,7 @@ public:
     const std::string& get_debug_log(void) { return debug_log; }
 
 public:
+    bool     is_running     = false; ///< Set to true if it is currently running
     bool     is_top_process = false; ///< Identify if this is the top parent
     uint64_t pid            = 0;     ///< The pid of this process
     uint64_t stack_ptr      = 0;     ///< The current stack pointer of this process

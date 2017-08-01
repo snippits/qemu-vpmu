@@ -271,25 +271,41 @@ void et_register_callbacks_kernel_events(void)
 
     // Linux Kernel: Context switch
     kernel.register_callback(ET_KERNEL_CONTEXT_SWITCH, [](void* env, uint64_t irq_pid) {
-        uint64_t pid        = -1;
-        uint64_t pid_offset = g_linux_offset.task_struct.pid;
+        uint64_t pid      = et_get_switch_to_pid(env);
+        uint64_t prev_pid = et_get_switch_to_prev_pid(env);
 
-#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
-        // Only ARM 32 bits has a different arrangement of arguments
-        // Refer to "arch/arm/include/asm/switch_to.h"
-        uint64_t task_offset = g_linux_offset.thread_info.task;
-        uint64_t ptr         = et_get_input_arg(env, 3);
-        uint32_t task_ptr    = vpmu_read_uint32_from_guest(env, ptr, task_offset);
-        pid                  = vpmu_read_uint32_from_guest(env, task_ptr, pid_offset);
-#elif defined(TARGET_X86_64) || defined(TARGET_I386)
-        // Refer to "arch/x86/include/asm/switch_to.h"
-        uint64_t ptr = et_get_input_arg(env, 2);
-        pid          = vpmu_read_uint32_from_guest(env, ptr, pid_offset);
-#endif
+        /*
+        DBG(STR_KERNEL "Core %2lu switch pid %lu to %lu\n",
+            vpmu::get_core_id(),
+            prev_pid,
+            pid);
+        */
         VPMU.core[vpmu::get_core_id()].current_pid = pid;
-        // ERR_MSG("core %2lu switch pid to %lu\n", vpmu::get_core_id(), pid);
+
+        // Accumulate the profiling counters when a process is scheduled out
+        auto prev_process = event_tracer.find_process(prev_pid);
+        if (prev_pid != pid && prev_process) {
+            // TODO If this is implemented in async mode, this force sync could be removed
+            VPMU_sync();
+            VPMUSnapshot new_snapshot(true);
+            prev_process->prof_counters += new_snapshot - prev_process->snapshot;
+            prev_process->is_running = false;
+        }
 
         auto process = event_tracer.find_process(pid);
+        // Do snapshot when a process is scheduled in
+        if (process && !process->is_running) {
+            // NOTE: Sometimes kernel will schedule in a process twice for unknown reason.
+            // We don't need to do snapshot again in this case.
+            // TODO If this is implemented in async mode, this force sync could be
+            // removed
+            VPMU_sync();
+            VPMUSnapshot new_snapshot(true);
+            process->snapshot   = new_snapshot;
+            process->is_running = true;
+        }
+
+        // Turn on/off VPMU depending on the situation
         if (process) {
             process->set_cpu_state(env);
             vpmu::enable_vpmu_on_core();
@@ -305,6 +321,14 @@ void et_register_callbacks_kernel_events(void)
 
     // Linux Kernel: Process End
     kernel.register_callback(ET_KERNEL_EXIT, [](void* env, uint64_t irq_pid) {
+        auto process = event_tracer.find_process(irq_pid);
+        if (process) {
+            // TODO If this is implemented in async mode, this force sync could be removed
+            VPMU_sync();
+            VPMUSnapshot new_snapshot(true);
+            process->prof_counters += new_snapshot - process->snapshot;
+            process->is_running = false;
+        }
         event_tracer.remove_process(irq_pid);
         return;
 

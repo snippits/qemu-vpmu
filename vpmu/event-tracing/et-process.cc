@@ -7,6 +7,8 @@ extern "C" {
 #include "et-process.hpp"    // ET_Process class
 #include "region-info.hpp"   // RegionInfo class
 
+#include "vpmu-template-output.hpp" // vpmu::dump::snapshot
+
 #include <boost/filesystem.hpp> // boost::filesystem
 
 RegionInfo RegionInfo::not_found = {};
@@ -242,6 +244,10 @@ void ET_Process::dump_phase_result(void)
         phase_list[idx].dump_result(fp);
         fclose(fp);
     }
+    sprintf(file_path, "%s/profiling", output_path.c_str());
+    FILE* fp = fopen(file_path, "wt");
+    vpmu::dump::snapshot(fp, this->prof_counters);
+    fclose(fp);
 }
 
 std::string ET_Process::find_code_line_number(uint64_t pc)
