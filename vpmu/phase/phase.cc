@@ -156,6 +156,7 @@ void Phase::dump_result(FILE* fp)
     FILE_TME("  ->System memory              :", snapshot.time_ns[3]);
     FILE_TME("  ->I/O memory                 :", snapshot.time_ns[4]);
     FILE_TME("Estimated execution time       :", snapshot.time_ns[5]);
+    FILE_TME("Host emulation time            :", snapshot.time_ns[6]);
 #undef FILE_TME
 }
 
@@ -235,14 +236,14 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
         process->phase_list.push_back(window);
         // We must update the snapshot to get the correct result
         auto&& new_phase = process->phase_list.back();
-        new_phase.update_snapshot(process->snapshot);
+        new_phase.update_snapshot(process->snapshot_phase);
         new_phase.id = phase_num;
         process->phase_history.push_back(std::make_pair(window.timestamp, phase_num));
     } else {
         uint64_t phase_num = (&phase - &process->phase_list[0]);
         // DBG(STR_PHASE "Update phase id %zu\n", phase_num);
         phase.update(window);
-        phase.update_snapshot(process->snapshot);
+        phase.update_snapshot(process->snapshot_phase);
         process->phase_history.push_back(std::make_pair(window.timestamp, phase_num));
     }
 }
@@ -257,7 +258,7 @@ push_new_sub_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& wi
     process->phase_list.push_back(window);
     // We must update the snapshot to get the correct result
     auto&& new_phase = process->phase_list.back();
-    new_phase.update_snapshot(process->snapshot);
+    new_phase.update_snapshot(process->snapshot_phase);
     new_phase.id             = phase_num;
     new_phase.sub_phase_flag = true;
     // DBG(STR_PHASE "pid: %" PRIu64 ", name: %s\n", et_current_pid,
@@ -312,7 +313,7 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
                             DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n",
                                 window_cnt);
 #endif
-                        last_phase.update_snapshot(process->snapshot);
+                        last_phase.update_snapshot(process->snapshot_phase);
                         // Promote the last sub phase to a regular phase
                         last_phase.sub_phase_flag = false;
                         auto& phase =

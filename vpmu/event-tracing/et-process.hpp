@@ -123,6 +123,10 @@ public:
     /// When a process object is created, a snapshot will be taken in order to
     /// snapshot the start time of this process.
     VPMUSnapshot snapshot = VPMUSnapshot(true);
+    /// Snapshot of timing counters for phase detection
+    VPMUSnapshot snapshot_phase = VPMUSnapshot(true);
+    /// Remember the profiling counters of this process
+    VPMUSnapshot prof_counters = {};
     /// Process memory map
     ET_MemoryRegion vm_maps = {};
     /// Binaries bound to this process. (vector of shared pointers)
