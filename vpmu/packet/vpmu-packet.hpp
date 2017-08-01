@@ -121,6 +121,29 @@ public:
         uint64_t wrong[VPMU_MAX_CPU_CORES];   // branch_predict_wrong counter
         // uint64_t cycles[VPMU_MAX_CPU_CORES];
 
+        void reduce(void)
+        {
+            for (int i = 1; i < VPMU.platform.cpu.cores; i++) {
+                this->correct[0] += this->correct[i];
+                this->wrong[0] += this->wrong[i];
+                // this->cycles[0] += this->cycles[i];
+                this->correct[i] = 0;
+                this->wrong[i]   = 0;
+                // this->cycles[i] = 0;
+            }
+        }
+
+        void mask_out_except(int core_id)
+        {
+            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                if (i != core_id) {
+                    this->correct[i] = 0;
+                    this->wrong[i]   = 0;
+                    // this->cycles[i] = 0;
+                }
+            }
+        }
+
         Data operator+(const Data &rhs)
         {
             Data out = {}; // Copy elision
@@ -202,6 +225,45 @@ public:
         uint64_t data_cache[ALL_PROC][MEMORY][VPMU_MAX_CPU_CORES][SIZE_OF_INDEX];
         // uint64_t cycles[ALL_PROC][VPMU_MAX_CPU_CORES];
         uint64_t memory_accesses, memory_time_ns;
+
+        void reduce(void)
+        {
+            for (int c = 0; c < ALL_PROC; c++) {
+                // Skip if that processing core does not exist
+                if (c == PROCESSOR_GPU && VPMU.platform.gpu.cores == 0) continue;
+                // TODO Use variable to set the shared level of cache
+                int m = L1_CACHE;
+                for (int i = 1; i < VPMU.platform.cpu.cores; i++) {
+                    for (int j = 0; j < SIZE_OF_INDEX; j++) {
+                        this->insn_cache[c][m][0][j] += this->insn_cache[c][m][i][j];
+                        this->data_cache[c][m][0][j] += this->data_cache[c][m][i][j];
+                        this->insn_cache[c][m][i][j] = 0;
+                        this->data_cache[c][m][i][j] = 0;
+                    }
+                    // this->cycles[0] += this->cycles[i];
+                    // this->cycles[i] = 0;
+                }
+            }
+        }
+
+        void mask_out_except(int core_id)
+        {
+            for (int c = 0; c < ALL_PROC; c++) {
+                // Skip if that processing core does not exist
+                if (c == PROCESSOR_GPU && VPMU.platform.gpu.cores == 0) continue;
+                // TODO Use variable to set the shared level of cache
+                int m = L1_CACHE;
+                for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                    if (i != core_id) {
+                        for (int j = 0; j < SIZE_OF_INDEX; j++) {
+                            this->insn_cache[c][m][i][j] = 0;
+                            this->data_cache[c][m][i][j] = 0;
+                        }
+                        // this->cycles[i] = 0;
+                    }
+                }
+            }
+        }
 
         Data operator+(const Data &rhs)
         {
@@ -321,6 +383,36 @@ public:
         uint64_t store[VPMU_MAX_CPU_CORES];
         uint64_t branch[VPMU_MAX_CPU_CORES];
 
+        void reduce(void)
+        {
+            for (int i = 1; i < VPMU.platform.cpu.cores; i++) {
+                this->cycles[0] += this->cycles[i];
+                this->total_insn[0] += this->total_insn[i];
+                this->load[0] += this->load[i];
+                this->store[0] += this->store[i];
+                this->branch[0] += this->branch[i];
+
+                this->cycles[i]     = 0;
+                this->total_insn[i] = 0;
+                this->load[i]       = 0;
+                this->store[i]      = 0;
+                this->branch[i]     = 0;
+            }
+        }
+
+        void mask_out_except(int core_id)
+        {
+            for (int i = 0; i < VPMU.platform.cpu.cores; i++) {
+                if (i != core_id) {
+                    this->cycles[i]     = 0;
+                    this->total_insn[i] = 0;
+                    this->load[i]       = 0;
+                    this->store[i]      = 0;
+                    this->branch[i]     = 0;
+                }
+            }
+        }
+
         uint64_t *operator[](std::size_t idx)
         {
             // The number of elements in struct DataCell
@@ -426,6 +518,18 @@ public:
             }
 
             return result;
+        }
+
+        void reduce(void)
+        {
+            this->user.reduce();
+            this->system.reduce();
+        }
+
+        void mask_out_except(int core_id)
+        {
+            this->user.mask_out_except(core_id);
+            this->system.mask_out_except(core_id);
         }
 
         Data operator+(const Data &rhs)
