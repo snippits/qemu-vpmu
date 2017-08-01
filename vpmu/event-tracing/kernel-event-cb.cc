@@ -260,12 +260,23 @@ void et_register_callbacks_kernel_events(void)
             // Reset the timing model to its original value
             process->timing_model = timing_model;
             // DBG(STR_KERNEL "Exec a new process %s (pid=%lu)\n", bash_path, irq_pid);
+            vpmu::enable_vpmu_on_core();
         } else if (event_tracer.find_program(bash_path)) {
             // Enter this condition when this process is not executed by
             // any monitored process, e.g. program run by a user.
-            event_tracer.add_new_process(bash_path, irq_pid);
+            process = event_tracer.add_new_process(bash_path, irq_pid);
             // DBG(STR_KERNEL "Start tracing %s (pid=%lu)\n", bash_path, irq_pid);
             vpmu::enable_vpmu_on_core();
+        }
+
+        // Do snapshot when a new monitored process is executed
+        if (process) {
+            // TODO If this is implemented in async mode, this force sync could be
+            // removed
+            VPMU_sync();
+            VPMUSnapshot new_snapshot(true);
+            process->snapshot   = new_snapshot;
+            process->is_running = true;
         }
     });
 
@@ -284,7 +295,7 @@ void et_register_callbacks_kernel_events(void)
 
         // Accumulate the profiling counters when a process is scheduled out
         auto prev_process = event_tracer.find_process(prev_pid);
-        if (prev_pid != pid && prev_process) {
+        if (prev_pid != pid && prev_process && prev_process->is_running) {
             // TODO If this is implemented in async mode, this force sync could be removed
             VPMU_sync();
             VPMUSnapshot new_snapshot(true);
