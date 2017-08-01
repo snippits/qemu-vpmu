@@ -214,6 +214,58 @@ static inline target_ulong get_syscall_user_thread(CPUArchState *env)
 #endif
 }
 
+static uint64_t get_switch_to_pid(CPUArchState *env)
+{
+    if (g_linux_offset.task_struct.pid == 0) return -1;
+    uint64_t pid        = -1;
+    uint64_t pid_offset = g_linux_offset.task_struct.pid;
+
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+    // Only ARM 32 bits has a different arrangement of arguments
+    // Refer to "arch/arm/include/asm/switch_to.h"
+    uint64_t task_offset = g_linux_offset.thread_info.task;
+    uint64_t ptr         = et_get_input_arg(env, 3);
+    uint32_t task_ptr    = vpmu_read_uint32_from_guest(env, ptr, task_offset);
+    pid                  = vpmu_read_uint32_from_guest(env, task_ptr, pid_offset);
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    // Refer to "arch/x86/include/asm/switch_to.h"
+    uint64_t ptr = et_get_input_arg(env, 2);
+    pid          = vpmu_read_uint32_from_guest(env, ptr, pid_offset);
+#endif
+    return pid;
+}
+
+static uint64_t get_switch_to_prev_pid(CPUArchState *env)
+{
+    if (g_linux_offset.task_struct.pid == 0) return -1;
+    uint64_t prev_pid   = -1;
+    uint64_t pid_offset = g_linux_offset.task_struct.pid;
+
+#if defined(TARGET_ARM) && !defined(TARGET_AARCH64)
+    // Only ARM 32 bits has a different arrangement of arguments
+    // Refer to "arch/arm/include/asm/switch_to.h"
+    uint64_t task_offset = g_linux_offset.thread_info.task;
+    uint64_t prev_ptr    = et_get_input_arg(env, 2);
+    uint32_t task_ptr    = vpmu_read_uint32_from_guest(env, prev_ptr, task_offset);
+    prev_pid             = vpmu_read_uint32_from_guest(env, task_ptr, pid_offset);
+#elif defined(TARGET_X86_64) || defined(TARGET_I386)
+    // Refer to "arch/x86/include/asm/switch_to.h"
+    uint64_t prev_ptr = et_get_input_arg(env, 1);
+    prev_pid          = vpmu_read_uint32_from_guest(env, prev_ptr, pid_offset);
+#endif
+    return prev_pid;
+}
+
+uint64_t et_get_switch_to_pid(void *env)
+{
+    return get_switch_to_pid(env);
+}
+
+uint64_t et_get_switch_to_prev_pid(void *env)
+{
+    return get_switch_to_prev_pid(env);
+}
+
 uint64_t et_get_syscall_user_thread_id(void *env)
 {
     if (g_linux_offset.task_struct.pid == 0) return -1;

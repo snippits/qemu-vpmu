@@ -10,4 +10,6 @@ uint64_t et_get_ret_value(void* env);
 uint64_t et_get_syscall_num(void* env);
 uint64_t et_get_syscall_arg(void* env, int num);
 void et_parse_dentry_path(void* env, uintptr_t dentry_addr, char* buff, int buff_size);
+uint64_t et_get_switch_to_pid(void *env);
+uint64_t et_get_switch_to_prev_pid(void *env);
 #endif
