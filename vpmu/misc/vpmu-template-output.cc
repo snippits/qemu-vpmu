@@ -78,18 +78,18 @@ namespace dump
     {
         using vpmu::math::sum_cores;
 
-        CONSOLE_U64(" Total cycle count              :", data.sum_all().cycles);
-        CONSOLE_U64(" Total instruction count        :", data.sum_all().total_insn);
+        FILE_FP_U64(fp, " Total cycle count              :", data.sum_all().cycles);
+        FILE_FP_U64(fp, " Total instruction count        :", data.sum_all().total_insn);
         fprintf(fp, "   ->User mode insn count       :");
         u64_array(fp, data.user.total_insn);
         fprintf(fp, "   ->Supervisor mode insn count :");
         u64_array(fp, data.system.total_insn);
-        CONSOLE_U64(" Total load instruction count   :", data.sum_all().load);
+        FILE_FP_U64(fp, " Total load instruction count   :", data.sum_all().load);
         fprintf(fp, "   ->User mode load count       :");
         u64_array(fp, data.user.load);
         fprintf(fp, "   ->Supervisor mode load count :");
         u64_array(fp, data.system.load);
-        CONSOLE_U64(" Total store instruction count  :", data.sum_all().store);
+        FILE_FP_U64(fp, " Total store instruction count  :", data.sum_all().store);
         fprintf(fp, "   ->User mode store count      :");
         u64_array(fp, data.user.store);
         fprintf(fp, "   ->Supervisor mode store count:");
