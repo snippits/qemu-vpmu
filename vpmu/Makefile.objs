@@ -14,7 +14,11 @@ VPMU_EXTERNAL_LIB_DIRS=
 
 # Target dependent files and QEMU dependent files
 VPATH+=:$(SRC_PATH)/vpmu/qemu
-all-obj-$(CONFIG_VPMU) += vpmu-device.o vpmu-qemu-utils.o
+all-obj-$(CONFIG_VPMU) += vpmu-qemu-utils.o
+# This is only used when SoftMMU is on
+ifeq ($(CONFIG_SOFTMMU),y)
+all-obj-$(CONFIG_VPMU) += vpmu-device.o
+endif
 
 # Please add your VPMU source code here
 VPMU_OBJS=vpmu.o vpmu-insn.o vpmu-branch.o vpmu-cache.o

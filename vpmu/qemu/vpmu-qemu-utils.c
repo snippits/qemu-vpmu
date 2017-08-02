@@ -4,9 +4,11 @@
 #include "qemu/osdep.h"    // DeviceState, VMState, etc.
 #include "qemu/timer.h"    // QEMU_CLOCK_VIRTUAL, timer_new_ns()
 #include "cpu.h"           // QEMU CPU definitions and macros (CPUArchState)
-#include "hw/sysbus.h"     // SysBusDevice
 #include "exec/exec-all.h" // tlb_fill()
 #include "qom/cpu.h"       // cpu_get_phys_page_attrs_debug(), cpu_has_work(), etc.
+
+#ifdef CONFIG_SOFTMMU
+#include "hw/sysbus.h" // SysBusDevice
 
 void *vpmu_tlb_try_get_host_addr(void *env, uintptr_t vaddr)
 {
@@ -61,6 +63,20 @@ void *vpmu_tlb_get_host_addr(void *env, uintptr_t vaddr)
 
     return paddr;
 }
+
+#else // !CONFIG_SOFTMMU
+
+void *vpmu_tlb_try_get_host_addr(void *env, uintptr_t vaddr)
+{
+    return (void *)vaddr;
+}
+
+void *vpmu_tlb_get_host_addr(void *env, uintptr_t vaddr)
+{
+    return (void *)vaddr;
+}
+
+#endif // CONFIG_SOFTMMU
 
 size_t vpmu_copy_from_guest(void *dst, uintptr_t src, const size_t size, void *cs)
 {
