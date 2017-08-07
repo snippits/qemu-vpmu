@@ -4,6 +4,8 @@
 
 #include "et-process.hpp" // ET_Process class
 
-void ft_register_callbacks(std::shared_ptr<ET_Process> process);
+void ft_load_callbacks(std::shared_ptr<ET_Process> process,
+                       std::shared_ptr<ET_Program> program);
+void ft_register_callbacks(void);
 
 #endif

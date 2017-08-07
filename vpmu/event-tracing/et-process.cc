@@ -286,7 +286,10 @@ uint64_t ET_Process::get_symbol_addr(std::string name)
 
 bool ET_Process::call_event(void* env, uint64_t vaddr)
 {
-    if (functions.call(vaddr, et_get_ret_addr(env), env, this)) return true;
+    if (functions.call(vaddr, env, this)) {
+        functions.update_return_key(vaddr, et_get_ret_addr(env));
+        return true;
+    }
     if (functions.call_return(vaddr, env, this)) return true;
     return false;
 }

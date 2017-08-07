@@ -214,8 +214,9 @@ void et_register_callbacks_kernel_events(void)
     auto& kernel = event_tracer.get_kernel();
 
     // Linux Kernel: New process creation
-    kernel.register_callback(ET_KERNEL_EXECV, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_EXECV, [](void* env) {
         const char* bash_path = nullptr;
+        uint64_t    irq_pid   = et_get_syscall_user_thread_id(env);
 
         if (VPMU.platform.linux_version < KERNEL_VERSION(3, 14, 0)) {
             // Old linux pass filename directly as a char*
@@ -281,7 +282,7 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Context switch
-    kernel.register_callback(ET_KERNEL_CONTEXT_SWITCH, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_CONTEXT_SWITCH, [](void* env) {
         uint64_t pid      = et_get_switch_to_pid(env);
         uint64_t prev_pid = et_get_switch_to_prev_pid(env);
 
@@ -331,7 +332,9 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Process End
-    kernel.register_callback(ET_KERNEL_EXIT, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_EXIT, [](void* env) {
+        uint64_t irq_pid = et_get_syscall_user_thread_id(env);
+
         auto process = event_tracer.find_process(irq_pid);
         if (process) {
             // TODO If this is implemented in async mode, this force sync could be removed
@@ -346,7 +349,8 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: wake up the newly forked process
-    kernel.register_callback(ET_KERNEL_WAKE_NEW_TASK, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_WAKE_NEW_TASK, [](void* env) {
+        uint64_t irq_pid    = et_get_syscall_user_thread_id(env);
         uint64_t addr       = et_get_input_arg(env, 1);
         uint64_t offset     = g_linux_offset.task_struct.pid;
         uint32_t target_pid = vpmu_read_uint32_from_guest(env, addr, offset);
@@ -355,15 +359,16 @@ void et_register_callbacks_kernel_events(void)
     });
 
     // Linux Kernel: Fork a process
-    kernel.register_callback(ET_KERNEL_FORK, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_FORK, [](void* env) {
         // uint64_t irq_pid = et_get_syscall_user_thread_id(env);
         // DBG(STR_KERNEL "fork from %lu\n", irq_pid);
     });
 
-    kernel.register_callback(ET_KERNEL_MMAP, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_MMAP, [](void* env) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
         MMapInfo mmap_info = {};
+        uint64_t irq_pid   = et_get_syscall_user_thread_id(env);
 
         // Is struct file * nullptr (anonymous mapping)
         if (et_get_input_arg(env, 1) != 0) {
@@ -390,9 +395,11 @@ void et_register_callbacks_kernel_events(void)
         }
     });
 
-    kernel.register_return_callback(ET_KERNEL_MMAP, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_return(ET_KERNEL_MMAP, [](void* env) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
+        uint64_t irq_pid = et_get_syscall_user_thread_id(env);
+
         auto process = event_tracer.find_process(irq_pid);
         if (process && process->get_last_mapped_info().vaddr != 0) {
             uint64_t vaddr     = et_get_ret_value(env);
@@ -408,9 +415,10 @@ void et_register_callbacks_kernel_events(void)
         }
     });
 
-    kernel.register_callback(ET_KERNEL_MPROTECT, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_MPROTECT, [](void* env) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
+        uint64_t irq_pid    = et_get_syscall_user_thread_id(env);
         uint64_t start_addr = et_get_input_arg(env, 3);
         uint64_t end_addr   = et_get_input_arg(env, 4);
         uint64_t mode       = et_get_input_arg(env, 5);
@@ -424,9 +432,10 @@ void et_register_callbacks_kernel_events(void)
         }
     });
 
-    kernel.register_callback(ET_KERNEL_MUNMAP, [](void* env, uint64_t irq_pid) {
+    kernel.events.register_call(ET_KERNEL_MUNMAP, [](void* env) {
         // Do nothing if the value is not initialized
         if (g_linux_offset.dentry.d_iname == 0) return;
+        uint64_t irq_pid    = et_get_syscall_user_thread_id(env);
         uint64_t start_addr = et_get_input_arg(env, 4);
         uint64_t end_addr   = et_get_input_arg(env, 5);
 

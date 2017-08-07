@@ -5,15 +5,16 @@
 extern "C" {
 #include "qemu/vpmu-device.h" // Timing model definition
 }
-#include "vpmu.hpp"           // VPMU common header
-#include "vpmu-stream.hpp"    // VPMUStream, VPMUStream_T
-#include "vpmu-translate.hpp" // VPMUTranslate
-#include "vpmu-insn.hpp"      // InsnStream
-#include "vpmu-cache.hpp"     // CacheStream
-#include "vpmu-branch.hpp"    // BranchStream
-#include "event-tracing.hpp"  // EventTracer event_tracer
-#include "kernel-event-cb.h"  // et_register_callbacks_kernel_events()
-#include "phase-detect.hpp"   // phase_detect
+#include "vpmu.hpp"             // VPMU common header
+#include "vpmu-stream.hpp"      // VPMUStream, VPMUStream_T
+#include "vpmu-translate.hpp"   // VPMUTranslate
+#include "vpmu-insn.hpp"        // InsnStream
+#include "vpmu-cache.hpp"       // CacheStream
+#include "vpmu-branch.hpp"      // BranchStream
+#include "event-tracing.hpp"    // EventTracer event_tracer
+#include "kernel-event-cb.h"    // et_register_callbacks_kernel_events()
+#include "phase-detect.hpp"     // phase_detect
+#include "function-tracing.hpp" // User process tracing callbacks
 
 // The global variable that controls all the vpmu streams.
 std::vector<VPMUStream *> vpmu_streams = {};
@@ -368,6 +369,8 @@ void VPMU_init(int argc, char **argv)
     init_simulators(config_file);
     // Register callbacks for kernel events
     et_register_callbacks_kernel_events();
+    // Register callbacks for user processes
+    ft_register_callbacks();
 
     // Done
     CONSOLE_LOG(STR_VPMU "Initialized\n");

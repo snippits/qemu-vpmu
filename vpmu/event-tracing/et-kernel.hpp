@@ -15,8 +15,6 @@ extern "C" {
 
 class ET_Kernel : public ET_Program
 {
-    using fun_callback = std::function<void(void* env, uint64_t syscall_pid)>;
-
 public:
     ET_Kernel() : ET_Program("kernel") {}
 
@@ -43,25 +41,11 @@ public:
 
     bool call_event(void* env, uint64_t core_id, uint64_t vaddr)
     {
-        for (int i = 0; i < ET_KERNEL_EVENT_COUNT; i++) {
-            if (kernel_event_table[i] == vaddr) {
-                uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-                if (syscall_pid == (uint64_t)-1) return false; // Not found / some error
-                // DBG(STR_VPMU "Found event-%d \n",i);
-                cb[i].fun(env, syscall_pid);
-                if (cb[i].fun_ret)
-                    event_return_table[core_id].push_back(
-                      {et_get_ret_addr(env), cb[i].fun_ret});
-                return true;
-            }
-            if (event_return_table[core_id].size() > 0
-                && event_return_table[core_id].back().first == vaddr) {
-                uint64_t syscall_pid = et_get_syscall_user_thread_id(env);
-                if (syscall_pid == (uint64_t)-1) return false; // Not found / some error
-                auto& r = event_return_table[core_id].back();
-                r.second(env, syscall_pid);
-                event_return_table[core_id].pop_back();
-            }
+        if (functions.call(vaddr, env)) {
+            functions.update_return_key(vaddr, et_get_ret_addr(env));
+            return true;
+        } else if (functions.call_return(vaddr, env)) {
+            return true;
         }
         return false;
     }
@@ -77,6 +61,10 @@ public:
     void set_event_address(ET_KERNEL_EVENT_TYPE event, uint64_t address)
     {
         kernel_event_table[event] = address;
+        functions.register_all(address, // Set up all callbacks to the target address
+                               events[event].pre_call,
+                               events[event].on_call,
+                               events[event].on_return);
     }
 
     bool set_symbol_address(std::string sym_name, uint64_t address)
@@ -115,16 +103,6 @@ public:
         return true; // Found
     }
 
-    void register_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f)
-    {
-        cb[event].fun = f;
-    }
-
-    void register_return_callback(ET_KERNEL_EVENT_TYPE event, fun_callback f)
-    {
-        cb[event].fun_ret = f;
-    }
-
     uint64_t get_running_pid() { return VPMU.core[vpmu::get_core_id()].current_pid; }
 
     uint64_t get_running_pid(uint64_t core_id)
@@ -132,13 +110,15 @@ public:
         return VPMU.core[vpmu::get_core_id()].current_pid;
     }
 
+public:
+    /// This is callback function table registered to kernel events
+    FunctionMap<enum ET_KERNEL_EVENT_TYPE, void*> events;
+
 private:
+    /// This is only used for checking what critical events are not set
     uint64_t kernel_event_table[ET_KERNEL_EVENT_SIZE] = {0};
-    std::vector<std::pair<uint64_t, fun_callback>> event_return_table[VPMU_MAX_CPU_CORES];
-    struct {
-        fun_callback fun;
-        fun_callback fun_ret;
-    } cb[ET_KERNEL_EVENT_SIZE] = {};
+    /// This is callback functions of kernel function calls (PC addresses)
+    FunctionMap<uint64_t, void*> functions;
 };
 
 #endif

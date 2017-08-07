@@ -159,6 +159,9 @@ public:
     void debug_dump_binary_list(const ET_Process& process);
     void debug_dump_library_list(const ET_Program& program);
 
+public:
+    FunctionMap<std::string, void*, ET_Process*> func_callbacks;
+
 private:
     ET_Kernel kernel;
     std::map<uint64_t, std::shared_ptr<ET_Process>> process_id_map;

@@ -65,12 +65,24 @@ private:
     };
 
 public:
-    /// @brief Call with given return key (i.e. PC address)
+    /// @brief Register the callback events to the target key
     /// @param[in] key The key to "function address".
-    /// @param[in] key_ret The key to "return address".
+    /// @param[in] key_ret The key to "function return address".
+    inline void update_return_key(K key, K key_ret)
+    {
+        auto f = funs.find(key);
+        if (f != funs.end()) {
+            auto& entry = f->second;
+            // Register return function if there is one
+            if (entry.on_return) funs_ret[key_ret] = &entry;
+        }
+    }
+
+    /// @brief Call the callback functions if the key matches
+    /// @param[in] key The key to "function address".
     /// @param[in] args The arguments passed to the callback function.
     /// @return true on success. false when no function found/executed.
-    bool call(K key, K key_ret, Args... args)
+    inline bool call(K key, Args... args)
     {
         auto f = funs.find(key);
         if (f != funs.end()) {
@@ -78,33 +90,11 @@ public:
             // Register return function if there is one
             if (unlikely(entry.on_return)) {
                 entry.called_flag = true;
-                funs_ret[key_ret] = &entry;
             }
             if (unlikely(entry.pre_call)) {
                 entry.pre_call(std::forward<Args>(args)...);
             }
             // Call only when the callback function is defined
-            if (unlikely(entry.on_call)) {
-                entry.on_call(std::forward<Args>(args)...);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /// @brief Call without creating return events
-    /// @param[in] key The key to "function address".
-    /// @param[in] args The arguments passed to the callback function.
-    /// @return true on success. false when no function found/executed.
-    bool call_no_ret(K key, Args... args)
-    {
-        auto f = funs.find(key);
-        if (f != funs.end()) {
-            auto& entry = f->second;
-            // Call only when the callback function is defined
-            if (unlikely(entry.pre_call)) {
-                entry.pre_call(std::forward<Args>(args)...);
-            }
             if (unlikely(entry.on_call)) {
                 entry.on_call(std::forward<Args>(args)...);
                 return true;
@@ -150,8 +140,26 @@ public:
         funs[key].on_return = fun;
     }
 
+    /// @brief Register the callback function/lambda for target key (i.e. PC address).
+    void register_all(const K                      key,
+                      std::function<void(Args...)> entry_pre_call,
+                      std::function<void(Args...)> entry_call,
+                      std::function<void(Args...)> entry_return)
+    {
+        funs[key].pre_call  = entry_pre_call;
+        funs[key].on_call   = entry_call;
+        funs[key].on_return = entry_return;
+    }
+
+    struct FunctionEntry& operator[](const K idx) { return funs[idx]; }
+
     /// @brief Find if the key is registered with anything.
     bool find(K key) { return (funs.find(key) != funs.end()); }
+
+    const std::map<K, struct FunctionEntry>& get_list(void) { return funs; }
+
+    auto begin() const { return funs.begin(); }
+    auto end() const { return funs.end(); }
 
 private:
     /// The mapping table for on call events
