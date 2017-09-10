@@ -140,7 +140,9 @@ namespace file
 namespace host
 {
     uint64_t wall_clock_period(void);
+    uint64_t get_timestamp_ns(void);
     uint64_t get_timestamp_us(void);
+    uint64_t get_timestamp_ms(void);
 } // End of namespace vpmu::host
 
 namespace target

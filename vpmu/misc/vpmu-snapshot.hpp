@@ -43,7 +43,7 @@ public:
         time_ns[3] = vpmu::target::memory_time_ns();
         time_ns[4] = vpmu::target::io_time_ns();
         time_ns[5] = vpmu::target::time_ns();
-        time_ns[6] = vpmu::host::get_timestamp_us();
+        time_ns[6] = vpmu::host::get_timestamp_ns();
     }
 
     void take_snapshot(uint64_t core)

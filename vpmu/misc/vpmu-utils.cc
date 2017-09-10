@@ -326,13 +326,18 @@ namespace host
         return vpmu::utils::time_difference(&VPMU.start_time, &VPMU.end_time);
     }
 
-    uint64_t get_timestamp_us(void)
+    uint64_t get_timestamp_ns(void)
     {
         struct timespec t_now;
         clock_gettime(CLOCK_REALTIME, &t_now);
 
         return vpmu::utils::time_difference(&VPMU.program_start_time, &t_now);
     }
+
+    uint64_t get_timestamp_us(void) { return get_timestamp_ns() / 1000; }
+
+    uint64_t get_timestamp_ms(void) { return get_timestamp_ns() / 1000000; }
+
 } // End of namespace vpmu::host
 
 namespace target
