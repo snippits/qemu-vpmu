@@ -236,7 +236,7 @@ protected:
     Impl_ptr impl;
 
 private:
-    VPMULocalBuffer<Reference, 256> local_buffer[VPMU_MAX_CPU_CORES];
+    VPMULocalBuffer<Reference, 256> local_buffer[VPMU_MAX_CPU_CORES + VPMU_MAX_GPU_CORES];
     // A copy of configuration sent to simulators
     nlohmann::json target_configs;
     // This mutex protects: impl function calls, and stream interface functions

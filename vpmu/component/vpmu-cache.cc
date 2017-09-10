@@ -58,6 +58,8 @@ void CacheStream::send(
     r.addr      = addr; // The virtual address of ld/st request
     r.size      = size; // If this is a taken branch
 
+    // Use after CPU cores when it's in GPU core
+    if (proc == PROCESSOR_GPU) core += VPMU_MAX_CPU_CORES;
     send_ref(core, r);
 }
 
