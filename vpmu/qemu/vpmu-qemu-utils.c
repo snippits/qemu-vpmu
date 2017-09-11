@@ -10,6 +10,23 @@
 #ifdef CONFIG_SOFTMMU
 #include "hw/sysbus.h" // SysBusDevice
 
+bool vpmu_tlb_vaddr_is_io(void *env, uintptr_t vaddr)
+{
+    CPUArchState *cpu_env  = (CPUArchState *)env;
+    int           mmu_idx  = cpu_mmu_index(cpu_env, false);
+    int           index    = 0;
+    target_ulong  tlb_addr = 0;
+
+    // If KVM is enabled, softMMU will not work
+    if (VPMU.platform.kvm_enabled) return false;
+
+    index = (vaddr >> TARGET_PAGE_BITS) & (CPU_TLB_SIZE - 1);
+    tlb_addr = cpu_env->tlb_table[mmu_idx][index].addr_read;
+    if (tlb_addr & ~TARGET_PAGE_MASK) return true;
+
+    return false;
+}
+
 void *vpmu_tlb_try_get_host_addr(void *env, uintptr_t vaddr)
 {
     uintptr_t     paddr    = 0;
