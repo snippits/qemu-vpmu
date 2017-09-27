@@ -5601,6 +5601,11 @@ static IOCTLEntry ioctl_entries[] = {
     { 0, 0, },
 };
 
+#ifdef CONFIG_VPMU
+// Define an instance for special ioctls
+static IOCTLEntry v_ie = {0, 0, "VPMU IOCTL PASSTHROUGH", 0, NULL, {TYPE_PTRVOID}};
+#endif
+
 /* ??? Implement proper locking for ioctls.  */
 /* do_ioctl() Must return target values and target errnos. */
 static abi_long do_ioctl(int fd, int cmd, abi_long arg)
@@ -5615,8 +5620,17 @@ static abi_long do_ioctl(int fd, int cmd, abi_long arg)
     ie = ioctl_entries;
     for(;;) {
         if (ie->target_cmd == 0) {
+#ifdef CONFIG_VPMU
+            // Set config. of ie
+            v_ie.target_cmd = cmd;
+            v_ie.host_cmd   = cmd;
+            // Redirect ie
+            ie = &v_ie;
+            break;
+#else
             gemu_log("Unsupported ioctl: cmd=0x%04lx\n", (long)cmd);
             return -TARGET_ENOSYS;
+#endif
         }
         if (ie->target_cmd == cmd)
             break;
@@ -12378,6 +12392,11 @@ abi_long do_syscall(void *cpu_env, int num, abi_long arg1,
 #endif
 
     default:
+#ifdef CONFIG_VPMU
+        // Default pass through syscall
+        ret = get_errno(safe_syscall(num, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8));
+#endif
+        break;
     unimplemented:
         gemu_log("qemu: Unsupported syscall: %d\n", num);
 #if defined(TARGET_NR_setxattr) || defined(TARGET_NR_get_thread_area) || defined(TARGET_NR_getdomainname) || defined(TARGET_NR_set_robust_list)
