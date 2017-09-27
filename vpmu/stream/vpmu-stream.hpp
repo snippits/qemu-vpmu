@@ -27,7 +27,11 @@ public:
         LOG_FATAL("set_default_stream_impl is not implemented");
     }
     virtual void bind(nlohmann::json) { LOG_FATAL("bind is not implemented"); }
-    virtual void build() { LOG_FATAL("build is not implemented"); }
+    virtual bool build(void)
+    {
+        LOG_FATAL("build is not implemented");
+        return false;
+    }
     virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
     virtual void reset(void) { LOG_FATAL("reset is not implemented"); }
     virtual void sync(void) { LOG_FATAL("sync is not implemented"); }
@@ -73,7 +77,7 @@ public:
         target_configs = configs;
     }
 
-    void build() override
+    bool build(void) override
     {
         // lock is automatically released when lock goes out of scope
         std::lock_guard<std::mutex> lock(stream_mutex);
@@ -101,11 +105,16 @@ public:
             attach_simulator(target_configs);
         }
 
-        log_debug("attaching %d simulators", jobs.size());
+        log_debug("Binding total %d simulators to stream and build them.", jobs.size());
+        if (jobs.size() == 0) {
+            log_fatal("# of total timing models cannot be zero!!");
+            return false;
+        }
         // Start worker threads/processes with its ring buffer implementation
         impl->run(jobs);
 
         log_debug("Initialized");
+        return true;
     }
 
     void destroy(void) override

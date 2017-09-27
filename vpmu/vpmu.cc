@@ -76,7 +76,10 @@ static void init_simulators(const char *vpmu_config_file)
     }
     // Allocate and build resources.
     for (auto vs : vpmu_streams) {
-        vs->build();
+        if (!vs->build()) {
+            ERR_MSG("Failed to build stream %s.\n", vs->get_name().c_str());
+            exit(EXIT_FAILURE);
+        }
     }
     // TODO remove this test code
     // sleep(2);
