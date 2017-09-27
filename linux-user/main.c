@@ -36,6 +36,9 @@
 #include "exec/log.h"
 #include "trace/control.h"
 #include "glib-compat.h"
+#ifdef CONFIG_VPMU
+#include "vpmu/qemu/vpmu-qemu.h"
+#endif
 
 char *exec_path;
 
@@ -4010,6 +4013,17 @@ static void handle_arg_version(const char *arg)
     exit(EXIT_SUCCESS);
 }
 
+#ifdef CONFIG_VPMU
+// These are just dummy functions to conform QEMUs convention
+static void handle_arg_vpmu_config(const char *arg)
+{
+}
+
+static void handle_arg_vpmu_output(const char *arg)
+{
+}
+#endif
+
 static char *trace_file;
 static void handle_arg_trace(const char *arg)
 {
@@ -4068,6 +4082,12 @@ static const struct qemu_argument arg_table[] = {
      "",           "[[enable=]<pattern>][,events=<file>][,file=<file>]"},
     {"version",    "QEMU_VERSION",     false, handle_arg_version,
      "",           "display version information and exit"},
+#ifdef CONFIG_VPMU
+    {"vpmu-config", "", true, handle_arg_vpmu_config,
+     "",           "set the path to VPMU configuration file"},
+    {"vpmu-output", "", true, handle_arg_vpmu_output,
+     "",           "set the path to output logs and files"},
+#endif
     {NULL, NULL, false, NULL, NULL, NULL}
 };
 
@@ -4849,6 +4869,10 @@ int main(int argc, char **argv, char **envp)
     ts->heap_base = info->brk;
     /* This will be filled in on the first SYS_HEAPINFO call.  */
     ts->heap_limit = 0;
+#endif
+
+#ifdef CONFIG_VPMU
+    VPMU_init(argc, argv);
 #endif
 
     if (gdbstub_port) {
