@@ -77,12 +77,17 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
     // This is just a walk-around to make the rest of code act like
     // receiving 64 bits of data with a single access to addr.
     static uint64_t value_lower_bytes = 0;
-    if ((addr & 0x04) == 0) {
-        value_lower_bytes = value;
-        return;
+    if ((addr & 0x04) == 0 && size == 8) {
+        // Nothing to do when the access is aligned and the size is 8 bytes.
     } else {
-        value = (value << 32) | value_lower_bytes;
-        addr  = addr & (~0x04);
+        // If the size is not correct, try to assemble the 8 bytes values.
+        if ((addr & 0x04) == 0) {
+            value_lower_bytes = value;
+            return;
+        } else {
+            value = (value << 32) | value_lower_bytes;
+            addr  = addr & (~0x04);
+        }
     }
 #endif
     // DBG(STR_VPMU "write vpmu device at addr=0x%lx value=%ld\n", addr, value);
