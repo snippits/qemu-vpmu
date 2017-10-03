@@ -55,6 +55,12 @@ namespace math
 
 namespace utils
 {
+    void load_linux_env(char *ptr, const char *env_name)
+    {
+        char *env_str = getenv(env_name);
+        if (env_str) strcpy(ptr, env_str);
+    }
+
     std::string get_version_from_vmlinux(const char *file_path)
     {
         char version_string[1024] = {};

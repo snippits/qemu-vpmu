@@ -312,6 +312,12 @@ void VPMU_init(int argc, char **argv)
     VPMU.output_path[0] = 0;
 
     tic(&VPMU.program_start_time);
+
+    // Load envs as first attempts
+    vpmu::utils::load_linux_env(config_file, "VPMU_CONFIG_FILE");
+    vpmu::utils::load_linux_env(kernel_file, "VPMU_KERNEL_SYMBOL");
+    vpmu::utils::load_linux_env(VPMU.output_path, "VPMU_OUTPUT_PATH");
+
     // Parse arguments
     for (int i = 0; i < argc; i++) {
         if (std::string(argv[i]) == "-vpmu-config") strcpy(config_file, argv[i + 1]);
