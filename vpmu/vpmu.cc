@@ -20,6 +20,8 @@ extern "C" {
 std::vector<VPMUStream *> vpmu_streams = {};
 // File for VPMU to dump results
 FILE *vpmu_log_file = nullptr;
+// FILE descriptor for VPMU console output
+FILE *vpmu_console_log_fd = stderr;
 // The definition of the only one global variable passing data around.
 struct VPMU_Struct VPMU = {};
 // A thread local storage for saving the running core id of each thread
@@ -306,6 +308,7 @@ void VPMU_init(int argc, char **argv)
 {
     char config_file[1024] = {0};
     char kernel_file[1024] = {0};
+    char console_path[1024] = {0};
 
     global_argv_0 = argv[0];
     // Initialize the path to empty string
@@ -317,6 +320,7 @@ void VPMU_init(int argc, char **argv)
     vpmu::utils::load_linux_env(config_file, "VPMU_CONFIG_FILE");
     vpmu::utils::load_linux_env(kernel_file, "VPMU_KERNEL_SYMBOL");
     vpmu::utils::load_linux_env(VPMU.output_path, "VPMU_OUTPUT_PATH");
+    vpmu::utils::load_linux_env(console_path, "VPMU_CONSOLE");
 
     // Parse arguments
     for (int i = 0; i < argc; i++) {
@@ -326,12 +330,24 @@ void VPMU_init(int argc, char **argv)
         if (std::string(argv[i]) == "-vpmu-kernel-symbol")
             strcpy(kernel_file, argv[i + 1]);
         if (std::string(argv[i]) == "-vpmu-output") strcpy(VPMU.output_path, argv[i + 1]);
+        if (std::string(argv[i]) == "-vpmu-console") strcpy(console_path, argv[i + 1]);
     }
 
     // Set default path if it's not set
     if (strlen(VPMU.output_path) == 0) {
         strcpy(VPMU.output_path, "/tmp/snippit");
     }
+
+    // Open console fd for VPMU console output
+    if (strlen(console_path) != 0) {
+        if (strcmp(console_path, "stdout") == 0)
+            vpmu_console_log_fd = stdout;
+        else if (strcmp(console_path, "stderr") == 0)
+            vpmu_console_log_fd = stderr;
+        else
+            vpmu_console_log_fd = fopen(console_path, "w+");
+    }
+    if (vpmu_console_log_fd == nullptr) vpmu_console_log_fd = stderr;
 
     // Set arguments
     // Set cores to 1 if (1)no -smp presents. (2)the argument after smp is not a number.

@@ -13,26 +13,26 @@ namespace vpmu
 
 namespace output
 {
-    void u64_array(uint64_t value[]) { vpmu::dump::u64_array(stderr, value); }
+    void u64_array(uint64_t value[]) { vpmu::dump::u64_array(vpmu_console_log_fd, value); }
 
     void percentage_array(uint64_t first_val[], uint64_t second_val[])
     {
-        vpmu::dump::percentage_array(stderr, first_val, second_val);
+        vpmu::dump::percentage_array(vpmu_console_log_fd, first_val, second_val);
     }
 
     void CPU_counters(VPMU_Insn::Model model, VPMU_Insn::Data data)
     {
-        vpmu::dump::CPU_counters(stderr, model, data);
+        vpmu::dump::CPU_counters(vpmu_console_log_fd, model, data);
     }
 
     void Branch_counters(VPMU_Branch::Model model, VPMU_Branch::Data data)
     {
-        vpmu::dump::Branch_counters(stderr, model, data);
+        vpmu::dump::Branch_counters(vpmu_console_log_fd, model, data);
     }
 
     void Cache_counters(VPMU_Cache::Model model, VPMU_Cache::Data data)
     {
-        vpmu::dump::Cache_counters(stderr, model, data);
+        vpmu::dump::Cache_counters(vpmu_console_log_fd, model, data);
     }
 
 } // End of namespace vpmu::output

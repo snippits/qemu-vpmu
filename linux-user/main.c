@@ -4022,6 +4022,10 @@ static void handle_arg_vpmu_config(const char *arg)
 static void handle_arg_vpmu_output(const char *arg)
 {
 }
+
+static void handle_arg_vpmu_console(const char *arg)
+{
+}
 #endif
 
 static char *trace_file;
@@ -4087,6 +4091,8 @@ static const struct qemu_argument arg_table[] = {
      "",           "set the path to VPMU configuration file"},
     {"vpmu-output", "", true, handle_arg_vpmu_output,
      "",           "set the path to output logs and files"},
+    {"vpmu-console", "", true, handle_arg_vpmu_console,
+     "",           "set the path of VPMU console output (default: stderr)"},
 #endif
     {NULL, NULL, false, NULL, NULL, NULL}
 };
