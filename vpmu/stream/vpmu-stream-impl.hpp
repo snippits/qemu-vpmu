@@ -104,7 +104,7 @@ public:
         Reference ref;
         ref.type = VPMU_PACKET_BARRIER;
 
-        // log_debug("async");
+        // log_debug("sync none blocking");
         send(ref);
     }
 

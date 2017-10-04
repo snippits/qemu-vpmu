@@ -165,7 +165,7 @@ public:
         if (impl == nullptr) return;
         // lock is automatically released when lock goes out of scope
         std::lock_guard<std::mutex> lock(stream_mutex);
-        // log_debug("async");
+        // log_debug("sync none blocking");
         clean_out_local_buff();
         impl->send_sync_none_blocking();
     }
