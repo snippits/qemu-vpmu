@@ -130,6 +130,8 @@ public:
     VPMUSnapshot prof_counters = {};
     /// Process memory map
     ET_MemoryRegion vm_maps = {};
+    /// Process memory map without unmap (just for showing to users)
+    ET_MemoryRegion max_vm_maps = {};
     /// Binaries bound to this process. (vector of shared pointers)
     std::vector<std::shared_ptr<ET_Program>> binary_list = {};
     /// Processes forked by this process. (vector of shared pointers)

@@ -44,7 +44,8 @@ void ET_Process::dump_vm_map(void)
     // Output in plain text format
     sprintf(file_path, "%s/vm_maps", output_path.c_str());
     FILE* fp = fopen(file_path, "wt");
-    for (auto& reg : vm_maps.regions) {
+    // Use max_vm_maps instead of vm_maps for coverage
+    for (auto& reg : max_vm_maps.regions) {
         std::string out_str   = "";
         std::string prog_name = (reg.program) ? reg.program->name : "";
         out_str += (reg.permission & VM_READ) ? "r" : "-";

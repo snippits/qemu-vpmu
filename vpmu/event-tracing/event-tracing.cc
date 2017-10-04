@@ -210,8 +210,10 @@ void EventTracer::attach_mapped_region(std::shared_ptr<ET_Process>& process,
     uint64_t pc = process->pc_called_mmap;
     if (program == nullptr) {
         process->vm_maps.map_region(pc, start_addr, end_addr, mode, fullpath);
+        process->max_vm_maps.map_region(pc, start_addr, end_addr, mode, fullpath);
     } else {
         process->vm_maps.map_region(program, pc, start_addr, end_addr, mode, fullpath);
+        process->max_vm_maps.map_region(program, pc, start_addr, end_addr, mode, fullpath);
     }
     if (mode & VM_EXEC) ft_load_callbacks(process, program);
 }

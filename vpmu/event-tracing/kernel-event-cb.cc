@@ -426,6 +426,7 @@ void et_register_callbacks_kernel_events(void)
         auto process = event_tracer.find_process(irq_pid);
         if (process) {
             process->vm_maps.update(start_addr, end_addr, mode);
+            process->max_vm_maps.update(start_addr, end_addr, mode);
             // auto buff = genlog_mprotect(irq_pid, {start_addr, end_addr, mode, ""});
             // process->append_debug_log(buff);
             // process->vm_maps.debug_print_vm_map();
@@ -443,9 +444,8 @@ void et_register_callbacks_kernel_events(void)
         if (process) {
             (void)start_addr;
             (void)end_addr;
-            // TODO We temporary comment out the tracing of unmap for printing full map,
-            // but this is not good. Build a removed region list to solve this issue.
-            // process->vm_maps.unmap(start_addr, end_addr);
+            // Unmap the region
+            process->vm_maps.unmap(start_addr, end_addr);
             // process->append_debug_log(genlog_unmap(irq_pid, start_addr, end_addr));
             // process->vm_maps.debug_print_vm_map();
         }
