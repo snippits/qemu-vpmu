@@ -21,10 +21,14 @@ public:
     ThreadPool& operator=(const ThreadPool& rhs) = delete; // Non-assignable.
 
     // the constructor just launches some amount of workers
-    ThreadPool(size_t threads) : stop(false)
+    ThreadPool(const char* new_name, size_t threads) : stop(false)
     {
-        for (size_t i = 0; i < threads; ++i)
-            workers.emplace_back([this] {
+        for (size_t i = 0; i < threads; ++i) {
+            workers.emplace_back([this, new_name, i] {
+                char thread_name[LINUX_NAMELEN] = {0};
+                snprintf(thread_name, LINUX_NAMELEN, "%s-%zu", new_name, i);
+                pthread_setname_np(pthread_self(), thread_name);
+
                 for (;;) {
                     std::function<void()> task;
 
@@ -41,6 +45,12 @@ public:
                     task();
                 }
             });
+        }
+    }
+
+    ThreadPool(size_t threads) : stop(false)
+    {
+        ThreadPool("threadpool", threads);
     }
 
     ~ThreadPool()
@@ -68,12 +78,22 @@ public:
         return enqueue_helper(boundTask, f, std::forward<Args>(args)...);
     }
 
+    void enqueue_static(std::function<void()> task)
+    {
+        std::unique_lock<std::mutex> lock(queue_mutex);
+        // don't allow enqueueing after stopping the pool
+        if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
+        tasks.emplace([task]() { task(); });
+        condition.notify_one();
+    }
+
     void enqueue_static(std::function<void(void*)> task, void* ptr)
     {
         std::unique_lock<std::mutex> lock(queue_mutex);
         // don't allow enqueueing after stopping the pool
         if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
         tasks.emplace([task, ptr]() { task(ptr); });
+        condition.notify_one();
     }
 
     void enqueue_static(std::function<void(void*, void*)> task, void* env, void* ptr)
@@ -82,6 +102,7 @@ public:
         // don't allow enqueueing after stopping the pool
         if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
         tasks.emplace([task, env, ptr]() { task(env, ptr); });
+        condition.notify_one();
     }
 
 private:
