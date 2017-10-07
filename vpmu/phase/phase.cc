@@ -174,15 +174,12 @@ void Phase::dump_metadata(FILE* fp)
 
 void Phase::update_snapshot(VPMUSnapshot& process_snapshot)
 {
-    // TODO use async call back, the current counters are out of date
-    {
-        // If this is implemented in async mode, this force sync could be removed
-        VPMU_sync();
-        VPMUSnapshot new_snapshot(true, vpmu::get_core_id());
-
+    uint64_t core_id = vpmu::get_core_id();
+    VPMU_async([this, core_id, &process_snapshot]() {
+        VPMUSnapshot new_snapshot(true, core_id);
         this->snapshot += new_snapshot - process_snapshot;
         process_snapshot = new_snapshot;
-    }
+    });
 }
 
 inline void Window::update_vector(uint64_t pc)
@@ -231,7 +228,6 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
             phase_num,
             (void*)pc,
             window.timestamp / 1000);
-        VPMU_sync();
         // Construct the instance inside vector (save time)
         process->phase_list.push_back(window);
         // We must update the snapshot to get the correct result

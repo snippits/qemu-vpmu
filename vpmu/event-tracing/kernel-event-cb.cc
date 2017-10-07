@@ -272,11 +272,11 @@ void et_register_callbacks_kernel_events(void)
 
         // Do snapshot when a new monitored process is executed
         if (process) {
-            // TODO If this is implemented in async mode, this force sync could be
-            // removed
-            VPMU_sync();
-            VPMUSnapshot new_snapshot(true, vpmu::get_core_id());
-            process->snapshot   = new_snapshot;
+            uint64_t core_id = vpmu::get_core_id();
+            VPMU_async([process, core_id]() {
+                VPMUSnapshot new_snapshot(true, core_id);
+                process->snapshot = new_snapshot;
+            });
             process->is_running = true;
         }
     });
@@ -297,10 +297,11 @@ void et_register_callbacks_kernel_events(void)
         // Accumulate the profiling counters when a process is scheduled out
         auto prev_process = event_tracer.find_process(prev_pid);
         if (prev_pid != pid && prev_process && prev_process->is_running) {
-            // TODO If this is implemented in async mode, this force sync could be removed
-            VPMU_sync();
-            VPMUSnapshot new_snapshot(true, vpmu::get_core_id());
-            prev_process->prof_counters += new_snapshot - prev_process->snapshot;
+            uint64_t core_id = vpmu::get_core_id();
+            VPMU_async([prev_process, core_id]() {
+                VPMUSnapshot new_snapshot(true, core_id);
+                prev_process->prof_counters += new_snapshot - prev_process->snapshot;
+            });
             prev_process->is_running = false;
         }
 
@@ -309,11 +310,11 @@ void et_register_callbacks_kernel_events(void)
         if (process && !process->is_running) {
             // NOTE: Sometimes kernel will schedule in a process twice for unknown reason.
             // We don't need to do snapshot again in this case.
-            // TODO If this is implemented in async mode, this force sync could be
-            // removed
-            VPMU_sync();
-            VPMUSnapshot new_snapshot(true, vpmu::get_core_id());
-            process->snapshot   = new_snapshot;
+            uint64_t core_id = vpmu::get_core_id();
+            VPMU_async([process, core_id]() {
+                VPMUSnapshot new_snapshot(true, core_id);
+                process->snapshot = new_snapshot;
+            });
             process->is_running = true;
         }
 
@@ -337,10 +338,11 @@ void et_register_callbacks_kernel_events(void)
 
         auto process = event_tracer.find_process(irq_pid);
         if (process) {
-            // TODO If this is implemented in async mode, this force sync could be removed
-            VPMU_sync();
-            VPMUSnapshot new_snapshot(true, vpmu::get_core_id());
-            process->prof_counters += new_snapshot - process->snapshot;
+            uint64_t core_id = vpmu::get_core_id();
+            VPMU_async([process, core_id]() {
+                VPMUSnapshot new_snapshot(true, core_id);
+                process->prof_counters += new_snapshot - process->snapshot;
+            });
             process->is_running = false;
         }
         event_tracer.remove_process(irq_pid);
