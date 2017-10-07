@@ -34,7 +34,9 @@ public:
     }
     virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
     virtual void reset(void) { LOG_FATAL("reset is not implemented"); }
-    virtual void sync(void) { LOG_FATAL("sync is not implemented"); }
+    virtual void issue_sync(void) { LOG_FATAL("issue_sync is not implemented"); }
+    virtual void reset_sync_flags(void) { LOG_FATAL("reset_sync_flags is not implemented"); }
+    virtual void wait_sync(void) { LOG_FATAL("wait_sync is not implemented"); }
     virtual void sync_none_blocking(void)
     {
         LOG_FATAL("sync_none_blocking is not implemented");
@@ -139,7 +141,7 @@ public:
         impl->send_reset();
     }
 
-    void sync(void) override
+    void issue_sync(void) override
     {
         // Basic safety check
         if (impl == nullptr) return;
@@ -147,6 +149,23 @@ public:
         std::lock_guard<std::mutex> lock(stream_mutex);
         clean_out_local_buff();
         impl->send_sync();
+    }
+
+    void wait_sync(void) override
+    {
+        // Basic safety check
+        if (impl == nullptr) return;
+        // log_debug("sync");
+        if (impl->timed_wait_sync_flag(5000) == false) {
+            LOG_FATAL("Perhaps some simulator are down!!");
+        }
+    }
+
+    void reset_sync_flags(void) override
+    {
+        // Basic safety check
+        if (impl == nullptr) return;
+        impl->reset_sync_flags();
     }
 
     void dump(void) override

@@ -24,4 +24,6 @@ class TD;             // TD == "Type Displayer"
 #define VPMU_DEBUG_SHOW_VAR_TYPE(_VAR) TD<decltype(_VAR)> The_variable_type_is;
 #endif
 
+void VPMU_async(std::function<void(void)> task);
+
 #endif

@@ -73,19 +73,15 @@ public:
     inline void send_sync(void)
     {
         Reference ref;
-        ref.type = VPMU_PACKET_BARRIER;
+        ref.type = VPMU_PACKET_SYNC_DATA;
+        send(ref);
+    }
 
-        // log_debug("sync");
-        // Barrier packet also synchronize data back to Cache_Data structure.
-        // Push the barrier packet into the queue to
-        // ensure everything before the barrier packet is done.
-        send(ref);
-        shm_waitBufferEmpty(trace_buffer, num_workers);
-        send(ref);
-        // Wait till it's done "twice" to ensure the property of barrier
-        // Note this must be done twice due to the bulk read!
-        // Otherwise, you might miss less than 1k/2k references!!!!
-        shm_waitBufferEmpty(trace_buffer, num_workers);
+    void reset_sync_flags(void)
+    {
+        for (int i = 0; i < num_workers; i++) {
+            stream_comm[i].synced_flag = false;
+        }
     }
 
     inline void send_dump(void)
@@ -148,7 +144,7 @@ public:
 
     bool timed_wait_sync_flag(uint64_t mili_sec)
     {
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < mili_sec * 1000; i++) {
             int flag_cnt = 0;
             // Wait all forked process to be initialized
             for (int i = 0; i < num_workers; i++) {
@@ -159,7 +155,7 @@ public:
                 return true;
             } else {
                 // Some of them are not synced yet
-                usleep(1000);
+                usleep(1);
             }
         }
         return false;

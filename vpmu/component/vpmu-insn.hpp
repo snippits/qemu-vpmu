@@ -53,14 +53,6 @@ public:
     // inline uint64_t get_insn_count(void) = delete;
     // inline uint64_t get_cycles(void) = delete;
 
-    // TODO This is a new funcion
-    template <class F, class... Args>
-    void async(F&& f, Args&&... args)
-    {
-        log_debug("lambda");
-        f(std::forward<Args>(args)...);
-    }
-
 #if defined(TARGET_ARM)
     void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);
 // End of TARGET_ARM

@@ -1,4 +1,5 @@
 // Libraries
+#include <mutex>                // std::mutex
 #include <boost/filesystem.hpp> // boost::filesystem
 #include "json.hpp"             // nlohmann::json
 // VPMU headers
@@ -15,6 +16,7 @@ extern "C" {
 #include "kernel-event-cb.h"    // et_register_callbacks_kernel_events()
 #include "phase-detect.hpp"     // phase_detect
 #include "function-tracing.hpp" // User process tracing callbacks
+#include "ThreadPool.hpp"       // ThreadPool
 
 // The global variable that controls all the vpmu streams.
 std::vector<VPMUStream *> vpmu_streams = {};
@@ -36,6 +38,10 @@ extern int   qemu_loglevel;
 #endif
 // Pointer to argv[0] for modifying process name in htop
 char *global_argv_0 = NULL;
+// Thread pool for asynchronizing the performance counters
+ThreadPool timing_thread_pool("vpmu_async", 1);
+// Guard for accessing timing_thread_pool following VPMU stream interface.
+std::mutex timing_thread_pool_mutex;
 
 static inline void
 attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)
@@ -97,9 +103,7 @@ static void init_simulators(const char *vpmu_config_file)
     BranchStream::Model      branch_model = vpmu_branch_stream.get_model(0);
     CacheStream::Model       cache_model  = vpmu_cache_stream.get_model(0);
     VPMU.platform.cpu.frequency           = cpu_model.frequency;
-    std::function<void(std::string)> func(
-      [=](auto i) { std::cout << i << cpu_model.name << std::endl; });
-    vpmu_insn_stream.async(func, "hello async callback\n");
+
     // After this line, the configs from simulators are synced!!!
     CONSOLE_LOG(STR_VPMU "VPMU configurations:\n");
     CONSOLE_LOG(STR_VPMU "    CPU Model    : %s\n", cpu_model.name);
@@ -164,9 +168,39 @@ void VPMU_sync_non_blocking(void)
 
 void VPMU_sync(void)
 {
+    volatile bool wait_flag = true;
+
+    // We have to serialize all sync calls with respect to async calls.
+    // Because any thread can try to sync with the global counter,
+    // all sync events must be serialized in order to preserve the correctness.
+    VPMU_async([&]() { wait_flag = false; });
+    while (wait_flag) usleep(1);
+}
+
+void VPMU_async(std::function<void(void)> task)
+{
+    // Lock here to ensure the integrity of calling issue_sync() and enqueue_static().
+    // This keeps the order of sync packets and the order of worker queue identical.
+    std::lock_guard<std::mutex> lock(timing_thread_pool_mutex);
+
+    // Send a sync packet and wait the sync events in the thread pool
+    // worker queue so that everything are serialized in order.
     for (auto s : vpmu_streams) {
-        s->sync();
+        s->issue_sync();
     }
+
+    timing_thread_pool.enqueue_static([task]() {
+        // Wait till the sync event happened
+        for (auto s : vpmu_streams) {
+            s->wait_sync();
+        }
+        // Do the task
+        task();
+        // Clear the sync flag for the next sync event.
+        for (auto s : vpmu_streams) {
+            s->reset_sync_flags();
+        }
+    });
 }
 
 void VPMU_reset(void)
@@ -387,8 +421,6 @@ void VPMU_init(int argc, char **argv)
     setlocale(LC_NUMERIC, "");
     // TODO add qemu_log_in_addr_range
     enable_QEMU_log();
-    // TODO thread pools and callbacks
-    // VPMU.thpool = thpool_init(1);
     DBG(STR_VPMU "Thread Pool Initialized\n");
     // Initialize simulators for each stream
     init_simulators(config_file);

@@ -148,12 +148,24 @@ public:
 
                         // Do simulation
                         for (int i = 0; i < num_refs; i++) {
-                            if (unlikely(local_buffer[i].type == VPMU_PACKET_DUMP_INFO)) {
+                            switch (local_buffer[i].type) {
+                            case VPMU_PACKET_SYNC_DATA:
+                                // Wait for the last signal to be cleared
+                                while (stream_comm[id].synced_flag)
+                                    ;
+                                stream_comm[id].sync_counter++;
+                                sim->packet_processor(
+                                  id, local_buffer[i], stream_comm[id].data);
+                                // Set synced_flag to tell master it's done
+                                stream_comm[id].synced_flag = true;
+                                break;
+                            case VPMU_PACKET_DUMP_INFO:
                                 this->wait_token(id);
                                 sim->packet_processor(
                                   id, local_buffer[i], stream_comm[id].data);
                                 this->pass_token(id);
-                            } else {
+                                break;
+                            default:
                                 if (local_buffer[i].type & VPMU_PACKET_HOT) {
                                     sim->hot_packet_processor(
                                       id, local_buffer[i], stream_comm[id].data);
@@ -183,6 +195,7 @@ public:
               "\tTry \"killall qemu-system-arm\" to solve zombie processes.\n");
             exit(EXIT_FAILURE);
         }
+        this->reset_sync_flags();
     }
 
     void send(Reference *local_buffer, uint32_t num_refs, uint32_t total_size) override
