@@ -6,10 +6,10 @@ extern "C" {
 #include "config-target.h" // Target Configuration (CONFIG_ARM)
 #include "vpmu-insn.h"
 }
-#include "vpmu.hpp"        // VPMU common header
-#include "vpmu-stream.hpp" // VPMUStream, VPMUStream_T
-#include "vpmu-packet.hpp" // VPMU_Insn, VPMU_Branch, VPMU_Cache
-#include "json.hpp"        // nlohmann::json
+#include "vpmu.hpp"             // VPMU common header
+#include "vpmu-stream.hpp"      // VPMUStream, VPMUStream_T
+#include "vpmu-insn-packet.hpp" // VPMU_Inst::Reference
+#include "json.hpp"             // nlohmann::json
 // The implementaion of stream buffer and multi- threading/processing
 #include "stream/single-thread.hpp" // VPMU_Stream_Single_Thread
 #include "stream/multi-thread.hpp"  // VPMU_Stream_Multi_Thread
@@ -50,8 +50,8 @@ public:
     // Summarize instruction count of all cores means nothing. We define it as prohibit.
     inline uint64_t get_insn_count(void) { return get_insn_count(0, -1); }
     inline uint64_t get_cycles(void) { return get_cycles(0, -1); }
-    // inline uint64_t get_insn_count(void) = delete;
-    // inline uint64_t get_cycles(void) = delete;
+        // inline uint64_t get_insn_count(void) = delete;
+        // inline uint64_t get_cycles(void) = delete;
 
 #if defined(TARGET_ARM)
     void send(uint8_t core, uint8_t mode, ExtraTBInfo* ptr);

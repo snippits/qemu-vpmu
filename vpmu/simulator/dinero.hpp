@@ -4,7 +4,7 @@
 
 #include <string>                   // std::string
 #include "vpmu-sim.hpp"             // VPMUSimulator
-#include "vpmu-packet.hpp"          // VPMU_Cache::Reference
+#include "vpmu-cache-packet.hpp"    // VPMU_Cache
 #include "vpmu-utils.hpp"           // miscellaneous functions
 #include "vpmu-template-output.hpp" // Template output format
 
@@ -173,14 +173,14 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
         IF_KEY_IS("prefetch_abortpercent", c->prefetch_abortpercent = atoi(val));
         IF_KEY_IS("prefetch_distance", c->prefetch_distance = atoi(val));
 
-        IF_KEY_IS("replacement", c->name_replacement                 = strdup(val);
+        IF_KEY_IS("replacement", c->name_replacement = strdup(val);
                   if (strcmp(val, LRU) == 0) c->replacementf         = d4rep_lru;
                   else if (strcmp(val, FIFO) == 0) c->replacementf   = d4rep_fifo;
                   else if (strcmp(val, RANDOM) == 0) c->replacementf = d4rep_random;
                   else ERR_MSG("JSON: not a valid option\n %s: %s\n", key, val););
 
         IF_KEY_IS(
-          "prefetch", c->name_prefetch                          = strdup(val);
+          "prefetch", c->name_prefetch = strdup(val);
           if (strcmp(val, DEMAND_ONLY) == 0) c->prefetchf       = d4prefetch_none;
           else if (strcmp(val, ALWAYS) == 0) c->prefetchf       = d4prefetch_always;
           else if (strcmp(val, MISS) == 0) c->prefetchf         = d4prefetch_miss;
@@ -189,14 +189,14 @@ class Cache_Dinero : public VPMUSimulator<VPMU_Cache>
           else if (strcmp(val, SUB_BLOCK) == 0) c->prefetchf    = d4prefetch_subblock;
           else ERR_MSG("JSON: not a valid option\n %s: %s\n", key, val););
 
-        IF_KEY_IS("walloc", c->name_walloc                        = strdup(val);
+        IF_KEY_IS("walloc", c->name_walloc = strdup(val);
                   if (strcmp(val, IMPOSSIBLE) == 0) c->wallocf    = d4walloc_impossible;
                   else if (strcmp(val, ALWAYS) == 0) c->wallocf   = d4walloc_always;
                   else if (strcmp(val, NEVER) == 0) c->wallocf    = d4walloc_never;
                   else if (strcmp(val, NO_FETCH) == 0) c->wallocf = d4walloc_nofetch;
                   else ERR_MSG("JSON: not a valid option\n %s: %s\n", key, val););
 
-        IF_KEY_IS("wback", c->name_wback                         = strdup(val);
+        IF_KEY_IS("wback", c->name_wback = strdup(val);
                   if (strcmp(val, IMPOSSIBLE) == 0) c->wbackf    = d4wback_impossible;
                   else if (strcmp(val, ALWAYS) == 0) c->wbackf   = d4wback_always;
                   else if (strcmp(val, NEVER) == 0) c->wbackf    = d4wback_never;

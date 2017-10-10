@@ -1,5 +1,5 @@
-#include "vpmu-branch.hpp" // BranchStream
-#include "vpmu-packet.hpp" // VPMU_Branch::Reference
+#include "vpmu-branch.hpp"        // BranchStream
+#include "vpmu-branch-packet.hpp" // VPMU_Branch::Reference
 
 // Define the global instance here for accessing
 BranchStream vpmu_branch_stream;

@@ -1,5 +1,4 @@
-#include "vpmu-cache.hpp"  // CacheStream
-#include "vpmu-packet.hpp" // VPMU_Cache::Reference
+#include "vpmu-cache.hpp" // CacheStream
 
 // Define the global instance here for accessing
 CacheStream vpmu_cache_stream;

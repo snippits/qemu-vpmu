@@ -6,9 +6,9 @@ extern "C" {
 #include "vpmu-qemu.h"         // ExtraTBInfo
 #include "vpmu-i386-insnset.h" // Instruction Set
 }
-#include "vpmu-sim.hpp"       // VPMUSimulator
-#include "vpmu-translate.hpp" // VPMUi386Translate
-#include "vpmu-packet.hpp"    // VPMU_Insn
+#include "vpmu-sim.hpp"         // VPMUSimulator
+#include "vpmu-translate.hpp"   // VPMUi386Translate
+#include "vpmu-insn-packet.hpp" // VPMU_Insn
 
 class CPU_IntelI7 : public VPMUSimulator<VPMU_Insn>
 {
@@ -22,7 +22,7 @@ private: // VPMUi386Translate
             uint32_t dual_issue;
         } Model;
 
-        void build(nlohmann::json config);
+        void     build(nlohmann::json config);
         uint16_t get_x86_64_ticks(uint64_t insn) override;
         uint16_t get_i386_ticks(uint32_t insn) override
         {
@@ -34,7 +34,7 @@ private: // VPMUi386Translate
         Model    cpu_model;
         uint32_t x86_instr_time[X86_INSTRUCTION_TOTAL_COUNTS];
         uint32_t _get_x86_64_ticks(uint64_t insn);
-        int _get_insn_ticks(uint32_t insn);
+        int      _get_insn_ticks(uint32_t insn);
     }; // End of class Translation
 
 public: // VPMUSimulator

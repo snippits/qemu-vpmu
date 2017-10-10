@@ -6,9 +6,9 @@ extern "C" {
 #include "vpmu-qemu.h"        // ExtraTBInfo
 #include "vpmu-arm-insnset.h" // Instruction Set
 }
-#include "vpmu-sim.hpp"       // VPMUSimulator
-#include "vpmu-translate.hpp" // VPMUARMTranslate
-#include "vpmu-packet.hpp"    // VPMU_Insn
+#include "vpmu-sim.hpp"         // VPMUSimulator
+#include "vpmu-translate.hpp"   // VPMUARMTranslate
+#include "vpmu-insn-packet.hpp" // VPMU_Insn
 
 /// @brief Cortex A9 component simulator class
 /// @details This class demonstrates the use of VPMUSimulator class for CPU simulation.
@@ -30,7 +30,7 @@ private: // VPMUARMTranslate
             uint32_t dual_issue;
         } Model;
 
-        void build(nlohmann::json config);
+        void     build(nlohmann::json config);
         uint16_t get_arm64_ticks(uint64_t insn) override
         {
             log_debug("ARM 64 is not supported yet");
@@ -58,14 +58,14 @@ private: // VPMUARMTranslate
 
         uint32_t _get_arm_ticks(uint32_t insn);
         uint16_t _dual_issue_check();
-        void _interlock_def(int reg, int delay);
-        int _interlock_use(int reg);
-        int _get_insn_ticks(uint32_t insn);
-        int _get_insn_ticks_thumb(uint32_t insn);
+        void     _interlock_def(int reg, int delay);
+        int      _interlock_use(int reg);
+        int      _get_insn_ticks(uint32_t insn);
+        int      _get_insn_ticks_thumb(uint32_t insn);
 #ifdef CONFIG_VPMU_VFP
         void _vfp_lock_release(int insn);
         void _vfp_lock_analyze(int rd, int rn, int rm, int dp, int insn);
-        int _analyze_vfp_ticks(uint32_t insn, uint64_t vfp_vec_len);
+        int  _analyze_vfp_ticks(uint32_t insn, uint64_t vfp_vec_len);
 #endif
     }; // End of class Translation
 

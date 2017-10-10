@@ -3,7 +3,7 @@
 #pragma once
 
 #include "vpmu-sim.hpp"             // VPMUSimulator
-#include "vpmu-packet.hpp"          // VPMU_Branch::Reference
+#include "vpmu-branch-packet.hpp"   // VPMU_Branch
 #include "vpmu-template-output.hpp" // Template output format
 
 /// @brief One bit branch predictor class

@@ -5,10 +5,10 @@
 extern "C" {
 #include "vpmu-branch.h"
 }
-#include "vpmu.hpp"        // VPMU common header
-#include "vpmu-stream.hpp" // VPMUStream, VPMUStream_T
-#include "vpmu-packet.hpp" // VPMU_Insn, VPMU_Branch, VPMU_Cache
-#include "json.hpp"        // nlohmann::json
+#include "vpmu.hpp"               // VPMU common header
+#include "vpmu-stream.hpp"        // VPMUStream, VPMUStream_T
+#include "vpmu-branch-packet.hpp" // VPMU_Branch::Reference
+#include "json.hpp"               // nlohmann::json
 // The implementaion of stream buffer and multi- threading/processing
 #include "stream/single-thread.hpp" // VPMUStreamSingleThread
 #include "stream/multi-thread.hpp"  // VPMUStreamMultiThread

@@ -1,6 +1,5 @@
 #include "config-target.h" // Target Configuration (CONFIG_ARM)
 #include "vpmu-insn.hpp"   // InstructionStream
-#include "vpmu-packet.hpp" // VPMU_Inst::Reference
 
 // Define the global instance here for accessing
 InstructionStream vpmu_insn_stream;

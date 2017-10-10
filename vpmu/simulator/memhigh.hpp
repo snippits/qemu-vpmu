@@ -4,7 +4,7 @@
 
 #include <string>                   // std::string
 #include "vpmu-sim.hpp"             // VPMUSimulator
-#include "vpmu-packet.hpp"          // VPMU_Cache::Reference
+#include "vpmu-cache-packet.hpp"    // VPMU_Cache
 #include "vpmu-utils.hpp"           // miscellaneous functions
 #include "vpmu-template-output.hpp" // Template output format
 
