@@ -17,15 +17,14 @@ template <typename T>
 class VPMUStreamMultiProcess : public VPMUStream_Impl<T>
 {
 public:
-    using Reference   = typename T::Reference;
-    using TraceBuffer = typename T::TraceBuffer;
-    using Sim_ptr     = std::unique_ptr<VPMUSimulator<T>>;
+    using Reference = typename T::Reference;
+    using Sim_ptr   = std::unique_ptr<VPMUSimulator<T>>;
+    using Layout    = typename VPMUStream_Impl<T>::Layout;
 
 public:
     VPMUStreamMultiProcess(std::string name, uint64_t num_elems)
         : VPMUStream_Impl<T>(name)
     {
-        num_trace_buffer_elems = num_elems;
     }
 
     ~VPMUStreamMultiProcess() { destroy(); }
@@ -33,12 +32,6 @@ public:
     void build() override
     {
         using namespace boost::interprocess;
-        int total_buffer_size = Stream_Layout<T>::total_size(num_trace_buffer_elems);
-
-        if (buffer != nullptr) {
-            // shmdt(buffer);
-            buffer = nullptr;
-        }
 
         // TODO Need a hased name for safely initializing (forking) simulators when
         // concurrent VM execution is enabled. If hased named is implemented,
@@ -48,34 +41,22 @@ public:
         shm = shared_memory_object(create_only, "vpmu_cache_ring_buffer", read_write);
 
         // Set size
-        shm.truncate(total_buffer_size);
+        shm.truncate(sizeof(Layout));
 
         // Map the whole shared memory in this process
         region = mapped_region(shm, read_write);
         log_debug("Mapped address %p, size %d.", region.get_address(), region.get_size());
+
         // Write all the memory to 0
         std::memset(region.get_address(), 0, region.get_size());
-        buffer = (uint8_t *)region.get_address();
+        // Initialize with constructor
+        vpmu_stream = new (region.get_address()) Layout();
 
-        // Copy (by value) the CPU information to ring buffer
-        platform_info  = Stream_Layout<T>::get_platform_info(buffer);
-        *platform_info = VPMU.platform;
-        // Assign pointer of common data
-        stream_comm = Stream_Layout<T>::get_stream_comm(buffer);
-        // Assign the pointer of token
-        token = Stream_Layout<T>::get_token(buffer);
-        // Assign the pointer of heart beat signal
-        heart_beat = Stream_Layout<T>::get_heart_beat(buffer);
-        // Assign pointer of trace buffer
-        shm_bufferInit(trace_buffer,           // the pointer of trace buffer
-                       num_trace_buffer_elems, // the number of packets
-                       Reference,              // the type of packet
-                       TraceBuffer,            // the type of trace buffer
-                       Stream_Layout<T>::get_trace_buffer(buffer));
-
+        // Copy (by value) the CPU information to simulators
+        vpmu_stream->platform_info = VPMU.platform;
         // Initialize semaphores to zero, and set to process-shared!!
-        for (int i = 0; i < VPMU_MAX_NUM_WORKERS; i++)
-            sem_init(&stream_comm[i].job_semaphore, true, 0);
+        this->reset_semaphore(true);
+
         log_debug("Common resource allocated");
     }
 
@@ -96,10 +77,9 @@ public:
 
         // Erases objects from the system. Returns false on error. Never throws
         boost::interprocess::shared_memory_object::remove("vpmu_cache_ring_buffer");
-        if (buffer != nullptr) {
-            // shmdt(buffer);
-            buffer       = nullptr;
-            trace_buffer = nullptr;
+        if (vpmu_stream != nullptr) {
+            // delete vpmu_stream;
+            vpmu_stream = nullptr;
         }
     }
 
@@ -114,6 +94,7 @@ public:
             if (pid) {
                 // Parent
                 slaves.push_back(pid);
+                vpmu_stream->trace.register_reader();
             } else {
                 // This "move" improves the performance a little bit.
                 // It doesn't affect the host process. :D
@@ -125,53 +106,47 @@ public:
                 int            num_refs = 0;
 
                 vpmu::utils::name_process(this->get_name() + std::to_string(id));
-                stream_comm = Stream_Layout<T>::get_stream_comm(buffer);
                 // Initialize (build) the target simulation with its configuration
-                sim->set_platform_info(*platform_info);
-                sim->build(stream_comm[id].model);
+                sim->set_platform_info(vpmu_stream->platform_info);
+                sim->build(vpmu_stream->common[id].model);
                 // Initialize mutex to one, and set to process-shared
-                sem_init(&stream_comm[id].job_semaphore, true, 0);
+                sem_init(&vpmu_stream->common[id].job_semaphore, true, 0);
                 // Set synced_flag to tell master it's done
-                stream_comm[id].synced_flag = true;
+                vpmu_stream->common[id].synced_flag = true;
                 log_debug("worker process %d start", id);
                 while (1) {
                     this->wait_semaphore(id); // Down semaphore
                     // Keep draining traces till it's empty
-                    while (likely(shm_isBufferNotEmpty(trace_buffer, id))) {
-                        shm_bulkRead(
-                          trace_buffer,      // Pointer to ringbuffer
-                          id,                // ID of the worker
-                          local_buffer,      // Pointer to local(private) buffer
-                          local_buffer_size, //#elements of local(private) buffer
-                          sizeof(Reference), // Size of each elements
-                          num_refs);         //#elements read successfully
+                    while (!vpmu_stream->trace.empty(id)) {
+                        num_refs =
+                          vpmu_stream->trace.pop(id, local_buffer, local_buffer_size);
 
                         // Do simulation
                         for (int i = 0; i < num_refs; i++) {
                             switch (local_buffer[i].type) {
                             case VPMU_PACKET_SYNC_DATA:
                                 // Wait for the last signal to be cleared
-                                while (stream_comm[id].synced_flag)
+                                while (vpmu_stream->common[id].synced_flag)
                                     ;
-                                stream_comm[id].sync_counter++;
+                                vpmu_stream->common[id].sync_counter++;
                                 sim->packet_processor(
-                                  id, local_buffer[i], stream_comm[id].data);
+                                  id, local_buffer[i], vpmu_stream->common[id].data);
                                 // Set synced_flag to tell master it's done
-                                stream_comm[id].synced_flag = true;
+                                vpmu_stream->common[id].synced_flag = true;
                                 break;
                             case VPMU_PACKET_DUMP_INFO:
                                 this->wait_token(id);
                                 sim->packet_processor(
-                                  id, local_buffer[i], stream_comm[id].data);
+                                  id, local_buffer[i], vpmu_stream->common[id].data);
                                 this->pass_token(id);
                                 break;
                             default:
                                 if (local_buffer[i].type & VPMU_PACKET_HOT) {
                                     sim->hot_packet_processor(
-                                      id, local_buffer[i], stream_comm[id].data);
+                                      id, local_buffer[i], vpmu_stream->common[id].data);
                                 } else {
                                     sim->packet_processor(
-                                      id, local_buffer[i], stream_comm[id].data);
+                                      id, local_buffer[i], vpmu_stream->common[id].data);
                                 }
                             }
                         }
@@ -201,7 +176,7 @@ public:
     void send(Reference *local_buffer, uint32_t num_refs, uint32_t total_size) override
     {
         // Basic safety check
-        if (trace_buffer == nullptr) return;
+        if (vpmu_stream == nullptr) return;
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
         debug_packet_num_cnt += num_refs;
@@ -218,19 +193,15 @@ public:
             cnt = 0;
         }
 
-        for (int i = 0; i < num_workers; i++)
-            while (shm_remainedBufferSpace(trace_buffer, i) <= total_size) usleep(1);
-        shm_bulkWrite(trace_buffer,       // Pointer to ringbuffer
-                      local_buffer,       // Pointer to local(private) buffer
-                      num_refs,           // Number of elements to write
-                      sizeof(Reference)); // Size of each elements
-        this->post_semaphore();           // up semaphores
+        while (vpmu_stream->trace.remained_space() <= total_size) usleep(1);
+        vpmu_stream->trace.push(local_buffer, num_refs);
+        this->post_semaphore(); // up semaphores
     }
 
     void send(Reference &ref) override
     {
         // Basic safety check
-        if (trace_buffer == nullptr) return;
+        if (vpmu_stream == nullptr) return;
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
         debug_packet_num_cnt++;
@@ -240,11 +211,9 @@ public:
         }
 #endif
 
-        for (int i = 0; i < num_workers; i++)
-            while (shm_remainedBufferSpace(trace_buffer, i) <= 1) usleep(1);
-        shm_bufferWrite(trace_buffer, // Pointer to ringbuffer
-                        ref);         // The reference elements
-        this->post_semaphore();       // up semaphores
+        while (vpmu_stream->trace.remained_space() <= 1) usleep(1);
+        vpmu_stream->trace.push(ref);
+        this->post_semaphore(); // up semaphores
     }
 
 private:
@@ -252,19 +221,14 @@ private:
     using VPMUStream_Impl<T>::log_debug;
     using VPMUStream_Impl<T>::log_fatal;
 
-    using VPMUStream_Impl<T>::platform_info;
-    using VPMUStream_Impl<T>::buffer;
-    using VPMUStream_Impl<T>::stream_comm;
-    using VPMUStream_Impl<T>::heart_beat;
-    using VPMUStream_Impl<T>::trace_buffer;
-    using VPMUStream_Impl<T>::num_trace_buffer_elems;
-    using VPMUStream_Impl<T>::token;
+    using VPMUStream_Impl<T>::vpmu_stream;
     using VPMUStream_Impl<T>::num_workers;
 
     boost::interprocess::shared_memory_object shm;
     boost::interprocess::mapped_region        region;
-    std::vector<pid_t>                        slaves;
-    std::thread                               heart_beat_thread;
+
+    std::vector<pid_t> slaves;
+    std::thread        heart_beat_thread;
 
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;
@@ -283,7 +247,7 @@ private:
                     // Only be cancelable at cancellation points
                     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
                     usleep(100 * 1000); // 0.1 second
-                    *heart_beat += 1;
+                    vpmu_stream->heart_beat += 1;
                 }
             });
         } else {
@@ -293,7 +257,7 @@ private:
             vpmu::utils::name_process("zombie-killer");
             while (true) {
                 usleep(500 * 1000); // 0.5 second
-                if (*heart_beat == last_heart_beat) {
+                if (vpmu_stream->heart_beat == last_heart_beat) {
                     if (kill(parent_pid, 0)) {
                         if (errno == ESRCH) {
                             LOG_FATAL("QEMU stops beating... kill all zombies!!\n");
@@ -311,7 +275,7 @@ private:
                         print_gdb_once_flag = true;
                     }
                 }
-                last_heart_beat = *heart_beat;
+                last_heart_beat = vpmu_stream->heart_beat;
             }
             // It should never return!!!
             abort();

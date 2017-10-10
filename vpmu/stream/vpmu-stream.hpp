@@ -51,7 +51,6 @@ public:
     // Aliasing the real implementation this stream is using
     using Sim_ptr     = std::unique_ptr<VPMUSimulator<T>>;
     using Impl_ptr    = std::unique_ptr<VPMUStream_Impl<T>>;
-    using TraceBuffer = typename T::TraceBuffer;
     using Reference   = typename T::Reference;
     using Model       = typename T::Model;
     using Data        = typename T::Data;
@@ -93,7 +92,7 @@ public:
             // Call child default implementation builder
             this->set_default_stream_impl();
         }
-        if (impl->get_trace_buffer() == nullptr) {
+        if (!impl->initialized()) {
             // Call build if buffer is not built yet.
             impl->build();
         }
@@ -234,7 +233,6 @@ public:
     // Must use the inline hint to ensure the performance.
     inline Model        get_model(void) { return impl->get_model(0); }
     inline Data         get_data(void) { return impl->get_data(0); }
-    inline TraceBuffer* get_ringbuffer(void) { return impl->get_trace_buffer(); }
     inline sem_t*       get_semaphore(void) { return impl->get_semaphore(0); }
     inline uint32_t     get_num_workers(void) { return impl->get_num_workers(); }
 

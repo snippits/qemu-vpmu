@@ -8,10 +8,11 @@ extern "C" {
 #include "vpmu-conf.h"      // VPMU_MAX_CPU_CORES
 #include "vpmu-extratb.h"   // Extra TB Information
 #include "vpmu-packet.h"    // VPMU Packet Types
-#include "shm-ringbuffer.h" // Lightening Ring Buffer Implementation
 }
 
-// This static class defines the layout of VPMU ring buffer with its common data, etc.
+#include "ringbuffer.hpp" // RingBuffer class
+
+// This class defines the layout of VPMU ring buffer with its common data, etc.
 // We only use this as layout mapping, not object instance because the underlying memory
 // might be a file or pure memory.
 // The overall layout of memory in heap is as follows
@@ -27,75 +28,24 @@ extern "C" {
 //     VPMU_Insn, VPMU_Branch, VPMU_Cache
 // Where the number "N" is the default maximum number of workers: VPMU_MAX_NUM_WORKERS
 // Where "buffer_size" is a given number from stream implementation
-template <typename T>
-class Stream_Layout
-{
-public:
-    using TraceBuffer = typename T::TraceBuffer;
 
-    static inline uint32_t total_size(uint64_t buffer_size)
-    {
-        return sizeof(Layout)                                 // Size of common data
-               + sizeof(typename T::Reference) * buffer_size; // Data transfer stream
-    };
-
-    // Buffer size must be given to calaulate the total size
-    static inline uint32_t total_size() = delete; // Not allowed !!!!!!!!
-
-    static inline VPMUPlatformInfo *get_platform_info(void *buff)
-    {
-        return &(           // Cast to pointer
-          ((Layout *)buff)  // Cast to Layout structure
-            ->platform_info // Find the offset
-          );
-    }
-
-    static inline T *get_stream_comm(void *buff)
-    {
-        return (           // Cast to pointer (because it's array, do nothing)
-          ((Layout *)buff) // Cast to Layout structure
-            ->stream_comm  // Find the offset
-          );
-    }
-
-    static inline uint32_t *get_token(void *buff)
-    {
-        return &(          // Cast to pointer
-          ((Layout *)buff) // Cast to Layout structure
-            ->token        // Find the offset
-          );
-    }
-
-    static inline uint64_t *get_heart_beat(void *buff)
-    {
-        return &(          // Cast to pointer
-          ((Layout *)buff) // Cast to Layout structure
-            ->heart_beat   // Find the offset
-          );
-    }
-
-    static inline TraceBuffer *get_trace_buffer(void *buff)
-    {
-        return &(          // Cast to pointer
-          ((Layout *)buff) // Cast to Layout structure
-            ->trace_buffer // Find the offset
-          );
-    }
-
-private:
 #pragma pack(push) // push current alignment to stack
 #pragma pack(8)    // set alignment to 8 bytes boundary
-    // This is just a dummy type for strict layout alignment of memory.
-    typedef struct {
-        VPMUPlatformInfo platform_info;                     // The cpu information
-        T                stream_comm[VPMU_MAX_NUM_WORKERS]; // Configs/states
-        uint32_t         token;                             // Token variable
-        uint64_t         heart_beat;                        // Heartbeat signals
-        uint64_t         padding[8];                        // 8 words of padding
-        TraceBuffer      trace_buffer;                      // The trace buffer
-    } Layout;
-#pragma pack(pop) // restore original alignment from stack
+template <typename T, int SIZE = 0>
+class StreamLayout
+{
+public:
+    using Reference = typename T::Reference;
+
+    VPMUPlatformInfo platform_info;                ///< The cpu information
+    T                common[VPMU_MAX_NUM_WORKERS]; ///< Configs/states
+    uint32_t         token;                        ///< Token variable
+    uint64_t         heart_beat;                   ///< Heartbeat signals
+    uint64_t         padding[8];                   ///< 8 words of padding
+    /// The buffer for sending traces. This must be the last member for correct layout.
+    RingBuffer<Reference, SIZE, VPMU_MAX_NUM_WORKERS> trace;
 };
+#pragma pack(pop) // restore original alignment from stack
 
 class VPMU_Branch
 {
@@ -174,9 +124,6 @@ public:
         uint32_t latency;
     } Model;
 #pragma pack(pop) // restore original alignment from stack
-
-    // Define the buffer type here because we need to use it in normal C program
-    shm_ringBuffer_typedef(Reference, TraceBuffer, VPMU_MAX_NUM_WORKERS);
 
 public:
     // Defining the instances for communication between VPMU and workers.
@@ -335,9 +282,6 @@ public:
     } Model;
 
 #pragma pack(pop) // restore original alignment from stack
-
-    // Define the buffer type here because we need to use it in normal C program
-    shm_ringBuffer_typedef(Reference, TraceBuffer, VPMU_MAX_NUM_WORKERS);
 
 public:
     // Defining the instances for communication between VPMU and workers.
@@ -561,9 +505,6 @@ public:
         uint8_t  dual_issue;
     } Model;
 #pragma pack(pop) // restore original alignment from stack
-
-    // Define the buffer type here because we need to use it in normal C program
-    shm_ringBuffer_typedef(Reference, TraceBuffer, VPMU_MAX_NUM_WORKERS);
 
 public:
     // Defining the instances for communication between VPMU and workers.

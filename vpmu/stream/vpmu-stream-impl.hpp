@@ -15,32 +15,20 @@ template <typename T>
 class VPMUStream_Impl : public VPMULog
 {
 public:
-    using Model       = typename T::Model;
-    using Reference   = typename T::Reference;
-    using Data        = typename T::Data;
-    using TraceBuffer = typename T::TraceBuffer;
-    using Sim_ptr     = std::unique_ptr<VPMUSimulator<T>>;
+    using Layout    = StreamLayout<T, 1024 * 64>;
+    using Model     = typename T::Model;
+    using Reference = typename T::Reference;
+    using Data      = typename T::Data;
+    using Sim_ptr   = std::unique_ptr<VPMUSimulator<T>>;
     // Define ring buffer with lightening
     VPMUStream_Impl() : VPMULog("StreamImpl") {}
     VPMUStream_Impl(std::string name) : VPMULog(name) {}
     virtual ~VPMUStream_Impl() { log_debug("Destructed"); }
 
 protected:
-    // The real buffer, use byte address mode
-    uint8_t* buffer = nullptr;
-    // The pointer to common data of stream
-    T* stream_comm;
-    // The pointer to the token var for serialization
-    volatile uint32_t* token;
-    // The pointer to the heart beat var for zombie killer
-    volatile uint64_t* heart_beat;
-    // Trace buffer
-    TraceBuffer* trace_buffer = nullptr;
-    // Number of elements in the trace buffer
-    uint64_t num_trace_buffer_elems = 0;
+    Layout* vpmu_stream = nullptr;
     // Record how many workers in process
-    uint32_t          num_workers   = 0;
-    VPMUPlatformInfo* platform_info = nullptr;
+    uint32_t num_workers = 0;
 
 public:
     //
@@ -58,6 +46,8 @@ public:
     }
 
     virtual void send(Reference& ref) { LOG_FATAL("send is not implemented"); }
+
+    bool initialized(void) { return this->vpmu_stream != nullptr; }
 
     //
     // VPMU stream protocol implementation
@@ -79,8 +69,10 @@ public:
 
     void reset_sync_flags(void)
     {
+        if (vpmu_stream == nullptr) return;
+
         for (int i = 0; i < num_workers; i++) {
-            stream_comm[i].synced_flag = false;
+            vpmu_stream->common[i].synced_flag = false;
         }
     }
 
@@ -106,40 +98,53 @@ public:
 
     inline void post_semaphore(void)
     {
-        for (int i = 0; i < num_workers; i++) sem_post(&stream_comm[i].job_semaphore);
+        for (int i = 0; i < num_workers; i++) post_semaphore(i);
     }
-    inline void post_semaphore(int n) { sem_post(&stream_comm[n].job_semaphore); }
+
+    inline void post_semaphore(int n)
+    {
+        if (vpmu_stream == nullptr) return;
+        sem_post(&vpmu_stream->common[n].job_semaphore);
+    }
 
     inline void wait_semaphore(void)
     {
-        for (int i = 0; i < num_workers; i++) sem_wait(&stream_comm[i].job_semaphore);
+        for (int i = 0; i < num_workers; i++) wait_semaphore(i);
     }
 
-    inline void wait_semaphore(int n) { sem_wait(&stream_comm[n].job_semaphore); }
+    inline void wait_semaphore(int n) { sem_wait(&vpmu_stream->common[n].job_semaphore); }
+
+    inline void reset_semaphore(bool process_shared)
+    {
+        for (int i = 0; i < VPMU_MAX_NUM_WORKERS; i++) reset_semaphore(i, process_shared);
+    }
+
+    inline void reset_semaphore(int n, bool process_shared)
+    {
+        if (vpmu_stream == nullptr) return;
+        sem_init(&vpmu_stream->common[n].job_semaphore, process_shared, 0);
+    }
 
     // Get the results from a timing simulator
     inline Data get_data(int n)
     {
         if (pointer_safety_check(n) == false) return {}; // Zero initializer
-        return stream_comm[n].data;
+        return vpmu_stream->common[n].data;
     }
     // Get model configuration back from timing a simulator
     Model get_model(int n)
     {
         if (pointer_safety_check(n) == false) return {}; // Zero initializer
-        return stream_comm[n].model;
+        return vpmu_stream->common[n].model;
     }
 
-    // Getter functions for C side
-    // Get trace buffer
-    TraceBuffer* get_trace_buffer(void) { return trace_buffer; }
     // Get number of workers
     uint32_t get_num_workers(void) { return num_workers; }
     // Get semaphore
     sem_t* get_semaphore(int n)
     {
         if (pointer_safety_check(n) == false) return nullptr;
-        return &stream_comm[n].job_semaphore;
+        return &vpmu_stream->common[n].job_semaphore;
     }
 
     bool timed_wait_sync_flag(uint64_t mili_sec)
@@ -148,7 +153,7 @@ public:
             int flag_cnt = 0;
             // Wait all forked process to be initialized
             for (int i = 0; i < num_workers; i++) {
-                if (stream_comm[i].synced_flag) flag_cnt++;
+                if (vpmu_stream->common[i].synced_flag) flag_cnt++;
             }
             if (flag_cnt == num_workers) {
                 // All synced
@@ -162,14 +167,15 @@ public:
     }
 
 protected:
-    inline void pass_token(uint32_t id) { *token = id + 1; };
+    inline void pass_token(uint32_t id) { vpmu_stream->token = id + 1; };
     inline void wait_token(uint32_t id)
     {
-        while (*token != id) std::this_thread::yield();
+        while (vpmu_stream->token != id) std::this_thread::yield();
     }
 
 private:
-    inline void reset_token() { *token = 0; };
+    inline void reset_token() { vpmu_stream->token = 0; };
+
     bool pointer_safety_check(int n)
     {
         if (n > num_workers) {
@@ -178,8 +184,8 @@ private:
                       num_workers);
             return false;
         }
-        if (stream_comm == nullptr) {
-            LOG_FATAL("stream_comm is nullptr\n");
+        if (vpmu_stream == nullptr) {
+            LOG_FATAL("vpmu_stream is nullptr\n");
             return false;
         }
         return true;
