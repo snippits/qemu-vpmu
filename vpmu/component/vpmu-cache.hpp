@@ -24,7 +24,7 @@ public:
     void set_default_stream_impl(void) override
     {
         // Get the default implementation of stream interface.
-        impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>("C_Strm", 1024 * 64);
+        impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>("C_Strm");
     }
 
     void send(uint8_t proc, uint8_t core, uint64_t addr, uint16_t type, uint16_t size);

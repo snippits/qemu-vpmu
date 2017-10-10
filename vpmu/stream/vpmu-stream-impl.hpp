@@ -25,29 +25,59 @@ public:
     VPMUStream_Impl(std::string name) : VPMULog(name) {}
     virtual ~VPMUStream_Impl() { log_debug("Destructed"); }
 
-protected:
-    Layout* vpmu_stream = nullptr;
-    // Record how many workers in process
-    uint32_t num_workers = 0;
-
 public:
     //
     // VPMU stream protocol interface
     //
 
     // This is for initializing common resources for workers
-    virtual void build() { LOG_FATAL("build is not implemented"); }
+    virtual void build(void) { LOG_FATAL("build is not implemented"); }
+    virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
     // Initialize resources for individual workers and execute them in parallel.
     virtual void run(std::vector<Sim_ptr>& jobs) { LOG_FATAL("run is not implemented"); }
-    virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
-    virtual void send(Reference* local_buffer, uint32_t num_refs, uint32_t total_size)
+
+    inline void send(Reference* local_buffer, uint32_t num_refs, uint32_t total_size)
     {
-        LOG_FATAL("send is not implemented");
+        // Basic safety check
+        if (vpmu_stream == nullptr) return;
+
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        debug_packet_num_cnt += num_refs;
+#endif
+
+        // Periodically sync back counters for timing
+        static uint32_t cnt = 0;
+        cnt++;
+        if (cnt == 4) {
+            Reference barrier;
+
+            barrier.type = VPMU_PACKET_BARRIER;
+            send(barrier);
+            cnt = 0;
+        }
+
+        while (vpmu_stream->trace.remained_space() <= total_size) usleep(1);
+        vpmu_stream->trace.push(local_buffer, num_refs);
+        this->post_semaphore(); // up semaphores
     }
 
-    virtual void send(Reference& ref) { LOG_FATAL("send is not implemented"); }
+    inline void send(Reference& ref)
+    {
+        // Basic safety check
+        if (vpmu_stream == nullptr) return;
 
-    bool initialized(void) { return this->vpmu_stream != nullptr; }
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        debug_packet_num_cnt++;
+        if (ref.type == VPMU_PACKET_DUMP_INFO) {
+            CONSOLE_LOG("VPMU sent %'" PRIu64 " packets\n", debug_packet_num_cnt);
+            debug_packet_num_cnt = 0;
+        }
+#endif
+
+        while (vpmu_stream->trace.remained_space() <= 1) usleep(1);
+        vpmu_stream->trace.push(ref);
+        this->post_semaphore(); // up semaphores
+    }
 
     //
     // VPMU stream protocol implementation
@@ -65,15 +95,6 @@ public:
         Reference ref;
         ref.type = VPMU_PACKET_SYNC_DATA;
         send(ref);
-    }
-
-    void reset_sync_flags(void)
-    {
-        if (vpmu_stream == nullptr) return;
-
-        for (int i = 0; i < num_workers; i++) {
-            vpmu_stream->common[i].synced_flag = false;
-        }
     }
 
     inline void send_dump(void)
@@ -147,6 +168,17 @@ public:
         return &vpmu_stream->common[n].job_semaphore;
     }
 
+    bool initialized(void) { return this->vpmu_stream != nullptr; }
+
+    void reset_sync_flags(void)
+    {
+        if (vpmu_stream == nullptr) return;
+
+        for (int i = 0; i < num_workers; i++) {
+            vpmu_stream->common[i].synced_flag = false;
+        }
+    }
+
     bool timed_wait_sync_flag(uint64_t mili_sec)
     {
         for (int i = 0; i < mili_sec * 1000; i++) {
@@ -167,14 +199,50 @@ public:
     }
 
 protected:
+    Layout* vpmu_stream = nullptr;
+    // Record how many workers in process
+    uint32_t num_workers = 0;
+
+    inline void do_tasks(Sim_ptr& sim, std::vector<Reference>& refs)
+    {
+        int id = sim->id;
+
+        for (auto& ref : refs) {
+            switch (ref.type) {
+            case VPMU_PACKET_SYNC_DATA:
+                // Wait for the last signal to be cleared
+                while (vpmu_stream->common[id].synced_flag)
+                    ;
+                vpmu_stream->common[id].sync_counter++;
+                sim->packet_processor(id, ref, vpmu_stream->common[id].data);
+                // Set synced_flag to tell master it's done
+                vpmu_stream->common[id].synced_flag = true;
+                break;
+            case VPMU_PACKET_DUMP_INFO:
+                this->wait_token(id);
+                sim->packet_processor(id, ref, vpmu_stream->common[id].data);
+                this->pass_token(id);
+                break;
+            default:
+                if (ref.type & VPMU_PACKET_HOT) {
+                    sim->hot_packet_processor(id, ref, vpmu_stream->common[id].data);
+                } else {
+                    sim->packet_processor(id, ref, vpmu_stream->common[id].data);
+                }
+            }
+        }
+    }
+
+private:
+    // The total number of packets counter for debugging
+    uint64_t debug_packet_num_cnt = 0;
+
+    inline void reset_token() { vpmu_stream->token = 0; };
     inline void pass_token(uint32_t id) { vpmu_stream->token = id + 1; };
     inline void wait_token(uint32_t id)
     {
         while (vpmu_stream->token != id) std::this_thread::yield();
     }
-
-private:
-    inline void reset_token() { vpmu_stream->token = 0; };
 
     bool pointer_safety_check(int n)
     {

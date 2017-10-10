@@ -77,9 +77,8 @@ static void init_simulators(const char *vpmu_config_file)
         exit(EXIT_FAILURE);
     }
 
-    { // Example of changing the implementation of VPMU stream
-        auto impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>(
-          "C_Strm", 1024 * 64); // 64K elements
+    { // Example of changing the implementation of VPMU stream, the size is 64K elements
+        auto impl = std::make_unique<VPMUStreamMultiProcess<VPMU_Cache>>("C_Strm");
         vpmu_cache_stream.set_stream_impl(std::move(impl));
     }
     // Allocate and build resources.

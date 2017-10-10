@@ -25,7 +25,7 @@ public:
     void set_default_stream_impl(void) override
     {
         // Get the default implementation of stream interface.
-        impl = std::make_unique<VPMUStreamSingleThread<VPMU_Insn>>("I_Strm", 1024 * 64);
+        impl = std::make_unique<VPMUStreamSingleThread<VPMU_Insn>>("I_Strm");
     }
 
     inline uint64_t get_insn_count(int model_idx, int core_id)
