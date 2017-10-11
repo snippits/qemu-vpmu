@@ -159,9 +159,6 @@ static void raspi2_init(MachineState *machine)
 
     vcram_size = object_property_get_uint(OBJECT(&s->soc), "vcram-size",
                                           &error_abort);
-#ifdef CONFIG_VPMU
-    vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
-#endif
     setup_boot(machine, 2, machine->ram_size - vcram_size);
 }
 

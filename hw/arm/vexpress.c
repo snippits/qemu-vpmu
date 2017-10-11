@@ -40,9 +40,6 @@
 #include "qemu/error-report.h"
 #include <libfdt.h>
 #include "hw/char/pl011.h"
-#ifdef CONFIG_VPMU
-#include "vpmu/qemu/vpmu-device.h"
-#endif
 
 #define VEXPRESS_BOARD_ID 0x8e0
 #define VEXPRESS_FLASH_SIZE (64 * 1024 * 1024)
@@ -701,10 +698,6 @@ static void vexpress_common_init(MachineState *machine)
         sysbus_create_simple("virtio-mmio", map[VE_VIRTIO] + 0x200 * i,
                              pic[40 + i]);
     }
-
-#ifdef CONFIG_VPMU
-    vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
-#endif
 
     daughterboard->bootinfo.ram_size = machine->ram_size;
     daughterboard->bootinfo.kernel_filename = machine->kernel_filename;

@@ -132,6 +132,7 @@ int main(int argc, char **argv)
 #include "qapi/qmp/qerror.h"
 #include "sysemu/iothread.h"
 #ifdef CONFIG_VPMU
+#include "vpmu/qemu/vpmu-device.h"
 #include "vpmu/qemu/vpmu-qemu.h"
 #endif
 
@@ -4628,6 +4629,10 @@ int main(int argc, char **argv, char **envp)
         if (i > 0)
             exit (i == 1 ? 1 : 0);
     }
+
+#ifdef CONFIG_VPMU
+    vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
+#endif
 
     /* This checkpoint is required by replay to separate prior clock
        reading from the other reads, because timer polling functions query

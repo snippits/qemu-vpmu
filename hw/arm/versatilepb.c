@@ -24,9 +24,6 @@
 #include "hw/block/flash.h"
 #include "qemu/error-report.h"
 #include "hw/char/pl011.h"
-#ifdef CONFIG_VPMU
-#include "vpmu/qemu/vpmu-device.h"
-#endif
 
 #define VERSATILE_FLASH_ADDR 0x34000000
 #define VERSATILE_FLASH_SIZE (64 * 1024 * 1024)
@@ -326,10 +323,6 @@ static void versatile_init(MachineState *machine, int board_id)
     dev = sysbus_create_simple("versatile_i2c", 0x10002000, NULL);
     i2c = (I2CBus *)qdev_get_child_bus(dev, "i2c");
     i2c_create_slave(i2c, "ds1338", 0x68);
-
-#ifdef CONFIG_VPMU
-    vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
-#endif
 
     /* Add PL041 AACI Interface to the LM4549 codec */
     pl041 = qdev_create(NULL, "pl041");

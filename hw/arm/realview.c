@@ -24,9 +24,6 @@
 #include "exec/address-spaces.h"
 #include "qemu/error-report.h"
 #include "hw/char/pl011.h"
-#ifdef CONFIG_VPMU
-#include "vpmu/qemu/vpmu-device.h"
-#endif
 
 #define SMP_BOOT_ADDR 0xe0000000
 #define SMP_BOOTREG_ADDR 0x10000030
@@ -285,9 +282,6 @@ static void realview_init(MachineState *machine,
     dev = sysbus_create_simple("versatile_i2c", 0x10002000, NULL);
     i2c = (I2CBus *)qdev_get_child_bus(dev, "i2c");
     i2c_create_slave(i2c, "ds1338", 0x68);
-#ifdef CONFIG_VPMU
-    vpmu_dev_init(VPMU_DEVICE_BASE_ADDR);
-#endif
 
     /* Memory map for RealView Emulation Baseboard:  */
     /* 0x10000000 System registers.  */
