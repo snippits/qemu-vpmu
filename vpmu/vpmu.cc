@@ -193,6 +193,8 @@ void VPMU_async(std::function<void(void)> task)
         for (auto s : vpmu_streams) {
             s->wait_sync();
         }
+        // Exit directly when QEMU is going to be terminated.
+        if (VPMU.qemu_terminate_flag) return;
         // Do the task
         task();
         // Clear the sync flag for the next sync event.
