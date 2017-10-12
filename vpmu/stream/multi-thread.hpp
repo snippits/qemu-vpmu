@@ -74,7 +74,7 @@ public:
                   auto& sim = works[id];
 
                   sim->id  = id;
-                  sim->pid = getpid();
+                  sim->pid = vpmu::utils::getpid();
                   sim->tid = std::this_thread::get_id();
                   // Initialize (build) the target simulation with its configuration
                   sim->set_platform_info(vpmu_stream->platform_info);

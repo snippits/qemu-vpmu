@@ -61,7 +61,7 @@ public:
         // Initialize (build) the target simulation with its configuration
         for (int id = 0; id < works.size(); id++) {
             works[id]->id  = id;
-            works[id]->pid = getpid();
+            works[id]->pid = vpmu::utils::getpid();
             works[id]->tid = std::this_thread::get_id();
             works[id]->set_platform_info(vpmu_stream->platform_info);
             works[id]->build(vpmu_stream->common[id].model);

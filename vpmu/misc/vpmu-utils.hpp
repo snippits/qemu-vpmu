@@ -66,6 +66,8 @@ namespace utils
 {
     void load_linux_env(char *ptr, const char *env_name);
 
+    uint64_t getpid(void);
+
     std::string get_version_from_vmlinux(const char *file_path);
     std::string get_random_hash_name(uint32_t string_length);
 

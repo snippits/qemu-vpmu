@@ -1,6 +1,7 @@
-#include <sys/prctl.h> // prctl
-#include <sys/ioctl.h> // ioctl
-#include <stdexcept>   // exception
+#include <sys/syscall.h> // syscall()
+#include <sys/prctl.h>   // prctl
+#include <sys/ioctl.h>   // ioctl
+#include <stdexcept>     // exception
 
 #include "vpmu.hpp"       // VPMU common headers
 #include "vpmu-utils.hpp" // miscellaneous functions
@@ -59,6 +60,15 @@ namespace utils
     {
         char *env_str = getenv(env_name);
         if (env_str) strcpy(ptr, env_str);
+    }
+
+    uint64_t getpid(void)
+    {
+#ifdef __linux__
+        return syscall(SYS_gettid);
+#else
+        return getpid();
+#endif
     }
 
     std::string get_version_from_vmlinux(const char *file_path)
