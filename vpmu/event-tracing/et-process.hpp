@@ -96,11 +96,12 @@ public:
         last_mapped_addr[vpmu::get_core_id()] = {};
     }
 
-    void dump_vm_map(void);
-    void dump_phase_history(void);
-    void dump_phase_result(void);
-    void dump_process_info(void);
-    void dump_phase_code_mapping(FILE* fp, const Phase& phase);
+    void dump_vm_map(std::string path);
+
+    void dump(void);
+    void dump_process_info(std::string path);
+    void dump_phases(std::string path);
+    nlohmann::json json_phase_code_mapping(const Phase& phase);
 
     std::string find_code_line_number(uint64_t pc);
 

@@ -194,4 +194,98 @@ namespace dump
     }
 
 } // End of namespace vpmu::dump
+
+namespace dump_json
+{
+    void CPU_counters(nlohmann::json& j, VPMU_Insn::Model model, VPMU_Insn::Data data)
+    {
+        using vpmu::math::sum_cores;
+
+        // Reduce counter values across cores to the first element
+        data.reduce();
+
+        j["Instruction"]["Cycles"]     = data.sum_all().cycles;
+        j["Instruction"]["Total"]      = data.sum_all().total_insn;
+        j["Instruction"]["User"]       = data.user.total_insn[0];
+        j["Instruction"]["Supervisor"] = data.user.total_insn[0];
+
+        j["Load"]["Total"]      = data.sum_all().load;
+        j["Load"]["User"]       = data.user.load[0];
+        j["Load"]["Supervisor"] = data.system.load[0];
+
+        j["Store"]["Total"]      = data.sum_all().store;
+        j["Store"]["User"]       = data.user.store[0];
+        j["Store"]["Supervisor"] = data.system.store[0];
+    }
+
+    void Branch_counters(nlohmann::json& j, VPMU_Branch::Model model, VPMU_Branch::Data data)
+    {
+        using vpmu::math::sum_cores;
+
+        // Reduce counter values across cores to the first element
+        data.reduce();
+        double accuracy = (double)data.correct[0] / (data.correct[0] + data.wrong[0]);
+
+        j["Branch"]["Accuracy"] = accuracy;
+        j["Branch"]["Hit"]      = data.correct[0];
+        j["Branch"]["Miss"]     = data.wrong[0];
+    }
+
+    void Cache_counters(nlohmann::json& j, VPMU_Cache::Model model, VPMU_Cache::Data data)
+    {
+        // Reduce counter values across cores to the first element
+        data.reduce();
+
+        for (int l = model.levels; l >= VPMU_Cache::L2_CACHE; l--) {
+            auto&&   c       = data.data_cache[PROCESSOR_CPU][l][0];
+            uint64_t rw      = c[VPMU_Cache::READ] + c[VPMU_Cache::WRITE];
+            uint64_t rw_miss = c[VPMU_Cache::READ_MISS] + c[VPMU_Cache::WRITE_MISS];
+
+            std::string level_str = "L" + std::to_string(l);
+
+            j["Cache"][level_str]["Miss Rate"]    = (double)rw_miss / (rw + 1);
+            j["Cache"][level_str]["Access Count"] = rw;
+            j["Cache"][level_str]["Read Miss"]    = c[VPMU_Cache::READ_MISS];
+            j["Cache"][level_str]["Write Miss"]   = c[VPMU_Cache::WRITE_MISS];
+        }
+
+        auto&&   cd      = data.data_cache[PROCESSOR_CPU][VPMU_Cache::L1_CACHE][0];
+        uint64_t rw      = cd[VPMU_Cache::READ] + cd[VPMU_Cache::WRITE];
+        uint64_t rw_miss = cd[VPMU_Cache::READ_MISS] + cd[VPMU_Cache::WRITE_MISS];
+
+        auto&&   ci       = data.insn_cache[PROCESSOR_CPU][VPMU_Cache::L1_CACHE][0];
+        uint64_t irw      = ci[VPMU_Cache::READ] + ci[VPMU_Cache::WRITE];
+        uint64_t irw_miss = ci[VPMU_Cache::READ_MISS] + ci[VPMU_Cache::WRITE_MISS];
+
+        j["Cache"]["D Cache"]["Miss Rate"]    = (double)rw_miss / (rw + 1);
+        j["Cache"]["D Cache"]["Access Count"] = rw;
+        j["Cache"]["D Cache"]["Read Miss"]    = cd[VPMU_Cache::READ_MISS];
+        j["Cache"]["D Cache"]["Write Miss"]   = cd[VPMU_Cache::WRITE_MISS];
+
+        j["Cache"]["I Cache"]["Miss Rate"]    = (double)irw_miss / (irw + 1);
+        j["Cache"]["I Cache"]["Access Count"] = irw;
+        j["Cache"]["I Cache"]["Read Miss"]    = ci[VPMU_Cache::READ_MISS];
+        j["Cache"]["I Cache"]["Write Miss"]   = ci[VPMU_Cache::WRITE_MISS];
+    }
+
+    nlohmann::json snapshot(VPMUSnapshot snapshot)
+    {
+        nlohmann::json j;
+
+        CPU_counters(j, vpmu_insn_stream.get_model(), snapshot.insn_data);
+        Branch_counters(j, vpmu_branch_stream.get_model(), snapshot.branch_data);
+        Cache_counters(j, vpmu_cache_stream.get_model(), snapshot.cache_data);
+
+        j["Time"]["CPU"] = snapshot.time_ns[0];
+        j["Time"]["Branch"] = snapshot.time_ns[1];
+        j["Time"]["Cache"] = snapshot.time_ns[2];
+        j["Time"]["System Memory"] = snapshot.time_ns[3];
+        j["Time"]["IO Memory"] = snapshot.time_ns[4];
+        j["Time"]["Target"] = snapshot.time_ns[5];
+        j["Time"]["Host"] = snapshot.time_ns[6];
+
+        return j;
+    }
+
+} // End of namespace vpmu::dump_json
 } // End of namespace vpmu

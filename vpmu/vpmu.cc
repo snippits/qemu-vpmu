@@ -149,10 +149,10 @@ static void prepare_for_logs(void)
         // Remove only files/folders created by VPMU only.
         // Users may specify their own directory. Do not remove user files.
         boost::filesystem::remove(log_file_path);
-        boost::filesystem::remove_all(output_path + "/phase");
+        boost::filesystem::remove_all(output_path + "/proc");
     }
     boost::filesystem::create_directories(output_path);
-    boost::filesystem::create_directories(output_path + "/phase");
+    boost::filesystem::create_directories(output_path + "/proc");
 
     if (vpmu_log_file == NULL) vpmu_log_file = fopen(log_file_path.c_str(), "w");
     CONSOLE_LOG(STR_VPMU "Output path for logs and files: %s\n\n", VPMU.output_path);

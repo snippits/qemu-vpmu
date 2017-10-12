@@ -80,9 +80,9 @@ public:
         // Lock everything below (including the file IO in dump_result)
         auto process = find_process(pid);
         if (process == nullptr) return;
+
         // Always sync before printing the results
-        VPMU_sync();
-        process->dump_phase_result();
+        VPMU_async([process] { process->dump(); });
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
         // It's not necessary to find, use it in debug only

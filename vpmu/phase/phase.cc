@@ -18,158 +18,20 @@ Phase Phase::not_found = Phase();
 
 PhaseDetect phase_detect(DEFAULT_WINDOW_SIZE, std::make_unique<NearestCluster>());
 
-void PhaseDetect::dump_data(FILE* fp, VPMU_Insn::Data data)
-{
-    using vpmu::math::sum_cores;
-
-    // TODO This should save data from all cores. However the very next revision
-    // will remove this and use json format.
-    FILE_FP_U64(fp, " Total instruction count       :", data.sum_all().total_insn);
-    FILE_FP_U64(fp, " ->User mode insn count       :", sum_cores(data.user.total_insn));
-    FILE_FP_U64(fp, " ->Supervisor mode insn count :", sum_cores(data.system.total_insn));
-    FILE_FP_U64(fp, " ->deprecated                 :", 0);
-    FILE_FP_U64(fp, " ->deprecated                 :", 0);
-    FILE_FP_U64(fp, " Total load instruction count  :", data.sum_all().load);
-    FILE_FP_U64(fp, " ->User mode load count       :", sum_cores(data.user.load));
-    FILE_FP_U64(fp, " ->Supervisor mode load count :", sum_cores(data.system.load));
-    FILE_FP_U64(fp, " ->deprecated                 :", 0);
-    FILE_FP_U64(fp, " ->deprecated                 :", 0);
-    FILE_FP_U64(fp, " Total store instruction count :", data.sum_all().store);
-    FILE_FP_U64(fp, " ->User mode store count      :", sum_cores(data.user.store));
-    FILE_FP_U64(fp, " ->Supervisor mode store count:", sum_cores(data.system.store));
-    FILE_FP_U64(fp, " ->deprecated                 :", 0);
-    FILE_FP_U64(fp, " ->deprecated                 :", 0);
-}
-
-void PhaseDetect::dump_data(FILE* fp, VPMU_Branch::Data data)
-{
-    int i;
-    fprintf(fp, "    -> predict accuracy    : (");
-    for (i = 0; i < VPMU.platform.cpu.cores - 1; i++) {
-        fprintf(
-          fp, "%'0.2f, ", (float)data.correct[i] / (data.correct[i] + data.wrong[i]));
-    }
-    fprintf(fp, "%'0.2f)\n", (float)data.correct[i] / (data.correct[i] + data.wrong[i]));
-    // Correct
-    fprintf(fp, "    -> correct prediction  : (");
-    for (i = 0; i < VPMU.platform.cpu.cores - 1; i++) {
-        fprintf(fp, "%'" PRIu64 ", ", data.correct[i]);
-    }
-    fprintf(fp, "%'" PRIu64 ")\n", data.correct[i]);
-    // Wrong
-    fprintf(fp, "    -> wrong prediction    : (");
-    for (i = 0; i < VPMU.platform.cpu.cores - 1; i++) {
-        fprintf(fp, "%'" PRIu64 ", ", data.wrong[i]);
-    }
-    fprintf(fp, "%'" PRIu64 ")\n", data.wrong[i]);
-}
-
-void PhaseDetect::dump_data(FILE* fp, VPMU_Cache::Data data)
-{
-    // Dump info
-    fprintf(fp,
-            "       (Miss Rate)   "
-            "|    Access Count    "
-            "|   Read Miss Count  "
-            "|  Write Miss Count  "
-            "|\n");
-    // Memory
-    fprintf(fp,
-            "    -> memory (%0.2lf) |%'20" PRIu64 "|%'20" PRIu64 "|%'20" PRIu64 "|\n",
-            (double)0.0,
-            (uint64_t)data.memory_accesses,
-            (uint64_t)0,
-            (uint64_t)0);
-
-    for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
-        // i-cache
-        fprintf(fp,
-                "    -> L%d-I   (%0.2lf) |%'20" PRIu64 "|%'20" PRIu64 "|%'20" PRIu64
-                "|\n",
-                1,
-                (double)data.insn_cache[PROCESSOR_CPU][1][j][VPMU_Cache::READ_MISS]
-                  / data.insn_cache[PROCESSOR_CPU][1][j][VPMU_Cache::READ],
-                (uint64_t)data.insn_cache[PROCESSOR_CPU][1][j][VPMU_Cache::READ],
-                (uint64_t)data.insn_cache[PROCESSOR_CPU][1][j][VPMU_Cache::READ_MISS],
-                (uint64_t)0);
-        uint64_t r_miss_count =
-          data.data_cache[PROCESSOR_CPU][1][j][VPMU_Cache::READ_MISS];
-        uint64_t w_miss_count =
-          data.data_cache[PROCESSOR_CPU][1][j][VPMU_Cache::WRITE_MISS];
-        uint64_t miss_count = r_miss_count + w_miss_count;
-
-        uint64_t total_count = data.data_cache[PROCESSOR_CPU][1][j][VPMU_Cache::READ]
-                               + data.data_cache[PROCESSOR_CPU][1][j][VPMU_Cache::WRITE];
-
-        // d-cache
-        fprintf(fp,
-                "    -> L%d-D   (%0.2lf) |%'20" PRIu64 "|%'20" PRIu64 "|%'20" PRIu64
-                "|\n",
-                1,
-                (double)miss_count / total_count,
-                (uint64_t)total_count,
-                (uint64_t)r_miss_count,
-                (uint64_t)w_miss_count);
-    }
-
-    for (int i = VPMU_Cache::L2_CACHE; i < VPMU_Cache::L3_CACHE; i++) {
-        for (int j = 0; j < VPMU.platform.cpu.cores; j++) {
-            uint64_t r_miss_count =
-              data.data_cache[PROCESSOR_CPU][i][j][VPMU_Cache::READ_MISS];
-            uint64_t w_miss_count =
-              data.data_cache[PROCESSOR_CPU][i][j][VPMU_Cache::WRITE_MISS];
-            uint64_t miss_count = r_miss_count + w_miss_count;
-            uint64_t total_count =
-              data.data_cache[PROCESSOR_CPU][i][j][VPMU_Cache::READ]
-              + data.data_cache[PROCESSOR_CPU][i][j][VPMU_Cache::WRITE];
-
-            if (total_count == 0) continue;
-            // d-cache
-            fprintf(fp,
-                    "    -> L%d-D   (%0.2lf) |%'20" PRIu64 "|%'20" PRIu64 "|%'20" PRIu64
-                    "|\n",
-                    i,
-                    (double)miss_count / total_count,
-                    (uint64_t)total_count,
-                    (uint64_t)r_miss_count,
-                    (uint64_t)w_miss_count);
-        }
-    }
-}
-
-void Phase::dump_result(FILE* fp)
-{
-#define FILE_TME(str, val) fprintf(fp, str " %'lf sec\n", (double)val / 1000000000.0)
-    fprintf(fp, "==== Program Profile ====\n\n");
-    fprintf(fp, "   === QEMU/ARM ===\n");
-    fprintf(fp, "Instructions:\n");
-    phase_detect.dump_data(fp, snapshot.insn_data);
-    fprintf(fp, "Branch:\n");
-    phase_detect.dump_data(fp, snapshot.branch_data);
-    fprintf(fp, "CACHE:\n");
-    phase_detect.dump_data(fp, snapshot.cache_data);
-    fprintf(fp, "\n");
-    fprintf(fp, "Timing Info:\n");
-    FILE_TME("  ->CPU                        :", snapshot.time_ns[0]);
-    FILE_TME("  ->Branch                     :", snapshot.time_ns[1]);
-    FILE_TME("  ->Cache                      :", snapshot.time_ns[2]);
-    FILE_TME("  ->System memory              :", snapshot.time_ns[3]);
-    FILE_TME("  ->I/O memory                 :", snapshot.time_ns[4]);
-    FILE_TME("Estimated execution time       :", snapshot.time_ns[5]);
-    FILE_TME("Host emulation time            :", snapshot.time_ns[6]);
-#undef FILE_TME
-}
-
 // TODO Output better features for machine learning
-void Phase::dump_metadata(FILE* fp)
+nlohmann::json Phase::json_fingerprint(void)
 {
-    fprintf(fp, "0 ");
-    fprintf(fp, "1:%lf ", (double)counters.alu / counters.insn);
-    fprintf(fp, "2:%lf ", (double)counters.bit / counters.insn);
-    fprintf(fp, "3:%lf ", (double)counters.load / counters.insn);
-    fprintf(fp, "4:%lf ", (double)counters.store / counters.insn);
-    fprintf(fp, "5:%lf ", (double)counters.branch / counters.insn);
-    fprintf(fp, "\n\n");
+    nlohmann::json j;
+
+    // Use a separate array to prevent the ordering problem in json
+    j["keys"]   = {"ALU Ops", "Bit Ops", "Load", "Store", "Branch"};
+    j["values"] = {(double)counters.alu / counters.insn,
+                   (double)counters.bit / counters.insn,
+                   (double)counters.load / counters.insn,
+                   (double)counters.store / counters.insn,
+                   (double)counters.branch / counters.insn};
+
+    return j;
 }
 
 void Phase::update_snapshot(VPMUSnapshot& process_snapshot)

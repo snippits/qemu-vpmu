@@ -106,8 +106,8 @@ public:
 
     void update_snapshot(VPMUSnapshot& process_snapshot);
 
-    void dump_result(FILE* fp);
-    void dump_metadata(FILE* fp);
+    nlohmann::json json_counters(void);
+    nlohmann::json json_fingerprint(void);
 
 private:
     bool m_vector_dirty = false;

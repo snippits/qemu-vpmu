@@ -39,11 +39,8 @@ public:
     }
 
     void set_window_size(uint64_t new_size) { window_size = new_size; }
-    inline uint64_t               get_window_size(void) { return window_size; }
 
-    void dump_data(FILE* fp, VPMU_Insn::Data data);
-    void dump_data(FILE* fp, VPMU_Cache::Data data);
-    void dump_data(FILE* fp, VPMU_Branch::Data data);
+    inline uint64_t get_window_size(void) { return window_size; }
 
 private:
     uint64_t window_size;

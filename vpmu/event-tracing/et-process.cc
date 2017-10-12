@@ -34,16 +34,10 @@ void ET_Process::push_binary(std::shared_ptr<ET_Program>& program)
     if (program != nullptr) binary_list.push_back(program);
 }
 
-void ET_Process::dump_vm_map(void)
+void ET_Process::dump_vm_map(std::string path)
 {
-    char        file_path[512] = {0};
-    std::string output_path =
-      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
-    boost::filesystem::create_directory(output_path);
-
-    // Output in plain text format
-    sprintf(file_path, "%s/vm_maps", output_path.c_str());
-    FILE* fp = fopen(file_path, "wt");
+    FILE* fp = fopen(path.c_str(), "wt");
+    if (fp == nullptr) return;
     // Use max_vm_maps instead of vm_maps for coverage
     for (auto& reg : max_vm_maps.regions) {
         std::string out_str   = "";
@@ -67,23 +61,17 @@ void ET_Process::dump_vm_map(void)
     fclose(fp);
 }
 
-void ET_Process::dump_process_info(void)
+void ET_Process::dump_process_info(std::string path)
 {
+    // For shorter line
     using vpmu::str::addr_to_str;
-    char        file_path[512] = {0};
-    std::string output_path =
-      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
-    boost::filesystem::create_directory(output_path);
-
-    sprintf(file_path, "%s/process_info", output_path.c_str());
-    FILE* fp = fopen(file_path, "wt");
 
     nlohmann::json j;
     j["Name"]      = name;
     j["File Name"] = filename;
     j["File Path"] = path;
-    j["pid"]       = pid;
-    j["debug_log"] = debug_log;
+    j["PID"]       = pid;
+    j["Log"] = debug_log;
     for (int i = 0; i < child_list.size(); i++) {
         j["Childrens"][i]["Name"] = child_list[i]->name;
         j["Childrens"][i]["pid"]  = child_list[i]->pid;
@@ -103,55 +91,52 @@ void ET_Process::dump_process_info(void)
     }
     for (int i = 0; i < vm_maps.regions.size(); i++) {
         auto        address   = vm_maps.regions[i].address;
-        std::string out_str   = "";
+        std::string perm_str  = "";
         std::string prog_name = "";
-        out_str += (vm_maps.regions[i].permission & VM_READ) ? "r" : "-";
-        out_str += (vm_maps.regions[i].permission & VM_WRITE) ? "w" : "-";
-        out_str += (vm_maps.regions[i].permission & VM_EXEC) ? "x" : "-";
-        out_str += (vm_maps.regions[i].permission & VM_SHARED) ? "-" : "p";
+        perm_str += (vm_maps.regions[i].permission & VM_READ) ? "r" : "-";
+        perm_str += (vm_maps.regions[i].permission & VM_WRITE) ? "w" : "-";
+        perm_str += (vm_maps.regions[i].permission & VM_EXEC) ? "x" : "-";
+        perm_str += (vm_maps.regions[i].permission & VM_SHARED) ? "-" : "p";
         if (vm_maps.regions[i].program) prog_name = vm_maps.regions[i].program->name;
 
         j["VM Maps"][i]["Addr Beg"]        = addr_to_str(address.beg).c_str();
         j["VM Maps"][i]["Addr End"]        = addr_to_str(address.end).c_str();
-        j["VM Maps"][i]["Permission"]      = out_str;
+        j["VM Maps"][i]["Permission"]      = perm_str;
         j["VM Maps"][i]["Path Name"]       = vm_maps.regions[i].pathname;
         j["VM Maps"][i]["Bind to Program"] = prog_name;
-        j["VM Maps"][i]["Mapped By"]       = vm_maps.regions[i].owner.first;
+        j["VM Maps"][i]["Mapped by"]       = vm_maps.regions[i].owner.first;
         j["VM Maps"][i]["Map PC"]          = vm_maps.regions[i].owner.second;
     }
-    fprintf(fp, "%s\n", j.dump(4).c_str());
 
-    fclose(fp);
+    FILE* fp = fopen(path.c_str(), "wt");
+    if (fp) {
+        fprintf(fp, "%s\n", j.dump(2).c_str());
+        fclose(fp);
+    }
 }
 
-void ET_Process::dump_phase_history(void)
+void ET_Process::dump_phases(std::string path)
 {
-    char        file_path[512] = {0};
-    std::string output_path =
-      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
-    boost::filesystem::create_directory(output_path);
+    nlohmann::json j;
 
-    // Output in plain text format
-    sprintf(file_path, "%s/phase_history", output_path.c_str());
-    if (phase_history.size() == 0) return;
-    FILE* fp = fopen(file_path, "wt");
-    for (int i = 0; i < phase_history.size() - 1; i++) {
-        fprintf(fp, "%" PRIu64 ",", phase_history[i][1]);
-    }
-    fprintf(fp, "%" PRIu64, phase_history.back()[1]);
-    fclose(fp);
+    j["Timeline"] = phase_history;
 
-    sprintf(file_path, "%s/phase_timestamp", output_path.c_str());
-    if (phase_history.size() == 0) return;
-    fp = fopen(file_path, "wt");
-    for (int i = 0; i < phase_history.size() - 1; i++) {
-        fprintf(fp, "%" PRIu64 ",", phase_history[i][0]);
+    for (int idx = 0; idx < phase_list.size(); idx++) {
+        auto& phase = phase_list[idx]; // Renaming
+
+        j["Phase"][idx]["Fingerprint"] = phase.json_fingerprint();
+        j["Phase"][idx]["Counters"]    = vpmu::dump_json::snapshot(phase.snapshot);
+        j["Phase"][idx]["Codes"]       = json_phase_code_mapping(phase);
     }
-    fprintf(fp, "%" PRIu64, phase_history.back()[0]);
-    fclose(fp);
+
+    FILE* fp = fopen(path.c_str(), "wt");
+    if (fp) {
+        fprintf(fp, "%s\n", j.dump(2).c_str());
+        fclose(fp);
+    }
 }
 
-void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
+nlohmann::json ET_Process::json_phase_code_mapping(const Phase& phase)
 {
     struct RegionWithCounters {
         Pair_beg_end                addr;
@@ -222,31 +207,24 @@ void ET_Process::dump_phase_code_mapping(FILE* fp, const Phase& phase)
             j[key] = region.walk_count[offset];
         }
     }
-    fprintf(fp, "%s\n\n\n", j.dump(4).c_str());
+
+    return j;
 }
 
-void ET_Process::dump_phase_result(void)
+void ET_Process::dump(void)
 {
-    char        file_path[512] = {0};
-    std::string output_path =
-      std::string(VPMU.output_path) + "/phase/" + std::to_string(pid);
+    auto output_dir = std::string(VPMU.output_path) + "/proc/" + std::to_string(pid);
+    boost::filesystem::create_directory(output_dir);
 
-    CONSOLE_LOG(STR_PHASE "Phase log path: %s\n", output_path.c_str());
-    boost::filesystem::create_directory(output_path);
+    CONSOLE_LOG(STR_PHASE "Phase log path: %s\n", output_dir.c_str());
 
-    dump_process_info();
-    dump_vm_map();
-    dump_phase_history();
-    for (int idx = 0; idx < phase_list.size(); idx++) {
-        sprintf(file_path, "%s/phase-%05d", output_path.c_str(), idx);
-        FILE* fp = fopen(file_path, "wt");
-        phase_list[idx].dump_metadata(fp);
-        dump_phase_code_mapping(fp, phase_list[idx]);
-        phase_list[idx].dump_result(fp);
-        fclose(fp);
-    }
-    sprintf(file_path, "%s/profiling", output_path.c_str());
-    FILE* fp = fopen(file_path, "wt");
+    // process_info
+    dump_process_info(output_dir + "/process_info");
+    dump_vm_map(output_dir + "/vm_maps");
+    dump_phases(output_dir + "/phases");
+
+    auto  file_path = output_dir + "/profiling";
+    FILE* fp        = fopen(file_path.c_str(), "wt");
     fprintf(fp, "====== Per-core information  ======\n");
     vpmu::dump::snapshot(fp, this->prof_counters);
     fprintf(fp, "\n\n====== Total information  ======\n");
