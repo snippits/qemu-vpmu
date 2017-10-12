@@ -42,6 +42,8 @@ char *global_argv_0 = NULL;
 ThreadPool timing_thread_pool("vpmu_async", 1);
 // Guard for accessing timing_thread_pool following VPMU stream interface.
 std::mutex timing_thread_pool_mutex;
+// Thread pool for general tasks
+ThreadPool thread_pool("thread_pool", 2);
 
 static inline void
 attach_vpmu_stream(VPMUStream &s, nlohmann::json config, std::string name)

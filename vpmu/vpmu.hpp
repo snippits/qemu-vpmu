@@ -13,8 +13,9 @@ extern "C" {
 #include <sstream>  // String buffer
 #include <cerrno>   // Readable error messages
 
-#include "vpmu-log.hpp" // VPMU_Log
-#include "json.hpp"     // nlohmann::json
+#include "ThreadPool.hpp" // ThreadPool
+#include "vpmu-log.hpp"   // VPMU_Log
+#include "json.hpp"       // nlohmann::json
 
 #ifndef TD
 // Used for debugging C++ type deduction
@@ -23,6 +24,9 @@ class TD;             // TD == "Type Displayer"
 #define VPMU_DEBUG_SHOW_T_TYPE(_TYPE) TD<_TYPE>           The_T_type_is;
 #define VPMU_DEBUG_SHOW_VAR_TYPE(_VAR) TD<decltype(_VAR)> The_variable_type_is;
 #endif
+
+// Thread pool for general tasks
+extern ThreadPool thread_pool;
 
 void VPMU_async(std::function<void(void)> task);
 

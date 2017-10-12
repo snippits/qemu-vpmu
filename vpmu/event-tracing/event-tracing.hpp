@@ -42,6 +42,7 @@ public:
     std::shared_ptr<ET_Program> add_library(std::string name);
     std::shared_ptr<ET_Program> find_program(const char* path);
     void remove_program(std::string name);
+    void remove_process(uint64_t pid);
     void clear_shared_libraries(void);
     void update_elf_dwarf(std::shared_ptr<ET_Program>& program, const char* file_name);
 
@@ -70,31 +71,6 @@ public:
             return process;
         }
         return nullptr;
-    }
-
-    inline void remove_process(uint64_t pid)
-    {
-        if (process_id_map.size() == 0) return;
-        // Lock when updating the process_id_map (thread shared resource)
-        std::lock_guard<std::mutex> lock(process_id_map_lock);
-        // Lock everything below (including the file IO in dump_result)
-        auto process = find_process(pid);
-        if (process == nullptr) return;
-
-        // Always sync before printing the results
-        VPMU_async([process] { process->dump(); });
-
-#ifdef CONFIG_VPMU_DEBUG_MSG
-        // It's not necessary to find, use it in debug only
-        if (process_id_map.find(pid) != process_id_map.end()) {
-            auto& process = process_id_map[pid];
-            debug_dump_program_map(process->binary_list[0]);
-            debug_dump_process_map(process);
-        }
-#endif
-        log_debug("Remove process %5" PRIu64, pid);
-        process_id_map.erase(pid);
-        debug_dump_process_map();
     }
 
     inline std::shared_ptr<ET_Process> find_process(uint64_t pid)

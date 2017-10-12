@@ -2,6 +2,7 @@ extern "C" {
 #include "vpmu-common.h"   // Include common C headers
 #include "vpmu/linux-mm.h" // VM_EXEC and other mmap() mode states
 }
+#include "vpmu.hpp"          // extern thread_pool
 #include "elf++.hh"          // elf::elf
 #include "dwarf++.hh"        // dwarf::dwarf
 #include "event-tracing.hpp" // EventTracer
@@ -67,6 +68,34 @@ void EventTracer::remove_program(std::string name)
                                       }),
                        program_list.end());
     debug_dump_program_map();
+}
+
+void EventTracer::remove_process(uint64_t pid)
+{
+    if (process_id_map.size() == 0) return;
+    // Lock when updating the process_id_map (thread shared resource)
+    std::lock_guard<std::mutex> lock(process_id_map_lock);
+    // Lock everything below (including the file IO in dump_result)
+    auto process = find_process(pid);
+    if (process == nullptr) return;
+
+    // Always sync before printing the results
+    VPMU_async([process] {
+        // Run this heavy task in a separate thread
+        thread_pool.enqueue_static([process] { process->dump(); });
+    });
+
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    // It's not necessary to find, use it in debug only
+    if (process_id_map.find(pid) != process_id_map.end()) {
+        auto& process = process_id_map[pid];
+        debug_dump_program_map(process->binary_list[0]);
+        debug_dump_process_map(process);
+    }
+#endif
+    log_debug("Remove process %5" PRIu64, pid);
+    process_id_map.erase(pid);
+    debug_dump_process_map();
 }
 
 void EventTracer::clear_shared_libraries(void)
