@@ -234,13 +234,13 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
         auto&& new_phase = process->phase_list.back();
         new_phase.update_snapshot(process->snapshot_phase);
         new_phase.id = phase_num;
-        process->phase_history.push_back(std::make_pair(window.timestamp, phase_num));
+        process->phase_history.push_back({{window.timestamp, phase_num}});
     } else {
         uint64_t phase_num = (&phase - &process->phase_list[0]);
         // DBG(STR_PHASE "Update phase id %zu\n", phase_num);
         phase.update(window);
         phase.update_snapshot(process->snapshot_phase);
-        process->phase_history.push_back(std::make_pair(window.timestamp, phase_num));
+        process->phase_history.push_back({{window.timestamp, phase_num}});
     }
 }
 
@@ -325,13 +325,13 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
                               (void*)pc,
                               current_window.timestamp / 1000);
                             process->phase_history.push_back(
-                              std::make_pair(current_window.timestamp, last_phase.id));
+                              [current_window.timestamp, last_phase.id]);
                         } else {
                             // Merge two phases
                             phase.update(last_phase);
                             process->phase_list.pop_back();
                             process->phase_history.push_back(
-                              std::make_pair(current_window.timestamp, phase.id));
+                              [current_window.timestamp, phase.id]);
                         }
                     }
                 }
@@ -360,8 +360,7 @@ void phasedet_ref(bool               user_mode,
             // Kernel IRQ to User mode
             // auto process = event_tracer.find_process((uint64_t)0);
             // if (process != nullptr)
-            //    process->phase_history.push_back(std::make_pair(vpmu_get_timestamp_us(),
-            //    -1));
+            //    process->phase_history.push_back([vpmu_get_timestamp_us(), -1]);
         }
         update_window(pid, extra_tb_info, stack_ptr);
     }

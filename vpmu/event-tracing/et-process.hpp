@@ -142,7 +142,7 @@ public:
     /// The current window of this process
     Window current_window = {};
     /// History records of phase ID with a timestamp. pair<timestamp, phase ID>
-    std::vector<std::pair<uint64_t, uint64_t>> phase_history = {};
+    std::vector<std::array<uint64_t, 2>> phase_history = {};
     // The monitored functions of this process
     FunctionMap<uint64_t, void*, ET_Process*> functions;
 
