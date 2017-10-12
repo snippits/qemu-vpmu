@@ -131,6 +131,7 @@ namespace str
     std::vector<std::string> split(std::string const &input, const char *ch);
     bool simple_match(std::string path, const std::string pattern);
     std::string addr_to_str(uint64_t addr);
+    std::string demangle(std::string sym_name);
 
     template <class... Args>
     std::string formated(const char *format, Args &&... args)

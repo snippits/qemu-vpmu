@@ -146,6 +146,7 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program>& program,
             for (auto sym : sec.as_symtab()) {
                 auto& d = sym.get_data();
                 if (d.type() == elf::stt::func) {
+                    std::string sym_name  = vpmu::str::demangle(sym.get_name());
 #if 0
                     log_debug("%016" PRIx64 " %5" PRId64 " %-7s %-7s %5s %s",
                               d.value,
@@ -153,9 +154,9 @@ void EventTracer::update_elf_dwarf(std::shared_ptr<ET_Program>& program,
                               to_string(d.type()).c_str(),
                               to_string(d.binding()).c_str(),
                               to_string(d.shnxd).c_str(),
-                              sym.get_name().c_str());
+                              sym_name.c_str());
 #endif
-                    program->sym_table[sym.get_name()] = d.value;
+                    program->sym_table[sym_name] = d.value;
                 }
             }
         }
@@ -273,8 +274,11 @@ uint64_t EventTracer::parse_and_set_kernel_symbol(const char* filename)
         for (auto sym : sec.as_symtab()) {
             auto& d = sym.get_data();
             if (d.type() == elf::stt::func) {
-                kernel.add_symbol(sym.get_name(), d.value);
-                kernel.set_symbol_address(sym.get_name(), d.value);
+                std::string sym_name  = vpmu::str::demangle(sym.get_name());
+                // Add symbol to symbol table
+                kernel.add_symbol(sym_name, d.value);
+                // Set up addresses for specially monitored functions
+                kernel.set_symbol_address(sym_name, d.value);
             }
         }
     }

@@ -11,6 +11,7 @@
 #include "vpmu-cache.hpp"  // vpmu_cache_stream
 #include "vpmu-branch.hpp" // vpmu_branch_stream
 
+#include <boost/core/demangle.hpp>    // boost::core::demangle
 #include <boost/algorithm/string.hpp> // String processing
 
 // Pointer to argv[0] for modifying process name in htop
@@ -275,6 +276,19 @@ namespace str
         char tmp_str[32] = {};
         snprintf(tmp_str, sizeof(tmp_str), "%" PRIx64, addr);
         return tmp_str;
+    }
+
+    std::string demangle(std::string sym_name)
+    {
+        std::size_t found_lib = sym_name.find("@@");
+        if (found_lib != std::string::npos) {
+            auto lib_name = sym_name.substr(found_lib);
+            auto name     = sym_name.substr(0, found_lib);
+            // Demangle and attach lib name after it
+            return boost::core::demangle(name.c_str()) + lib_name;
+        } else {
+            return boost::core::demangle(sym_name.c_str());
+        }
     }
 } // End of namespace vpmu::str
 
