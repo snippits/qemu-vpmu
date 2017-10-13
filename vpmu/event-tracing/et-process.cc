@@ -72,6 +72,7 @@ void ET_Process::dump_process_info(std::string path)
     j["File Path"] = path;
     j["PID"]       = pid;
     j["Log"] = debug_log;
+    j["isTopProcess"] = is_top_process;
     for (int i = 0; i < child_list.size(); i++) {
         j["Childrens"][i]["Name"] = child_list[i]->name;
         j["Childrens"][i]["pid"]  = child_list[i]->pid;
