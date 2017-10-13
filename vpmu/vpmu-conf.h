@@ -8,6 +8,8 @@
 
 #define LINUX_NAMELEN 16
 
+#define SNIPPIT_JSON_API_VERSION "1.0"
+
 #ifndef CONFIG_VPMU_DISABLE_COLOR
 #define BASH_COLOR_RED     "\033[0;31m"
 #define BASH_COLOR_GREEN   "\033[0;32m"

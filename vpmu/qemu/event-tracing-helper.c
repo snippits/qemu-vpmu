@@ -144,6 +144,8 @@ static void parse_dentry_path(CPUArchState *env,
                               int           size_buff,
                               int           max_levels)
 {
+    uint32_t d_flags;
+
     uintptr_t parent_dentry_addr = 0;
     char *    name               = NULL;
 
@@ -153,13 +155,26 @@ static void parse_dentry_path(CPUArchState *env,
     if (max_levels == 0 || dentry_addr == 0) return;
     name =
       (char *)vpmu_read_ptr_from_guest(env, dentry_addr, g_linux_offset.dentry.d_iname);
-    // Stop condition 2 (reach root directory)
+    // Faulty condition, stop and return
     if (name[0] == '\0') return;
-    if (name[0] == '/' && name[1] == '\0') return;
 
     // Find parent node (dentry->d_parent)
     parent_dentry_addr =
       vpmu_read_uintptr_from_guest(env, dentry_addr, g_linux_offset.dentry.d_parent);
+    // TODO mount point will stop here and we need to further trace it.
+    // Maybe try dentry->d_flags & DCACHE_MOUNTED ?? The following is its experiment code.
+    {
+        #define DCACHE_MOUNTED 0x00010000 /* is a mountpoint */
+        d_flags = vpmu_read_uint32_from_guest(env, dentry_addr, 0);
+        // All the dirs are mounted. Only the fake root is not mounted.
+        if (dentry_addr == parent_dentry_addr && !(d_flags & DCACHE_MOUNTED)) {
+            CONSOLE_LOG(STR_KERNEL "Warning: Tracing mount point is not implemented yet. "
+                                   "Use ':' as its root.\n");
+            __append_str(buff, position, size_buff, ":");
+        }
+    }
+    // Is ROOT (include/linux/dcache.h). Return!
+    if (dentry_addr == parent_dentry_addr) return;
     parse_dentry_path(env, parent_dentry_addr, buff, position, size_buff, max_levels - 1);
     // Append path/name
     name =
