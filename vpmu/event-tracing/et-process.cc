@@ -67,28 +67,26 @@ void ET_Process::dump_process_info(std::string path)
     using vpmu::str::addr_to_str;
 
     nlohmann::json j;
-    j["Name"]      = name;
-    j["File Name"] = filename;
-    j["File Path"] = path;
-    j["PID"]       = pid;
-    j["Log"] = debug_log;
+    j["apiVersion"]   = SNIPPIT_JSON_API_VERSION;
+    j["name"]         = name;
+    j["fileName"]     = filename;
+    j["filePath"]     = path;
+    j["pid"]          = pid;
+    j["log"]          = debug_log;
     j["isTopProcess"] = is_top_process;
     for (int i = 0; i < child_list.size(); i++) {
-        j["Childrens"][i]["Name"] = child_list[i]->name;
-        j["Childrens"][i]["pid"]  = child_list[i]->pid;
+        j["childrens"][i]["name"] = child_list[i]->name;
+        j["childrens"][i]["pid"]  = child_list[i]->pid;
     }
     for (int i = 0; i < binary_list.size(); i++) {
-        auto address = vm_maps.find_address(binary_list[i], VM_EXEC);
+        nlohmann::json b;
+        binary_list[i]->dump_json(b);
 
-        j["Binaries"][i]["Name"]      = binary_list[i]->name;
-        j["Binaries"][i]["File Name"] = binary_list[i]->filename;
-        j["Binaries"][i]["Path"]      = binary_list[i]->path;
-        j["Binaries"][i]["Symbols"]   = binary_list[i]->sym_table.size();
-        j["Binaries"][i]["DWARF"]     = binary_list[i]->line_table.size();
-        j["Binaries"][i]["Libraries"] = binary_list[i]->library_list.size();
-        j["Binaries"][i]["isLibrary"] = binary_list[i]->is_shared_library;
-        j["Binaries"][i]["Addr Beg"]  = addr_to_str(address.beg).c_str();
-        j["Binaries"][i]["Addr End"]  = addr_to_str(address.end).c_str();
+        auto address = vm_maps.find_address(binary_list[i], VM_EXEC);
+        b["addrBeg"] = addr_to_str(address.beg).c_str();
+        b["addrEnd"] = addr_to_str(address.end).c_str();
+
+        j["binaries"][i] = b;
     }
     for (int i = 0; i < vm_maps.regions.size(); i++) {
         auto        address   = vm_maps.regions[i].address;
@@ -100,13 +98,17 @@ void ET_Process::dump_process_info(std::string path)
         perm_str += (vm_maps.regions[i].permission & VM_SHARED) ? "-" : "p";
         if (vm_maps.regions[i].program) prog_name = vm_maps.regions[i].program->name;
 
-        j["VM Maps"][i]["Addr Beg"]        = addr_to_str(address.beg).c_str();
-        j["VM Maps"][i]["Addr End"]        = addr_to_str(address.end).c_str();
-        j["VM Maps"][i]["Permission"]      = perm_str;
-        j["VM Maps"][i]["Path Name"]       = vm_maps.regions[i].pathname;
-        j["VM Maps"][i]["Bind to Program"] = prog_name;
-        j["VM Maps"][i]["Mapped by"]       = vm_maps.regions[i].owner.first;
-        j["VM Maps"][i]["Map PC"]          = vm_maps.regions[i].owner.second;
+        nlohmann::json m;
+        m["addrBeg"]       = addr_to_str(address.beg).c_str();
+        m["addrEnd"]       = addr_to_str(address.end).c_str();
+        m["permission"]    = perm_str;
+        m["name"]          = vpmu::file::basename(vm_maps.regions[i].pathname);
+        m["filePath"]      = vm_maps.regions[i].pathname;
+        m["bindToProgram"] = prog_name;
+        m["owner"]         = vm_maps.regions[i].owner.first;
+        m["pc"]            = vm_maps.regions[i].owner.second;
+
+        j["vmMaps"][i] = m;
     }
 
     FILE* fp = fopen(path.c_str(), "wt");
@@ -120,14 +122,19 @@ void ET_Process::dump_phases(std::string path)
 {
     nlohmann::json j;
 
-    j["Timeline"] = phase_history;
+    j["apiVersion"] = SNIPPIT_JSON_API_VERSION;
+    j["timeline"]   = phase_history;
 
     for (int idx = 0; idx < phase_list.size(); idx++) {
         auto& phase = phase_list[idx]; // Renaming
 
-        j["Phase"][idx]["Fingerprint"] = phase.json_fingerprint();
-        j["Phase"][idx]["Counters"]    = vpmu::dump_json::snapshot(phase.snapshot);
-        j["Phase"][idx]["Codes"]       = json_phase_code_mapping(phase);
+        nlohmann::json p;
+        p["fingerprint"] = phase.json_fingerprint();
+        p["counters"]    = vpmu::dump_json::snapshot(phase.snapshot);
+        auto mapping     = get_code_mapping(phase); // Note: This is sorted by std::map
+        p["codes"]       = mapping;
+
+        j["phase"][idx] = p;
     }
 
     FILE* fp = fopen(path.c_str(), "wt");
@@ -137,7 +144,7 @@ void ET_Process::dump_phases(std::string path)
     }
 }
 
-nlohmann::json ET_Process::json_phase_code_mapping(const Phase& phase)
+std::map<std::string, uint64_t> ET_Process::get_code_mapping(const Phase& phase)
 {
     struct RegionWithCounters {
         Pair_beg_end                addr;
@@ -147,7 +154,7 @@ nlohmann::json ET_Process::json_phase_code_mapping(const Phase& phase)
     };
     std::vector<struct RegionWithCounters> walk_count_vectors;
 
-    nlohmann::json j;
+    std::map<std::string, uint64_t> ret;
 
     // Find out all executable and tracked regions
     for (auto& region : vm_maps.regions) {
@@ -193,7 +200,7 @@ nlohmann::json ET_Process::json_phase_code_mapping(const Phase& phase)
 
     for (auto& region : walk_count_vectors) {
         if (!region.has_dwarf) {
-            j["[" + region.program->name + "]"] = region.walk_count[0];
+            ret[region.program->name] = region.walk_count[0];
             continue;
         }
 
@@ -205,11 +212,11 @@ nlohmann::json ET_Process::json_phase_code_mapping(const Phase& phase)
             std::string key  = program->find_code_line_number(addr);
             if (key.size() == 0) continue; // Skip unknown lines
             // If two keys are the same, this assignment would solve it anyway
-            j[key] = region.walk_count[offset];
+            ret[key] = region.walk_count[offset];
         }
     }
 
-    return j;
+    return ret;
 }
 
 void ET_Process::dump(void)

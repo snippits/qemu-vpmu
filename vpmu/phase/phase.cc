@@ -24,7 +24,7 @@ nlohmann::json Phase::json_fingerprint(void)
     nlohmann::json j;
 
     // Use a separate array to prevent the ordering problem in json
-    j["keys"]   = {"ALU Ops", "Bit Ops", "Load", "Store", "Branch"};
+    j["keys"]   = {"aluOp", "bitOp", "load", "store", "branch"};
     j["values"] = {(double)counters.alu / counters.insn,
                    (double)counters.bit / counters.insn,
                    (double)counters.load / counters.insn,

@@ -204,21 +204,22 @@ namespace dump_json
         // Reduce counter values across cores to the first element
         data.reduce();
 
-        j["Instruction"]["Cycles"]     = data.sum_all().cycles;
-        j["Instruction"]["Total"]      = data.sum_all().total_insn;
-        j["Instruction"]["User"]       = data.user.total_insn[0];
-        j["Instruction"]["Supervisor"] = data.user.total_insn[0];
+        j["instruction"]["cycle"]      = data.sum_all().cycles;
+        j["instruction"]["total"]      = data.sum_all().total_insn;
+        j["instruction"]["user"]       = data.user.total_insn[0];
+        j["instruction"]["supervisor"] = data.user.total_insn[0];
 
-        j["Load"]["Total"]      = data.sum_all().load;
-        j["Load"]["User"]       = data.user.load[0];
-        j["Load"]["Supervisor"] = data.system.load[0];
+        j["load"]["total"]      = data.sum_all().load;
+        j["load"]["user"]       = data.user.load[0];
+        j["load"]["supervisor"] = data.system.load[0];
 
-        j["Store"]["Total"]      = data.sum_all().store;
-        j["Store"]["User"]       = data.user.store[0];
-        j["Store"]["Supervisor"] = data.system.store[0];
+        j["store"]["total"]      = data.sum_all().store;
+        j["store"]["user"]       = data.user.store[0];
+        j["store"]["supervisor"] = data.system.store[0];
     }
 
-    void Branch_counters(nlohmann::json& j, VPMU_Branch::Model model, VPMU_Branch::Data data)
+    void
+    Branch_counters(nlohmann::json& j, VPMU_Branch::Model model, VPMU_Branch::Data data)
     {
         using vpmu::math::sum_cores;
 
@@ -226,9 +227,9 @@ namespace dump_json
         data.reduce();
         double accuracy = (double)data.correct[0] / (data.correct[0] + data.wrong[0]);
 
-        j["Branch"]["Accuracy"] = accuracy;
-        j["Branch"]["Hit"]      = data.correct[0];
-        j["Branch"]["Miss"]     = data.wrong[0];
+        j["branch"]["accuracy"] = accuracy;
+        j["branch"]["hit"]      = data.correct[0];
+        j["branch"]["miss"]     = data.wrong[0];
     }
 
     void Cache_counters(nlohmann::json& j, VPMU_Cache::Model model, VPMU_Cache::Data data)
@@ -241,12 +242,12 @@ namespace dump_json
             uint64_t rw      = c[VPMU_Cache::READ] + c[VPMU_Cache::WRITE];
             uint64_t rw_miss = c[VPMU_Cache::READ_MISS] + c[VPMU_Cache::WRITE_MISS];
 
-            std::string level_str = "L" + std::to_string(l);
+            std::string level_str = "level" + std::to_string(l);
 
-            j["Cache"][level_str]["Miss Rate"]    = (double)rw_miss / (rw + 1);
-            j["Cache"][level_str]["Access Count"] = rw;
-            j["Cache"][level_str]["Read Miss"]    = c[VPMU_Cache::READ_MISS];
-            j["Cache"][level_str]["Write Miss"]   = c[VPMU_Cache::WRITE_MISS];
+            j["cache"][level_str]["missRate"]    = (double)rw_miss / (rw + 1);
+            j["cache"][level_str]["accessCount"] = rw;
+            j["cache"][level_str]["readMiss"]    = c[VPMU_Cache::READ_MISS];
+            j["cache"][level_str]["writeMiss"]   = c[VPMU_Cache::WRITE_MISS];
         }
 
         auto&&   cd      = data.data_cache[PROCESSOR_CPU][VPMU_Cache::L1_CACHE][0];
@@ -257,15 +258,15 @@ namespace dump_json
         uint64_t irw      = ci[VPMU_Cache::READ] + ci[VPMU_Cache::WRITE];
         uint64_t irw_miss = ci[VPMU_Cache::READ_MISS] + ci[VPMU_Cache::WRITE_MISS];
 
-        j["Cache"]["D Cache"]["Miss Rate"]    = (double)rw_miss / (rw + 1);
-        j["Cache"]["D Cache"]["Access Count"] = rw;
-        j["Cache"]["D Cache"]["Read Miss"]    = cd[VPMU_Cache::READ_MISS];
-        j["Cache"]["D Cache"]["Write Miss"]   = cd[VPMU_Cache::WRITE_MISS];
+        j["cache"]["dCache"]["missRate"]    = (double)rw_miss / (rw + 1);
+        j["cache"]["dCache"]["accessCount"] = rw;
+        j["cache"]["dCache"]["readMiss"]    = cd[VPMU_Cache::READ_MISS];
+        j["cache"]["dCache"]["writeMiss"]   = cd[VPMU_Cache::WRITE_MISS];
 
-        j["Cache"]["I Cache"]["Miss Rate"]    = (double)irw_miss / (irw + 1);
-        j["Cache"]["I Cache"]["Access Count"] = irw;
-        j["Cache"]["I Cache"]["Read Miss"]    = ci[VPMU_Cache::READ_MISS];
-        j["Cache"]["I Cache"]["Write Miss"]   = ci[VPMU_Cache::WRITE_MISS];
+        j["cache"]["iCache"]["missRate"]    = (double)irw_miss / (irw + 1);
+        j["cache"]["iCache"]["accessCount"] = irw;
+        j["cache"]["iCache"]["readMiss"]    = ci[VPMU_Cache::READ_MISS];
+        j["cache"]["iCache"]["writeMiss"]   = ci[VPMU_Cache::WRITE_MISS];
     }
 
     nlohmann::json snapshot(VPMUSnapshot snapshot)
@@ -276,13 +277,13 @@ namespace dump_json
         Branch_counters(j, vpmu_branch_stream.get_model(), snapshot.branch_data);
         Cache_counters(j, vpmu_cache_stream.get_model(), snapshot.cache_data);
 
-        j["Time"]["CPU"] = snapshot.time_ns[0];
-        j["Time"]["Branch"] = snapshot.time_ns[1];
-        j["Time"]["Cache"] = snapshot.time_ns[2];
-        j["Time"]["System Memory"] = snapshot.time_ns[3];
-        j["Time"]["IO Memory"] = snapshot.time_ns[4];
-        j["Time"]["Target"] = snapshot.time_ns[5];
-        j["Time"]["Host"] = snapshot.time_ns[6];
+        j["time"]["cpu"]          = snapshot.time_ns[0];
+        j["time"]["branch"]       = snapshot.time_ns[1];
+        j["time"]["cache"]        = snapshot.time_ns[2];
+        j["time"]["systemMemory"] = snapshot.time_ns[3];
+        j["time"]["ioMemory"]     = snapshot.time_ns[4];
+        j["time"]["target"]       = snapshot.time_ns[5];
+        j["time"]["host"]         = snapshot.time_ns[6];
 
         return j;
     }

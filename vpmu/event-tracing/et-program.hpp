@@ -13,6 +13,7 @@
 #include "vpmu-utils.hpp"   // miscellaneous functions
 #include "et-path.hpp"      // ET_Path class
 #include "beg_eng_pair.hpp" // Pair_beg_end class
+#include "json.hpp"         // nlohmann::json
 
 // TODO VPMU timing model switch
 class ET_Program : public ET_Path
@@ -62,6 +63,19 @@ public:
             return low->second;
         }
         return "";
+    }
+
+    void dump_json(nlohmann::json& j)
+    {
+        j["name"]      = name;
+        j["fileName"]  = filename;
+        j["filePath"]  = path;
+        j["symbols"]   = sym_table;
+        j["dwarf"]     = line_table.size();
+        j["isLibrary"] = is_shared_library;
+        for (int i = 0; i < library_list.size(); i++) {
+            j["libraries"][i] = library_list[i]->name;
+        }
     }
 
 public:

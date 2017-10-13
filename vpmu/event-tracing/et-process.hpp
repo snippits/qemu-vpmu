@@ -14,6 +14,7 @@
 #include "et-memory-region.hpp" // ET_MemoryRegion class for linux/mm
 #include "phase/phase.hpp"      // Phase class
 #include "function-map.hpp"     // FunctionMap class
+#include "json.hpp"             // nlohmann::json
 
 typedef struct {
     uint64_t vaddr;
@@ -101,7 +102,8 @@ public:
     void dump(void);
     void dump_process_info(std::string path);
     void dump_phases(std::string path);
-    nlohmann::json json_phase_code_mapping(const Phase& phase);
+    // Use std::map to sort the output
+    std::map<std::string, uint64_t> get_code_mapping(const Phase& phase);
 
     std::string find_code_line_number(uint64_t pc);
 
