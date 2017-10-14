@@ -311,6 +311,10 @@ void ET_Process::dump(void)
     this->prof_counters.sum_cores();
     vpmu::dump::snapshot(fp, this->prof_counters);
     fclose(fp);
+
+    CONSOLE_LOG(STR_PROC "'%s'(pid %lu) done for writing the results to files\n",
+                name.c_str(),
+                pid);
 }
 
 std::string ET_Process::find_code_line_number(uint64_t pc)

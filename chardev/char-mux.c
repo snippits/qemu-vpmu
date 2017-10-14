@@ -148,6 +148,7 @@ static int mux_proc_byte(Chardev *chr, MuxChardev *d, int ch)
                 // is no gaurantee that worker thread can receive this flag.
                 // We need to terminate it anyway after timeout, so make it simple.
                 usleep(50000);
+                VPMU_finalize_all_workers();
 #endif
                  const char *term =  "QEMU: Terminated\n\r";
                  qemu_chr_write_all(chr, (uint8_t *)term, strlen(term));

@@ -88,4 +88,6 @@ uint64_t vpmu_target_time_ns(void);
 uint64_t vpmu_get_core_id(void);
 void     vpmu_set_core_id(uint64_t);
 
+void VPMU_finalize_all_workers(void);
+
 #endif

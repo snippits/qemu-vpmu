@@ -206,6 +206,28 @@ void VPMU_async(std::function<void(void)> task)
     });
 }
 
+void VPMU_finalize_all_workers(void)
+{
+    int cnt = 0;
+
+    // Wait for 5s for all timing tasks done.
+    for (int i = 0; i < 50 && timing_thread_pool.size(); i++) {
+        if (cnt % 10 == 0) CONSOLE_LOG(STR_VPMU "Wait for timing threads...\n");
+        cnt++;
+        usleep(100000); // sleep for 0.1s
+    }
+    if (timing_thread_pool.size()) {
+        ERR_MSG(STR_VPMU "Failed on waiting responses from timing thread\n");
+    }
+    cnt = 0;
+    // Blocking wait all async tasks done. (usually output results to files)
+    while (thread_pool.size()) {
+        if (cnt % 10 == 0) CONSOLE_LOG(STR_VPMU "Wait for other tasks remaining...\n");
+        cnt++;
+        usleep(100000); // sleep for 0.1s
+    }
+}
+
 void VPMU_reset(void)
 {
     VPMU.cpu_idle_time_ns = 0;

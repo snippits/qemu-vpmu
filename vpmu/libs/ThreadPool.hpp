@@ -105,6 +105,8 @@ public:
         condition.notify_one();
     }
 
+    size_t size(void) { return tasks.size(); }
+
 private:
     // Help to suppress compiler errors when args does not match args in lambda
     template <class B, class F, class... Args>
