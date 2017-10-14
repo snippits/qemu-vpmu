@@ -102,6 +102,7 @@ public:
     void dump(void);
     void dump_process_info(std::string path);
     void dump_phases(std::string path);
+    void dump_phase_similarity(std::string path);
     // Use std::map to sort the output
     std::map<std::string, uint64_t> get_code_mapping(const Phase& phase);
 

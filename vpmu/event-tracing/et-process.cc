@@ -9,6 +9,9 @@ extern "C" {
 
 #include "vpmu-template-output.hpp" // vpmu::dump::snapshot
 
+#include <algorithm> // std::set_intersection
+#include <iterator>  // iterator
+
 #include <boost/filesystem.hpp> // boost::filesystem
 
 RegionInfo RegionInfo::not_found = {};
@@ -140,6 +143,78 @@ void ET_Process::dump_phases(std::string path)
     }
 }
 
+template <typename T>
+static inline auto map_to_set(T const& a_map)
+{
+    std::vector<std::string> a_set;
+
+    // Convert to set of string and filter out invalid path names
+    for (auto& m : a_map) {
+        // Path format must be +:\d+. ex: /a/b/c/d:12
+        std::vector<std::string> sub_patterns;
+        boost::split(sub_patterns, m.first, boost::is_any_of(":"));
+        if (sub_patterns.size() == 2) {
+            a_set.push_back(m.first);
+        }
+    }
+    return a_set;
+}
+
+// Lines of codes of similarity
+template <typename T>
+static inline float loc_similarity(T const& lhs, T const& rhs)
+{
+    // retuen 1.0 if they are the same object (same address)
+    if (&lhs == &rhs) return 1.0;
+
+    auto set_l = map_to_set<T>(lhs);
+    auto set_r = map_to_set<T>(rhs);
+
+    if (set_l.size() == 0 || set_r.size() == 0) return 0.0;
+
+    std::vector<std::string> v_intersection, v_union;
+
+    // clang-format off
+    std::set_intersection(set_l.begin(), set_l.end(),
+                          set_r.begin(), set_r.end(),
+                          std::back_inserter(v_intersection));
+
+    std::set_union(set_l.begin(), set_l.end(),
+                   set_r.begin(), set_r.end(),
+                   std::back_inserter(v_union));
+    // clang-format on
+
+    return (float)v_intersection.size() / v_union.size();
+}
+
+void ET_Process::dump_phase_similarity(std::string path)
+{
+    nlohmann::json mat;
+
+    std::vector<std::map<std::string, uint64_t>> code_maps;
+    for (auto& phase : phase_list) {
+        code_maps.push_back(get_code_mapping(phase));
+    }
+
+    for (size_t i = 0; i < code_maps.size(); i++) {
+        for (size_t j = 0; j < code_maps.size(); j++) {
+            if (i <= j) {
+                // upper matrix
+                mat[i][j] = loc_similarity(code_maps[i], code_maps[j]);
+            } else {
+                // lower matrix
+                mat[i][j] = mat[j][i];
+            }
+        }
+    }
+
+    FILE* fp = fopen(path.c_str(), "wt");
+    if (fp) {
+        fprintf(fp, "%s\n", mat.dump(2).c_str());
+        fclose(fp);
+    }
+}
+
 std::map<std::string, uint64_t> ET_Process::get_code_mapping(const Phase& phase)
 {
     struct RegionWithCounters {
@@ -226,6 +301,7 @@ void ET_Process::dump(void)
     dump_process_info(output_dir + "/process_info");
     dump_vm_map(output_dir + "/vm_maps");
     dump_phases(output_dir + "/phases");
+    dump_phase_similarity(output_dir + "/phase_similarity_matrix");
 
     auto  file_path = output_dir + "/profiling";
     FILE* fp        = fopen(file_path.c_str(), "wt");
