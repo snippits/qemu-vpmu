@@ -74,41 +74,39 @@ void ET_Process::dump_process_info(std::string path)
     j["pid"]          = pid;
     j["log"]          = debug_log;
     j["isTopProcess"] = is_top_process;
-    for (int i = 0; i < child_list.size(); i++) {
-        j["childrens"][i]["name"] = child_list[i]->name;
-        j["childrens"][i]["pid"]  = child_list[i]->pid;
+    for (auto& child : child_list) {
+        j["childrens"].push_back({{"name", child->name}, {"pid", child->pid}});
     }
-    for (int i = 0; i < binary_list.size(); i++) {
+    for (auto& binary : binary_list) {
         nlohmann::json b;
-        binary_list[i]->dump_json(b);
+        binary->dump_json(b);
 
-        auto address = vm_maps.find_address(binary_list[i], VM_EXEC);
-        b["addrBeg"] = addr_to_str(address.beg).c_str();
-        b["addrEnd"] = addr_to_str(address.end).c_str();
+        auto address = vm_maps.find_address(binary, VM_EXEC);
+        b["addrBeg"] = addr_to_str(address.beg);
+        b["addrEnd"] = addr_to_str(address.end);
 
-        j["binaries"][i] = b;
+        j["binaries"].push_back(b);
     }
-    for (int i = 0; i < vm_maps.regions.size(); i++) {
-        auto        address   = vm_maps.regions[i].address;
+    for (auto& region : vm_maps.regions) {
         std::string perm_str  = "";
         std::string prog_name = "";
-        perm_str += (vm_maps.regions[i].permission & VM_READ) ? "r" : "-";
-        perm_str += (vm_maps.regions[i].permission & VM_WRITE) ? "w" : "-";
-        perm_str += (vm_maps.regions[i].permission & VM_EXEC) ? "x" : "-";
-        perm_str += (vm_maps.regions[i].permission & VM_SHARED) ? "-" : "p";
-        if (vm_maps.regions[i].program) prog_name = vm_maps.regions[i].program->name;
+        perm_str += (region.permission & VM_READ) ? "r" : "-";
+        perm_str += (region.permission & VM_WRITE) ? "w" : "-";
+        perm_str += (region.permission & VM_EXEC) ? "x" : "-";
+        perm_str += (region.permission & VM_SHARED) ? "-" : "p";
+        if (region.program) prog_name = region.program->name;
 
         nlohmann::json m;
-        m["addrBeg"]       = addr_to_str(address.beg).c_str();
-        m["addrEnd"]       = addr_to_str(address.end).c_str();
+        m["addrBeg"]       = addr_to_str(region.address.beg);
+        m["addrEnd"]       = addr_to_str(region.address.end);
         m["permission"]    = perm_str;
-        m["name"]          = vpmu::file::basename(vm_maps.regions[i].pathname);
-        m["filePath"]      = vm_maps.regions[i].pathname;
+        m["name"]          = vpmu::file::basename(region.pathname);
+        m["filePath"]      = region.pathname;
+        m["owner"]         = region.owner.first;
+        m["pc"]            = region.owner.second;
         m["bindToProgram"] = prog_name;
-        m["owner"]         = vm_maps.regions[i].owner.first;
-        m["pc"]            = vm_maps.regions[i].owner.second;
 
-        j["vmMaps"][i] = m;
+        j["vmMaps"].push_back(m);
     }
 
     FILE* fp = fopen(path.c_str(), "wt");
@@ -125,16 +123,14 @@ void ET_Process::dump_phases(std::string path)
     j["apiVersion"] = SNIPPIT_JSON_API_VERSION;
     j["timeline"]   = phase_history;
 
-    for (int idx = 0; idx < phase_list.size(); idx++) {
-        auto& phase = phase_list[idx]; // Renaming
-
+    for (auto& phase : phase_list) {
         nlohmann::json p;
         p["fingerprint"] = phase.json_fingerprint();
         p["counters"]    = vpmu::dump_json::snapshot(phase.snapshot);
         auto mapping     = get_code_mapping(phase); // Note: This is sorted by std::map
         p["codes"]       = mapping;
 
-        j["phase"][idx] = p;
+        j["phase"][phase.id] = p;
     }
 
     FILE* fp = fopen(path.c_str(), "wt");

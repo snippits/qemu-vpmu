@@ -73,8 +73,8 @@ public:
         j["symbols"]   = sym_table;
         j["dwarf"]     = line_table.size();
         j["isLibrary"] = is_shared_library;
-        for (int i = 0; i < library_list.size(); i++) {
-            j["libraries"][i] = library_list[i]->name;
+        for (auto& library : library_list) {
+            j["libraries"].push_back(library->name);
         }
     }
 
