@@ -178,14 +178,23 @@ void ET_Process::dump_timeline(std::string path)
 
     // Sort the history timeline because async insertions are ordered incorrectly
     std::sort(phase_history.begin(), phase_history.end(), [](auto& a, auto& b) {
-        return a[0] < b[0];
+        return a.first < b.first; // Order w.r.t. time
     });
     std::sort(event_history.begin(), event_history.end(), [](auto& a, auto& b) {
-        return a[0] < b[0];
+        return a.first < b.first; // Order w.r.t. time
     });
     j["apiVersion"] = SNIPPIT_JSON_API_VERSION;
-    j["timeline"]   = phase_history;
-    j["events"]     = event_history;
+    for (auto& phase : phase_history) {
+        j["phases"]["time"].push_back(phase.first);
+        if (phase.second == 0) // Push null if the phase ID is zero (the ID for no phase)
+            j["phases"]["phaseID"].push_back(nullptr);
+        else
+            j["phases"]["phaseID"].push_back(phase.second);
+    }
+    for (auto& event : event_history) {
+        j["events"]["time"].push_back(event.first);
+        j["events"]["eventID"].push_back(event.second);
+    }
 
     FILE* fp = fopen(path.c_str(), "wt");
     if (fp) {

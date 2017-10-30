@@ -96,12 +96,12 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
         auto&& new_phase = process->phase_list.back();
         new_phase.update_snapshot(process->snapshot_phase);
         new_phase.id = phase_num;
-        process->phase_history.push_back({{window.timestamp, phase_num}});
+        process->phase_history.push_back({window.timestamp, phase_num});
     } else {
         // DBG(STR_PHASE "Update phase id %zu\n", phase.id);
         phase.update(window);
         phase.update_snapshot(process->snapshot_phase);
-        process->phase_history.push_back({{window.timestamp, phase.id}});
+        process->phase_history.push_back({window.timestamp, phase.id});
     }
 }
 
