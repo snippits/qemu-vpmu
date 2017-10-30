@@ -204,18 +204,18 @@ namespace dump_json
         // Reduce counter values across cores to the first element
         data.reduce();
 
-        j["instruction"]["cycle"]      = data.sum_all().cycles;
-        j["instruction"]["total"]      = data.sum_all().total_insn;
-        j["instruction"]["user"]       = data.user.total_insn[0];
-        j["instruction"]["supervisor"] = data.user.total_insn[0];
+        j["instruction"]["cycle"]  = data.sum_all().cycles;
+        j["instruction"]["total"]  = data.sum_all().total_insn;
+        j["instruction"]["user"]   = data.user.total_insn[0];
+        j["instruction"]["system"] = data.system.total_insn[0];
 
-        j["load"]["total"]      = data.sum_all().load;
-        j["load"]["user"]       = data.user.load[0];
-        j["load"]["supervisor"] = data.system.load[0];
+        j["load"]["total"]  = data.sum_all().load;
+        j["load"]["user"]   = data.user.load[0];
+        j["load"]["system"] = data.system.load[0];
 
-        j["store"]["total"]      = data.sum_all().store;
-        j["store"]["user"]       = data.user.store[0];
-        j["store"]["supervisor"] = data.system.store[0];
+        j["store"]["total"]  = data.sum_all().store;
+        j["store"]["user"]   = data.user.store[0];
+        j["store"]["system"] = data.system.store[0];
     }
 
     void
