@@ -98,11 +98,14 @@ public:
         last_mapped_addr[vpmu::get_core_id()] = {};
     }
 
+    inline uint64_t next_phase_id(void) { return unique_phase_id++; }
+
     void dump_vm_map(std::string path);
 
     void dump(void);
     void dump_process_info(std::string path);
     void dump_phases(std::string path);
+    void dump_timeline(std::string path);
     void dump_phase_similarity(std::string path);
     // Use std::map to sort the output
     std::map<std::string, uint64_t> get_code_mapping(const Phase& phase);
@@ -149,6 +152,8 @@ public:
     Window current_window = {};
     /// History records of phase ID with a timestamp. pair<timestamp, phase ID>
     std::vector<std::array<uint64_t, 2>> phase_history = {};
+    /// History records of events with a timestamp. pair<timestamp, event ID>
+    std::vector<std::array<uint64_t, 2>> event_history = {};
     // The monitored functions of this process
     FunctionMap<uint64_t, void*, ET_Process*> functions;
 
@@ -162,6 +167,8 @@ private:
     std::string debug_log = "";
     /// Remember the pointer to lastest mapped region for updating its address at return
     MMapInfo last_mapped_addr[VPMU_MAX_CPU_CORES] = {};
+    /// Unique phase id counting from 1
+    uint64_t unique_phase_id = 1;
 };
 
 #endif

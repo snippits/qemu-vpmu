@@ -301,6 +301,8 @@ void et_register_callbacks_kernel_events(void)
             VPMU_async([prev_process, core_id]() {
                 VPMUSnapshot new_snapshot(true, core_id);
                 prev_process->prof_counters += new_snapshot - prev_process->snapshot;
+                auto t = vpmu_get_timestamp_us();
+                prev_process->phase_history.push_back({{t, 0}});
             });
             prev_process->is_running = false;
         }

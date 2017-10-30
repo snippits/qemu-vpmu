@@ -82,7 +82,7 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
     // Classify the window to phase
     auto& phase = phase_detect.classify(process->phase_list, window);
     if (phase == Phase::not_found) {
-        uint64_t phase_num = process->phase_list.size();
+        uint64_t phase_num = process->next_phase_id();
         // Add a new phase to the process
         DBG(
           STR_PHASE "pid: %" PRIu64 ", name: %s\n", process->pid, process->name.c_str());
@@ -98,11 +98,10 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
         new_phase.id = phase_num;
         process->phase_history.push_back({{window.timestamp, phase_num}});
     } else {
-        uint64_t phase_num = (&phase - &process->phase_list[0]);
-        // DBG(STR_PHASE "Update phase id %zu\n", phase_num);
+        // DBG(STR_PHASE "Update phase id %zu\n", phase.id);
         phase.update(window);
         phase.update_snapshot(process->snapshot_phase);
-        process->phase_history.push_back({{window.timestamp, phase_num}});
+        process->phase_history.push_back({{window.timestamp, phase.id}});
     }
 }
 
@@ -110,7 +109,7 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
 static void
 push_new_sub_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
 {
-    uint64_t phase_num = process->phase_list.size();
+    uint64_t phase_num = process->next_phase_id();
     // Empty list, create a new phase with sub phase
     // Construct the instance inside vector (save time)
     process->phase_list.push_back(window);

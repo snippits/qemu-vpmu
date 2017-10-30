@@ -130,17 +130,62 @@ void ET_Process::dump_phases(std::string path)
     nlohmann::json j;
 
     j["apiVersion"] = SNIPPIT_JSON_API_VERSION;
-    j["timeline"]   = phase_history;
+
+    { // Create a dummy phase for phase zero
+        Phase          dummy_phase;
+        nlohmann::json p;
+        p["id"]          = 0;
+        p["fingerprint"] = dummy_phase.json_fingerprint();
+        p["counters"]    = vpmu::dump_json::snapshot(dummy_phase.snapshot);
+        p["numWidows"]   = dummy_phase.get_num_windows();
+        p["codes"]       = nlohmann::json::array();
+        p["note"] =
+          "DO NOT USE THIS PHASE!!!"
+          "Phase ID 0 is reserved to be referenced as no phase on timeline."
+          "Also, many other databases use 1st instead of 0th as the starting index."
+          "Please take care of ID 0 on all of your algorithms.";
+        j["phase"][0] = p;
+    }
 
     for (auto& phase : phase_list) {
         nlohmann::json p;
+        p["id"]          = phase.id;
         p["fingerprint"] = phase.json_fingerprint();
         p["counters"]    = vpmu::dump_json::snapshot(phase.snapshot);
+        p["numWidows"]   = phase.get_num_windows();
+        p["codes"]       = nlohmann::json::array();
         auto mapping     = get_code_mapping(phase); // Note: This is sorted by std::map
-        p["codes"]       = mapping;
+        for (auto& elem : mapping) {
+            nlohmann::json e;
+            e["line"] = elem.first;
+            e["walk"] = elem.second;
+            p["codes"].push_back(e);
+        }
 
         j["phase"][phase.id] = p;
     }
+
+    FILE* fp = fopen(path.c_str(), "wt");
+    if (fp) {
+        fprintf(fp, "%s\n", j.dump(JSON_DUMP_LEVEL).c_str());
+        fclose(fp);
+    }
+}
+
+void ET_Process::dump_timeline(std::string path)
+{
+    nlohmann::json j;
+
+    // Sort the history timeline because async insertions are ordered incorrectly
+    std::sort(phase_history.begin(), phase_history.end(), [](auto& a, auto& b) {
+        return a[0] < b[0];
+    });
+    std::sort(event_history.begin(), event_history.end(), [](auto& a, auto& b) {
+        return a[0] < b[0];
+    });
+    j["apiVersion"] = SNIPPIT_JSON_API_VERSION;
+    j["timeline"]   = phase_history;
+    j["events"]     = event_history;
 
     FILE* fp = fopen(path.c_str(), "wt");
     if (fp) {
@@ -198,6 +243,8 @@ void ET_Process::dump_phase_similarity(std::string path)
     nlohmann::json mat;
 
     std::vector<std::map<std::string, uint64_t>> code_maps;
+    // Append one dummy element for skipping zeroth phase
+    code_maps.push_back({});
     for (auto& phase : phase_list) {
         code_maps.push_back(get_code_mapping(phase));
     }
@@ -213,6 +260,8 @@ void ET_Process::dump_phase_similarity(std::string path)
             }
         }
     }
+    // Phase ID zero is not usable, but still, set diagonals to 1 for consistency.
+    mat[0][0] = 1;
 
     FILE* fp = fopen(path.c_str(), "wt");
     if (fp) {
@@ -307,6 +356,7 @@ void ET_Process::dump(void)
     dump_process_info(output_dir + "/process_info");
     dump_vm_map(output_dir + "/vm_maps");
     dump_phases(output_dir + "/phases");
+    dump_timeline(output_dir + "/timeline");
     dump_phase_similarity(output_dir + "/phase_similarity_matrix");
 
     auto  file_path = output_dir + "/profiling";
