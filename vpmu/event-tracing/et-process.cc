@@ -16,6 +16,12 @@ extern "C" {
 
 RegionInfo RegionInfo::not_found = {};
 
+#ifdef CONFIG_VPMU_DEBUG_MSG
+#define JSON_DUMP_LEVEL 2
+#else
+#define JSON_DUMP_LEVEL 0
+#endif
+
 void ET_Process::append_debug_log(std::string mesg)
 {
 #ifdef CONFIG_VPMU_DEBUG_MSG
@@ -114,7 +120,7 @@ void ET_Process::dump_process_info(std::string path)
 
     FILE* fp = fopen(path.c_str(), "wt");
     if (fp) {
-        fprintf(fp, "%s\n", j.dump(2).c_str());
+        fprintf(fp, "%s\n", j.dump(JSON_DUMP_LEVEL).c_str());
         fclose(fp);
     }
 }
@@ -138,7 +144,7 @@ void ET_Process::dump_phases(std::string path)
 
     FILE* fp = fopen(path.c_str(), "wt");
     if (fp) {
-        fprintf(fp, "%s\n", j.dump(2).c_str());
+        fprintf(fp, "%s\n", j.dump(JSON_DUMP_LEVEL).c_str());
         fclose(fp);
     }
 }
@@ -210,7 +216,7 @@ void ET_Process::dump_phase_similarity(std::string path)
 
     FILE* fp = fopen(path.c_str(), "wt");
     if (fp) {
-        fprintf(fp, "%s\n", mat.dump(2).c_str());
+        fprintf(fp, "%s\n", mat.dump(JSON_DUMP_LEVEL).c_str());
         fclose(fp);
     }
 }
