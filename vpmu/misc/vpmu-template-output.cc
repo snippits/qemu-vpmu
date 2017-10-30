@@ -13,7 +13,10 @@ namespace vpmu
 
 namespace output
 {
-    void u64_array(uint64_t value[]) { vpmu::dump::u64_array(vpmu_console_log_fd, value); }
+    void u64_array(uint64_t value[])
+    {
+        vpmu::dump::u64_array(vpmu_console_log_fd, value);
+    }
 
     void percentage_array(uint64_t first_val[], uint64_t second_val[])
     {

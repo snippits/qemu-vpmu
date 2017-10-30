@@ -78,6 +78,7 @@ public:
     }
 
     uint64_t get_symbol_addr(std::string name);
+
     bool call_event(void* env, uint64_t vaddr);
 
     inline std::shared_ptr<ET_Program> get_main_program(void) { return binary_list[0]; }
@@ -112,6 +113,7 @@ public:
     void push_binary(std::shared_ptr<ET_Program>& program);
 
     void append_debug_log(std::string mesg);
+
     const std::string& get_debug_log(void) { return debug_log; }
 
 public:
