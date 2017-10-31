@@ -18,7 +18,7 @@ public:
 
         for (int i = 0; i < phase_list.size(); i++) {
             // Exclude self comparison
-            if (i == phase_num) continue;
+            if (phase_list[i].id == phase_num) continue;
             auto &phase_n_vector = phase_list[i].get_normalized_vector();
             // Calaulate the distance between a phase and the window
             double d = manhatten_distance(phase_n_vector, n_vector);
