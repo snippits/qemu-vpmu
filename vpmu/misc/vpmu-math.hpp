@@ -4,11 +4,39 @@
 
 namespace vpmu
 {
+
 namespace math
 {
-    double l2_norm(const std::vector<double> &u);
-    void normalize(const std::vector<double> &in_v, std::vector<double> &out_v);
-    void normalize(std::vector<double> &vec);
+    inline double l2_norm(const std::vector<double> &vec)
+    {
+        double accum = 0.;
+        for (double x : vec) {
+            accum += x * x;
+        }
+        return sqrt(accum);
+    }
+
+    inline void normalize(std::vector<double> &vec)
+    {
+        double l2n = l2_norm(vec);
+
+        for (int i = 0; i < vec.size(); i++) {
+            vec[i] /= l2n;
+        }
+        return;
+    }
+
+    inline void normalize(const std::vector<double> &in_v, std::vector<double> &out_v)
+    {
+        double l2n = l2_norm(in_v);
+
+        if (in_v.size() != out_v.size())
+            throw std::out_of_range("Two vectors size does not match");
+        for (int i = 0; i < out_v.size(); i++) {
+            out_v[i] = in_v[i] / l2n;
+        }
+        return;
+    }
 
     inline uint64_t simple_hash(uint64_t key, uint64_t m) { return (key % m); }
 

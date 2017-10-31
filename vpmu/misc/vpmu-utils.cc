@@ -20,41 +20,6 @@ extern char *global_argv_0;
 namespace vpmu
 {
 
-namespace math
-{
-    double l2_norm(const std::vector<double> &u)
-    {
-        double accum = 0.;
-        for (double x : u) {
-            accum += x * x;
-        }
-        return sqrt(accum);
-    }
-
-    void normalize(const std::vector<double> &in_v, std::vector<double> &out_v)
-    {
-        double l2n = l2_norm(in_v);
-
-        if (in_v.size() != out_v.size())
-            throw std::out_of_range("Two vectors size does not match");
-        for (int i = 0; i < out_v.size(); i++) {
-            out_v[i] = in_v[i] / l2n;
-        }
-        return;
-    }
-
-    void normalize(std::vector<double> &vec)
-    {
-        double l2n = l2_norm(vec);
-
-        for (int i = 0; i < vec.size(); i++) {
-            vec[i] /= l2n;
-        }
-        return;
-    }
-
-} // End of namespace vpmu::math
-
 namespace utils
 {
     void load_linux_env(char *ptr, const char *env_name)
