@@ -105,25 +105,6 @@ update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
     }
 }
 
-/*
-static void
-push_new_sub_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
-{
-    uint64_t phase_num = process->next_phase_id();
-    // Empty list, create a new phase with sub phase
-    // Construct the instance inside vector (save time)
-    process->phase_list.push_back(window);
-    // We must update the snapshot to get the correct result
-    auto&& new_phase = process->phase_list.back();
-    new_phase.update_snapshot(process->snapshot_phase);
-    new_phase.id             = phase_num;
-    new_phase.sub_phase_flag = true;
-    // DBG(STR_PHASE "pid: %" PRIu64 ", name: %s\n", et_current_pid,
-    // process->name.c_str());
-    // DBG(STR_PHASE "Create new sub-phase @ PC: %p\n", (void*)pc);
-}
-*/
-
 static void
 update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr)
 {
@@ -145,63 +126,10 @@ update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr
             if (window_cnt % 100 == 0)
                 DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n", window_cnt);
 #endif
-            auto& last_phase = process->phase_list.back();
-            if (process->phase_list.size() != 0 && last_phase.sub_phase_flag == true) {
-                last_phase.sub_phase_flag = false;
-            }
             update_phase(pc, process, current_window);
             // Reset all counters and vars of current window
             current_window.reset();
         }
-        /*
-        else {
-            if (stack_ptr < last_sp) {
-                auto& last_phase = process->phase_list.back();
-                if (process->phase_list.size() == 0
-                    || last_phase.sub_phase_flag == false) {
-                    // Create a new sub-phase
-                    push_new_sub_phase(pc, process, current_window);
-                } else {
-                    last_phase.update(current_window);
-                    if (last_phase.get_insn_count() > phase_detect.get_window_size()) {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-                        window_cnt++;
-                        if (window_cnt % 100 == 0)
-                            DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n",
-                                window_cnt);
-#endif
-                        last_phase.update_snapshot(process->snapshot_phase);
-                        // Promote the last sub phase to a regular phase
-                        last_phase.sub_phase_flag = false;
-                        auto& phase =
-                          phase_detect.classify(process->phase_list, last_phase);
-                        if (phase == Phase::not_found) {
-                            DBG(STR_PHASE "pid: %" PRIu64 ", name: %s\n",
-                                process->pid,
-                                process->name.c_str());
-                            DBG(
-                              STR_PHASE
-                              "Create new phase id %zu @ PC: %p and Timestamp: %lu ms\n",
-                              last_phase.id,
-                              (void*)pc,
-                              current_window.timestamp / 1000);
-                            process->phase_history.push_back(
-                              [current_window.timestamp, last_phase.id]);
-                        } else {
-                            // Merge two phases
-                            phase.update(last_phase);
-                            process->phase_list.pop_back();
-                            process->phase_history.push_back(
-                              [current_window.timestamp, phase.id]);
-                        }
-                    }
-                }
-                // Reset all counters and vars of current window
-                current_window.reset();
-            }
-        }
-    */
-
         process->stack_ptr = stack_ptr;
     }
 }

@@ -19,28 +19,31 @@ class Phase
 public:
     Phase() {}
 
+    Phase(uint64_t id) { this->id = id; }
+
     Phase(Window window)
     {
-        branch_vector = window.branch_vector;
-        // Allocate slots as same size as branch_vector
-        n_branch_vector.resize(branch_vector.size());
-        vpmu::math::normalize(branch_vector, n_branch_vector);
-        num_windows = 1;
-        snapshot.reset();
+        set_vector(window.branch_vector);
+        // Set up other configurations
+        num_windows     = 1;
         code_walk_count = window.code_walk_count;
         counters        = window.counters;
     }
 
-    void set_vector(std::vector<double>& vec)
+    void set_vector(const std::vector<double>& vec)
     {
-        branch_vector = vec;
-        vpmu::math::normalize(branch_vector, n_branch_vector);
+        branch_vector   = vec;
+        n_branch_vector = branch_vector;
+        vpmu::math::normalize(n_branch_vector);
     }
 
     void update_vector(const std::vector<double>& vec)
     {
+        if (branch_vector.size() == 0) { // This was not initialized before
+            set_vector(vec);
+        }
         if (vec.size() != branch_vector.size()) {
-            ERR_MSG("Vector size does not match\n");
+            ERR_MSG("Vector size of phase and input does not match\n");
             return;
         }
         for (int i = 0; i < branch_vector.size(); i++) {
@@ -88,8 +91,7 @@ public:
     const uint64_t&             get_num_windows(void) { return num_windows; }
     const GPUFriendnessCounter& get_counters(void) { return counters; }
     const std::vector<double>&  get_vector(void) const { return branch_vector; }
-
-    const std::vector<double>& get_normalized_vector(void) { return n_branch_vector; }
+    const std::vector<double>&  get_normalized_vector(void) { return n_branch_vector; }
 
     // Default comparison is pointer comparison
     inline bool operator==(const Phase& rhs) { return (this == &rhs); }
@@ -104,18 +106,20 @@ public:
 
 private:
     // Eigen::VectorXd branch_vector;
-    std::vector<double> branch_vector;
-    std::vector<double> n_branch_vector;
-    uint64_t            num_windows = 0;
-
+    std::vector<double> branch_vector   = {};
+    std::vector<double> n_branch_vector = {};
+    /// The number of windows included in this phase
+    uint64_t num_windows = 0;
+    /// The counters used for GPU friendliness prediction
     GPUFriendnessCounter counters = {};
 
-public: // FIXME, make it private
+public:
+    /// An ID to identify the ID of this phase
+    uint64_t id = 0;
+    /// The snapshot of counters associated with this phase
     VPMUSnapshot snapshot = {};
-    std::map<Pair_beg_end, uint32_t> code_walk_count;
-    // An ID to identify the number of this phase
-    uint64_t id             = 0;
-    bool     sub_phase_flag = false;
+    /// The walk-count associated with this phase. <<addr_beg, addr_end>, count>
+    std::map<Pair_beg_end, uint32_t> code_walk_count = {};
 };
 
 #endif
