@@ -33,13 +33,12 @@ public:
 
     void set_vector(std::vector<double>& vec)
     {
-        m_vector_dirty = true;
-        branch_vector  = vec;
+        branch_vector = vec;
+        vpmu::math::normalize(branch_vector, n_branch_vector);
     }
 
     void update_vector(const std::vector<double>& vec)
     {
-        m_vector_dirty = true;
         if (vec.size() != branch_vector.size()) {
             ERR_MSG("Vector size does not match\n");
             return;
@@ -47,6 +46,7 @@ public:
         for (int i = 0; i < branch_vector.size(); i++) {
             branch_vector[i] += vec[i];
         }
+        vpmu::math::normalize(branch_vector, n_branch_vector);
     }
 
     void update_counter(GPUFriendnessCounter w_counter)
@@ -89,14 +89,7 @@ public:
     const GPUFriendnessCounter& get_counters(void) { return counters; }
     const std::vector<double>&  get_vector(void) const { return branch_vector; }
 
-    const std::vector<double>& get_normalized_vector(void)
-    {
-        if (m_vector_dirty) {
-            // Update normalized vector only when it's dirty
-            vpmu::math::normalize(branch_vector, n_branch_vector);
-        }
-        return n_branch_vector;
-    }
+    const std::vector<double>& get_normalized_vector(void) { return n_branch_vector; }
 
     // Default comparison is pointer comparison
     inline bool operator==(const Phase& rhs) { return (this == &rhs); }
@@ -110,7 +103,6 @@ public:
     nlohmann::json json_fingerprint(void);
 
 private:
-    bool m_vector_dirty = false;
     // Eigen::VectorXd branch_vector;
     std::vector<double> branch_vector;
     std::vector<double> n_branch_vector;
