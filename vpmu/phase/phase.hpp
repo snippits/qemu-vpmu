@@ -7,6 +7,7 @@ extern "C" {
 #include "phase.h"             // phasedet_ref (C interface function)
 }
 // #include <eigen3/Eigen/Dense> // Use Eigen for vector and its operations
+#include <valarray> // Use std::valarray to accelerate the operations
 
 #include "vpmu.hpp"          // Include types and basic headers
 #include "phase-common.hpp"  // Common definitions of phase detection
@@ -30,14 +31,14 @@ public:
         counters        = window.counters;
     }
 
-    void set_vector(const std::vector<double>& vec)
+    void set_vector(const std::valarray<double>& vec)
     {
         branch_vector   = vec;
         n_branch_vector = branch_vector;
         vpmu::math::normalize(n_branch_vector);
     }
 
-    void update_vector(const std::vector<double>& vec)
+    void update_vector(const std::valarray<double>& vec)
     {
         if (branch_vector.size() == 0) { // This was not initialized before
             set_vector(vec);
@@ -88,10 +89,13 @@ public:
         num_windows += phase.get_num_windows();
     }
 
-    const uint64_t&             get_num_windows(void) { return num_windows; }
-    const GPUFriendnessCounter& get_counters(void) { return counters; }
-    const std::vector<double>&  get_vector(void) const { return branch_vector; }
-    const std::vector<double>&  get_normalized_vector(void) { return n_branch_vector; }
+    const uint64_t&              get_num_windows(void) const { return num_windows; }
+    const GPUFriendnessCounter&  get_counters(void) const { return counters; }
+    const std::valarray<double>& get_vector(void) const { return branch_vector; }
+    const std::valarray<double>& get_normalized_vector(void) const
+    {
+        return n_branch_vector;
+    }
 
     // Default comparison is pointer comparison
     inline bool operator==(const Phase& rhs) { return (this == &rhs); }
@@ -106,8 +110,8 @@ public:
 
 private:
     // Eigen::VectorXd branch_vector;
-    std::vector<double> branch_vector   = {};
-    std::vector<double> n_branch_vector = {};
+    std::valarray<double> branch_vector   = {};
+    std::valarray<double> n_branch_vector = {};
     /// The number of windows included in this phase
     uint64_t num_windows = 0;
     /// The counters used for GPU friendliness prediction

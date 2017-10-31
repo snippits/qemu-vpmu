@@ -14,8 +14,7 @@ public:
         int      idx       = -1;
         uint64_t phase_num = (&phase - &phase_list[0]);
 
-        std::vector<double> n_vector(phase.get_vector());
-        vpmu::math::normalize(n_vector);
+        auto n_vector = phase.get_normalized_vector();
 
         for (int i = 0; i < phase_list.size(); i++) {
             // Exclude self comparison
@@ -38,7 +37,7 @@ public:
         double min_d = similarity_threshold;
         int    idx   = -1;
 
-        std::vector<double> n_vector(window.branch_vector);
+        auto n_vector = window.branch_vector;
         vpmu::math::normalize(n_vector);
 
         for (int i = 0; i < phase_list.size(); i++) {
@@ -56,8 +55,8 @@ public:
     }
 
 private:
-    double manhatten_distance(const std::vector<double> &v1,
-                              const std::vector<double> &v2)
+    template <typename T = std::valarray<double>>
+    double manhatten_distance(const T &v1, const T &v2)
     {
         double m_distance = 0.0f;
         for (int i = 0; i < v1.size(); i++) {

@@ -2,21 +2,27 @@
 #define __VPMU_MATH_HPP_
 #pragma once
 
+#include <cmath>
+#include <valarray>
+#include <vector>
+
 namespace vpmu
 {
 
 namespace math
 {
-    inline double l2_norm(const std::vector<double> &vec)
+    template <typename T = std::valarray<double>>
+    inline double l2_norm(const T &vec)
     {
         double accum = 0.;
         for (double x : vec) {
             accum += x * x;
         }
-        return sqrt(accum);
+        return std::sqrt(accum);
     }
 
-    inline void normalize(std::vector<double> &vec)
+    template <typename T = std::valarray<double>>
+    inline void normalize(T &vec)
     {
         double l2n = l2_norm(vec);
 
@@ -26,7 +32,8 @@ namespace math
         return;
     }
 
-    inline void normalize(const std::vector<double> &in_v, std::vector<double> &out_v)
+    template <typename T = std::valarray<double>>
+    inline void normalize(const T &in_v, T &out_v)
     {
         double l2n = l2_norm(in_v);
 

@@ -3,6 +3,7 @@
 #pragma once
 
 // #include <eigen3/Eigen/Dense> // Use Eigen for vector and its operations
+#include <valarray> // Use std::valarray to accelerate the operations
 
 #include "beg_eng_pair.hpp" // Pair_beg_end
 #include "phase-common.hpp" // Common definitions of phase detection
@@ -29,7 +30,7 @@ public:
     // The timestamp of begining of this window
     uint64_t timestamp = 0;
     // Eigen::VectorXd branch_vector;
-    std::vector<double> branch_vector;
+    std::valarray<double> branch_vector;
     // Instruction count
     uint64_t instruction_count = 0;
     std::map<Pair_beg_end, uint32_t> code_walk_count;
