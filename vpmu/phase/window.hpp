@@ -74,7 +74,7 @@ private:
 
 public:
     /// Flag to indicate whether the window is reset before
-    volatile bool flag_reset = true;
+    bool flag_reset = true;
     /// The timestamp of begining of this window
     uint64_t timestamp = 0;
     /// The basic block vector. (Perhapse using Eigen::VectorXd?)

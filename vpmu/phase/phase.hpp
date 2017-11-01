@@ -57,7 +57,8 @@ public:
         num_windows += phase.get_num_windows();
     }
 
-    void update(VPMUSnapshot& snapshot);
+    inline void update(VPMUSnapshot& snapshot_diff) { snapshot += snapshot_diff; }
+    inline void update(VPMUSnapshot&& snapshot_diff) { snapshot += snapshot_diff; }
 
     uint64_t                     get_insn_count(void) const { return counters.insn; }
     uint64_t                     get_num_windows(void) const { return num_windows; }

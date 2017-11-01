@@ -34,16 +34,6 @@ nlohmann::json Phase::json_fingerprint(void)
     return j;
 }
 
-void Phase::update(VPMUSnapshot& snapshot)
-{
-    uint64_t core_id = vpmu::get_core_id();
-    VPMU_async([this, core_id, &snapshot]() {
-        VPMUSnapshot new_snapshot(true, core_id);
-        this->snapshot += new_snapshot - snapshot;
-        snapshot = new_snapshot;
-    });
-}
-
 static void update_phase(std::shared_ptr<ET_Process>& process, const Window& window)
 {
     // Classify the window to phase
@@ -55,7 +45,16 @@ static void update_phase(std::shared_ptr<ET_Process>& process, const Window& win
     auto& phase = (res != Phase::not_found) ? res : process->phase_list.back();
 
     phase.update(window);
-    phase.update(process->snapshot_phase);
+    uint64_t core_id = vpmu::get_core_id();
+    VPMU_async([core_id, &phase, process]() {
+        VPMUSnapshot new_snapshot(true, core_id);
+        // Update the counter values of this phase
+        phase.update(new_snapshot - process->snapshot_phase);
+        // Update the last checkpoint of this process (for phase detection only)
+        process->snapshot_phase = new_snapshot;
+    });
+    // TODO Maybe we should have target time instead of host time here?
+    // Update process phase history
     process->phase_history.push_back({window.timestamp, phase.id});
 
     if (res == Phase::not_found) {
