@@ -44,38 +44,6 @@ void Phase::update_snapshot(VPMUSnapshot& process_snapshot)
     });
 }
 
-inline void Window::update_vector(uint64_t pc)
-{
-    // Get the hased index for current pc address
-    uint64_t hashed_key = vpmu::math::simple_hash(pc / 4, branch_vector.size());
-    branch_vector[hashed_key]++;
-}
-
-inline void Window::update_counter(const ExtraTBInfo* extra_tb_info)
-{
-    counters.insn += extra_tb_info->counters.total;
-    counters.load += extra_tb_info->counters.load;
-    counters.store += extra_tb_info->counters.store;
-    counters.alu += extra_tb_info->counters.alu;
-    counters.bit += extra_tb_info->counters.bit;
-    counters.branch += extra_tb_info->has_branch;
-}
-
-inline void Window::update(const ExtraTBInfo* extra_tb_info)
-{
-    uint64_t pc     = extra_tb_info->start_addr;
-    uint64_t pc_end = pc + extra_tb_info->counters.size_bytes;
-    // Update timestamp if this window is cleared before,
-    // which means this is a new window.
-    if (timestamp == 0) timestamp = vpmu_get_timestamp_us();
-    update_vector(pc);
-    update_counter(extra_tb_info);
-    instruction_count += extra_tb_info->counters.total;
-
-    Pair_beg_end key = {pc, pc_end};
-    code_walk_count[key] += 1;
-}
-
 static void
 update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
 {
