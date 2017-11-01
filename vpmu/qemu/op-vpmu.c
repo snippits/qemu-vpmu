@@ -139,9 +139,6 @@ void HELPER(vpmu_accumulate_tb_info)(CPUArchState *env, void *opaque)
         et_check_function_call(
           env, cs->cpu_index, (mode == VPMU_ARCH_MODE_USR), extra_tb_info->start_addr);
     }
-    if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
-        phasedet_ref((mode == VPMU_ARCH_MODE_USR), extra_tb_info, vpmu_arch_sp, core_id);
-    } // End of VPMU_PHASEDET
 #endif
 
     // Exit if VPMU is not enabled, must be done after event tracing functions
@@ -203,7 +200,19 @@ void HELPER(vpmu_accumulate_tb_info)(CPUArchState *env, void *opaque)
         }
     } // End of VPMU_BRANCH_SIM
 
+#ifdef CONFIG_VPMU_SET
+    // This must be the last in order to make the above references effective
+    if (vpmu_model_has(VPMU_PHASEDET, VPMU)) {
+        phasedet_ref((VPMU.core[core_id].last_tb_mode == VPMU_ARCH_MODE_USR),
+                     (mode == VPMU_ARCH_MODE_USR),
+                     extra_tb_info,
+                     vpmu_arch_sp,
+                     core_id);
+    } // End of VPMU_PHASEDET
+#endif
+
     // Update per-core state info
+    VPMU.core[core_id].last_tb_mode = mode;
     VPMU.core[core_id].last_tb_pc =
       extra_tb_info->start_addr + extra_tb_info->counters.size_bytes;
     VPMU.core[core_id].last_tb_has_branch = extra_tb_info->has_branch;

@@ -18,42 +18,71 @@ extern "C" {
 class Phase
 {
 public:
+    static Phase not_found;
+
+public:
     Phase() {}
 
     Phase(uint64_t id) { this->id = id; }
 
     Phase(Window window)
     {
-        set_vector(window.branch_vector);
+        branch_vector = window.branch_vector;
+        n_branch_vector.resize(branch_vector.size());
+        vpmu::math::normalize(branch_vector, n_branch_vector);
         // Set up other configurations
         num_windows     = 1;
         code_walk_count = window.code_walk_count;
         counters        = window.counters;
     }
 
-    void set_vector(const std::valarray<double>& vec)
+    // Default comparison is pointer comparison
+    inline bool operator==(const Phase& rhs) { return (this == &rhs); }
+    inline bool operator!=(const Phase& rhs) { return !(this == &rhs); }
+
+    void update(const Window& window)
     {
-        branch_vector   = vec;
-        n_branch_vector = branch_vector;
-        vpmu::math::normalize(n_branch_vector);
+        update_bbv(window.branch_vector);
+        update_counter(window.counters);
+        update_walk_count(window.code_walk_count);
+        num_windows++;
     }
 
-    void update_vector(const std::valarray<double>& vec)
+    void update(const Phase& phase)
+    {
+        update_bbv(phase.get_vector());
+        update_counter(phase.get_counters());
+        update_walk_count(phase.code_walk_count);
+        snapshot += phase.snapshot;
+        num_windows += phase.get_num_windows();
+    }
+
+    void update(VPMUSnapshot& snapshot);
+
+    uint64_t                     get_insn_count(void) const { return counters.insn; }
+    uint64_t                     get_num_windows(void) const { return num_windows; }
+    const GPUFriendnessCounter&  get_counters(void) const { return counters; }
+    const std::valarray<double>& get_vector(void) const { return branch_vector; }
+    const std::valarray<double>& get_normalized_vector(void) const
+    {
+        return n_branch_vector;
+    }
+
+    nlohmann::json json_counters(void);
+    nlohmann::json json_fingerprint(void);
+
+private:
+    inline void update_bbv(const std::valarray<double>& vec)
     {
         if (branch_vector.size() == 0) { // This was not initialized before
-            set_vector(vec);
+            branch_vector.resize(vec.size());
+            n_branch_vector.resize(vec.size());
         }
-        if (vec.size() != branch_vector.size()) {
-            ERR_MSG("Vector size of phase and input does not match\n");
-            return;
-        }
-        for (int i = 0; i < branch_vector.size(); i++) {
-            branch_vector[i] += vec[i];
-        }
+        branch_vector += vec;
         vpmu::math::normalize(branch_vector, n_branch_vector);
     }
 
-    void update_counter(GPUFriendnessCounter w_counter)
+    inline void update_counter(const GPUFriendnessCounter w_counter)
     {
         counters.insn += w_counter.insn;
         counters.load += w_counter.load;
@@ -63,54 +92,17 @@ public:
         counters.branch += w_counter.branch;
     }
 
-    uint64_t get_insn_count(void) { return counters.insn; }
-
-    void update_walk_count(std::map<Pair_beg_end, uint32_t>& new_walk_count)
+    inline void update_walk_count(const std::map<Pair_beg_end, uint32_t>& walk_count)
     {
-        for (auto&& wc : new_walk_count) {
+        for (auto&& wc : walk_count) {
             code_walk_count[wc.first] += wc.second;
         }
     }
 
-    void update(Window& window)
-    {
-        update_vector(window.branch_vector);
-        update_counter(window.counters);
-        update_walk_count(window.code_walk_count);
-        num_windows++;
-    }
-
-    void update(Phase& phase)
-    {
-        update_vector(phase.get_vector());
-        update_counter(phase.get_counters());
-        update_walk_count(phase.code_walk_count);
-        snapshot += phase.snapshot;
-        num_windows += phase.get_num_windows();
-    }
-
-    const uint64_t&              get_num_windows(void) const { return num_windows; }
-    const GPUFriendnessCounter&  get_counters(void) const { return counters; }
-    const std::valarray<double>& get_vector(void) const { return branch_vector; }
-    const std::valarray<double>& get_normalized_vector(void) const
-    {
-        return n_branch_vector;
-    }
-
-    // Default comparison is pointer comparison
-    inline bool operator==(const Phase& rhs) { return (this == &rhs); }
-    inline bool operator!=(const Phase& rhs) { return !(this == &rhs); }
-
-    static Phase not_found;
-
-    void update_snapshot(VPMUSnapshot& process_snapshot);
-
-    nlohmann::json json_counters(void);
-    nlohmann::json json_fingerprint(void);
-
 private:
-    // Eigen::VectorXd branch_vector;
-    std::valarray<double> branch_vector   = {};
+    /// The basic block vector. (Perhapse using Eigen::VectorXd?)
+    std::valarray<double> branch_vector = {};
+    /// The normalized basic block vector. (Perhapse using Eigen::VectorXd?)
     std::valarray<double> n_branch_vector = {};
     /// The number of windows included in this phase
     uint64_t num_windows = 0;

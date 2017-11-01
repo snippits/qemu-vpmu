@@ -51,6 +51,7 @@ typedef struct VPMU_Struct {
         uint64_t current_pid;        // Current pid on the core
         uint64_t last_tb_pc;         // Remember PC for each core
         bool     last_tb_has_branch; // Remember branch of each core
+        uint32_t last_tb_mode;       // Remember CPU mode of each core
         uint64_t padding[8];         // 8 words of padding
     } core[VPMU_MAX_CPU_CORES];
 

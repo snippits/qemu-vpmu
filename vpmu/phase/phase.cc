@@ -34,94 +34,79 @@ nlohmann::json Phase::json_fingerprint(void)
     return j;
 }
 
-void Phase::update_snapshot(VPMUSnapshot& process_snapshot)
+void Phase::update(VPMUSnapshot& snapshot)
 {
     uint64_t core_id = vpmu::get_core_id();
-    VPMU_async([this, core_id, &process_snapshot]() {
+    VPMU_async([this, core_id, &snapshot]() {
         VPMUSnapshot new_snapshot(true, core_id);
-        this->snapshot += new_snapshot - process_snapshot;
-        process_snapshot = new_snapshot;
+        this->snapshot += new_snapshot - snapshot;
+        snapshot = new_snapshot;
     });
 }
 
-static void
-update_phase(uint64_t pc, std::shared_ptr<ET_Process>& process, Window& window)
+static void update_phase(std::shared_ptr<ET_Process>& process, const Window& window)
 {
     // Classify the window to phase
-    auto& phase = phase_detect.classify(process->phase_list, window);
-    if (phase == Phase::not_found) {
-        uint64_t phase_num = process->next_phase_id();
-        // Add a new phase to the process
-        DBG(
-          STR_PHASE "pid: %" PRIu64 ", name: %s\n", process->pid, process->name.c_str());
-        DBG(STR_PHASE "Create new phase id %zu @ PC: %p and Timestamp: %lu ms\n",
-            phase_num,
-            (void*)pc,
+    auto& res = phase_detect.classify(process->phase_list, window);
+    if (res == Phase::not_found) {
+        process->phase_list.push_back(process->next_phase_id());
+    }
+    // Referencing the existing or the newly created phase
+    auto& phase = (res != Phase::not_found) ? res : process->phase_list.back();
+
+    phase.update(window);
+    phase.update(process->snapshot_phase);
+    process->phase_history.push_back({window.timestamp, phase.id});
+
+    if (res == Phase::not_found) {
+        DBG(STR_PHASE "pid: %" PRIu64 ", name: %s\n" STR_PHASE
+                      "Create new phase id %zu @ Timestamp: %lu ms\n",
+            process->pid,
+            process->name.c_str(),
+            phase.id,
             window.timestamp / 1000);
-        // Construct the instance inside vector (save time)
-        process->phase_list.push_back(window);
-        // We must update the snapshot to get the correct result
-        auto&& new_phase = process->phase_list.back();
-        new_phase.update_snapshot(process->snapshot_phase);
-        new_phase.id = phase_num;
-        process->phase_history.push_back({window.timestamp, phase_num});
-    } else {
-        // DBG(STR_PHASE "Update phase id %zu\n", phase.id);
-        phase.update(window);
-        phase.update_snapshot(process->snapshot_phase);
-        process->phase_history.push_back({window.timestamp, phase.id});
     }
 }
 
-static void
-update_window(uint64_t pid, const ExtraTBInfo* extra_tb_info, uint64_t stack_ptr)
+static inline bool update_window(Window& window, const ExtraTBInfo* extra_tb_info)
 {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-    static uint64_t window_cnt = 0;
-#endif
-    uint64_t pc = extra_tb_info->start_addr;
-
-    auto process = event_tracer.find_process(pid);
-    if (process != nullptr) {
-        // The process is being traced. Do phase detection.
-        auto& current_window = process->current_window;
-        // uint64_t last_sp        = process->stack_ptr;
-        current_window.update(extra_tb_info);
-
-        if (current_window.instruction_count > phase_detect.get_window_size()) {
-#ifdef CONFIG_VPMU_DEBUG_MSG
-            window_cnt++;
-            if (window_cnt % 100 == 0)
-                DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n", window_cnt);
-#endif
-            update_phase(pc, process, current_window);
-            // Reset all counters and vars of current window
-            current_window.reset();
-        }
-        process->stack_ptr = stack_ptr;
+    window.update(extra_tb_info);
+    if (window.instruction_count > phase_detect.get_window_size()) {
+        return true;
     }
+    return false;
 }
 
-void phasedet_ref(bool               user_mode,
+void phasedet_ref(bool               last_tb_user_mode,
+                  bool               user_mode,
                   const ExtraTBInfo* extra_tb_info,
                   uint64_t           stack_ptr,
                   uint64_t           core_id)
 {
-    // TODO This is not good for coding style
-    static bool last_tb_is_user[VPMU_MAX_CPU_CORES] = {false};
-    if (!user_mode) {
-        // kernel_phasedet_ref((last_tb_is_user == true), extra_tb_info);
-    } else {
-        uint64_t pid = VPMU.core[vpmu::get_core_id()].current_pid;
-        if (last_tb_is_user[core_id] == false) {
-            // Kernel IRQ to User mode
-            // auto process = event_tracer.find_process((uint64_t)0);
-            // if (process != nullptr)
-            //    process->phase_history.push_back([vpmu_get_timestamp_us(), -1]);
-        }
-        update_window(pid, extra_tb_info, stack_ptr);
-    }
-    last_tb_is_user[core_id] = user_mode;
+#ifdef CONFIG_VPMU_DEBUG_MSG
+    static uint64_t window_cnt = 0;
+#endif
 
+    uint64_t pid     = (user_mode) ? VPMU.core[vpmu::get_core_id()].current_pid : 0;
+    auto     process = event_tracer.find_process(pid);
+    if (process != nullptr) {
+        if (!user_mode) return; // Currently we do not support kernel mode phase profiling
+        if (user_mode && !last_tb_user_mode) {
+            // Change from kernel mode to user mode
+        } else if (!user_mode && last_tb_user_mode) {
+            // Change from user mode to kernel mode
+        }
+        bool flag_w = update_window(process->current_window, extra_tb_info);
+        if (flag_w) update_phase(process, process->current_window);
+        if (flag_w) process->current_window.reset();
+        process->stack_ptr = stack_ptr;
+#ifdef CONFIG_VPMU_DEBUG_MSG
+        if (flag_w) {
+            window_cnt++;
+            if (window_cnt % 100 == 0)
+                DBG(STR_PHASE "Timestamp (# windows): %'9" PRIu64 "\n", window_cnt);
+        }
+#endif
+    }
     return;
 }
