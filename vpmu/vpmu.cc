@@ -365,8 +365,8 @@ void disable_QEMU_log()
 
 void VPMU_init(int argc, char **argv)
 {
-    char config_file[1024] = {0};
-    char kernel_file[1024] = {0};
+    char config_file[1024]  = {0};
+    char kernel_file[1024]  = {0};
     char console_path[1024] = {0};
 
     global_argv_0 = argv[0];
