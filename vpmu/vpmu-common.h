@@ -37,4 +37,15 @@
 #define KERNEL_VERSION(a, b, c) ((a << 16) + (b << 8) + (c))
 #endif
 
+#if defined(__clang__)
+/* Clang/LLVM. ---------------------------------------------- */
+#define _PragmaVectorize _Pragma("clang loop vectorize(enable)")
+#elif defined(__ICC) || defined(__INTEL_COMPILER)
+/* Intel ICC/ICPC. ------------------------------------------ */
+#define _PragmaVectorize _Pragma("vector aligned")
+#elif defined(__GNUC__)
+/* GNU GCC/G++. --------------------------------------------- */
+#define _PragmaVectorize _Pragma("GCC ivdep")
+#endif
+
 #endif
