@@ -10,6 +10,20 @@ extern "C" {
 
 #define LOG_FATAL(...) log_fatal(__FILENAME__, __LINE__, ##__VA_ARGS__);
 
+#define LOG_NOT_IMPL() ERR_MSG("%s is not implemented", __func__)
+#define LOG_NOT_IMPL_RET(ret)                                                            \
+    do {                                                                                 \
+        ERR_MSG("%s is not implemented", __func__);                                      \
+        return ret;                                                                      \
+    } while (0)
+
+#define LOG_FATAL_NOT_IMPL() LOG_FATAL("%s is not implemented", __func__)
+#define LOG_FATAL_NOT_IMPL_RET(ret)                                                      \
+    do {                                                                                 \
+        LOG_FATAL("%s is not implemented", __func__);                                    \
+        return ret;                                                                      \
+    } while (0)
+
 class VPMULog
 {
 public:
@@ -26,7 +40,7 @@ public:
     }
 
     std::string get_name(void) { return name; }
-    void set_name(const char *module_name) { set_name(std::string(module_name)); }
+    void        set_name(const char *module_name) { set_name(std::string(module_name)); }
 
 protected:
     std::string name, spaces;
