@@ -147,21 +147,6 @@ namespace utils
         CONSOLE_LOG(BASH_COLOR_NONE "\n\n"); // Terminate Color Code
     }
 
-    uint64_t time_difference(struct timespec *t1, struct timespec *t2)
-    {
-        uint64_t period = 0;
-
-        // Never return big positive number when using unsigned
-        if (t1->tv_sec > t2->tv_sec
-            || (t1->tv_sec == t2->tv_sec && t1->tv_nsec >= t2->tv_nsec)) {
-            return 0;
-        }
-        period = t2->tv_nsec - t1->tv_nsec;
-        period += (t2->tv_sec - t1->tv_sec) * 1000000000;
-
-        return period;
-    }
-
     nlohmann::json load_json(const char *vpmu_config_file)
     {
         // Read file in
@@ -318,20 +303,23 @@ namespace host
 {
     uint64_t wall_clock_period(void)
     {
-        return vpmu::utils::time_difference(&VPMU.start_time, &VPMU.end_time);
+        int64_t t =
+          vpmu::utils::time_difference(&VPMU.enabled_time_t, &VPMU.disabled_time_t);
+        if (t < 0) return 0;
+        return t;
     }
 
-    uint64_t get_timestamp_ns(void)
+    uint64_t timestamp_ns(void)
     {
         struct timespec t_now;
         clock_gettime(CLOCK_REALTIME, &t_now);
 
-        return vpmu::utils::time_difference(&VPMU.program_start_time, &t_now);
+        return vpmu::utils::time_difference(&VPMU.start_time, &t_now);
     }
 
-    uint64_t get_timestamp_us(void) { return get_timestamp_ns() / 1000; }
+    uint64_t timestamp_us(void) { return timestamp_ns() / 1000; }
 
-    uint64_t get_timestamp_ms(void) { return get_timestamp_ns() / 1000000; }
+    uint64_t timestamp_ms(void) { return timestamp_us() / 1000; }
 
 } // End of namespace vpmu::host
 

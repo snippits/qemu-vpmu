@@ -76,7 +76,12 @@ namespace utils
     void name_thread(std::string new_name);
     void name_thread(std::thread &t, std::string new_name);
 
-    uint64_t time_difference(struct timespec *t1, struct timespec *t2);
+    inline int64_t time_difference(struct timespec *t1, struct timespec *t2)
+    {
+        uint64_t start_t = t1->tv_nsec + t1->tv_sec * 1e9;
+        uint64_t end_t   = t2->tv_nsec + t2->tv_sec * 1e9;
+        return end_t - start_t;
+    }
 
     inline void json_check_or_exit(nlohmann::json config, std::string field)
     {
@@ -153,9 +158,9 @@ namespace file
 namespace host
 {
     uint64_t wall_clock_period(void);
-    uint64_t get_timestamp_ns(void);
-    uint64_t get_timestamp_us(void);
-    uint64_t get_timestamp_ms(void);
+    uint64_t timestamp_ns(void);
+    uint64_t timestamp_us(void);
+    uint64_t timestamp_ms(void);
 } // End of namespace vpmu::host
 
 namespace target

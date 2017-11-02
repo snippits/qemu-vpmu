@@ -224,13 +224,6 @@ uint64_t toc(struct timespec *t1, struct timespec *t2)
     return h_time_difference(t1, t2);
 }
 
-uint64_t vpmu_get_timestamp_us(void)
-{
-    struct timespec t_now;
-    clock_gettime(CLOCK_REALTIME, &t_now);
-    return h_time_difference(&VPMU.program_start_time, &t_now) / 1000;
-}
-
 uint8_t *vpmu_read_ptr_from_guest(void *cs, uint64_t addr, uint64_t offset)
 {
     return (uint8_t *)vpmu_tlb_get_host_addr((void *)cs, (uint64_t)addr) + offset;

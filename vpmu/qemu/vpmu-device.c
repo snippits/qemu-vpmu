@@ -104,12 +104,12 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         VPMU.timing_model = value | VPMU_WHOLE_SYSTEM;
         vpmu_print_status(&VPMU);
 
-        tic(&(VPMU.start_time));
+        tic(&(VPMU.enabled_time_t));
         break;
     case VPMU_MMAP_DISABLE:
         VPMU.enabled = 0;
         VPMU_sync();
-        toc(&(VPMU.start_time), &(VPMU.end_time));
+        toc(&(VPMU.enabled_time_t), &(VPMU.disabled_time_t));
 
 #ifdef CONFIG_VPMU_VFP
         // TODO Finish the VFP tracking
@@ -118,12 +118,12 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         break;
     case VPMU_MMAP_REPORT:
         VPMU_sync();
-        toc(&(VPMU.start_time), &(VPMU.end_time));
+        toc(&(VPMU.enabled_time_t), &(VPMU.disabled_time_t));
         VPMU_dump_result();
         break;
     case VPMU_MMAP_RESET:
         VPMU_reset();
-        tic(&(VPMU.start_time));
+        tic(&(VPMU.enabled_time_t));
         break;
 #ifdef CONFIG_VPMU_SET
     case VPMU_MMAP_ADD_PROC_NAME:
@@ -210,7 +210,9 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
 }
 
 static const MemoryRegionOps vpmu_dev_ops = {
-  .read = special_read, .write = special_write, .endianness = DEVICE_NATIVE_ENDIAN,
+  .read       = special_read,
+  .write      = special_write,
+  .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void start_vpmu_tick(vpmu_state_t *status)
@@ -260,9 +262,7 @@ void vpmu_dev_init(uint32_t base)
     sysbus_create_simple(VPMU_DEVICE_NAME, base, NULL);
 }
 
-static void vpmu_dev_reset(DeviceState *dev)
-{
-}
+static void vpmu_dev_reset(DeviceState *dev) {}
 
 static void vpmu_dev_instance_init(Object *obj)
 {

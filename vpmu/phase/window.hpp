@@ -8,6 +8,7 @@
 #include "beg_eng_pair.hpp" // Pair_beg_end
 #include "phase-common.hpp" // Common definitions of phase detection
 #include "vpmu.hpp"         // Include types and basic headers
+#include "vpmu-utils.hpp"   // vpmu::host::timestamp_us()
 
 class Window
 {
@@ -22,7 +23,7 @@ public:
         // Update timestamp if this window is cleared before,
         // which means this is a new window.
         if (flag_reset) {
-            this->timestamp = vpmu_get_timestamp_us();
+            this->timestamp = vpmu::host::timestamp_us();
         }
         flag_reset = false;
         update_bbv(pc);

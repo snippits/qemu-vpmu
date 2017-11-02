@@ -7,6 +7,7 @@ extern "C" {
 #include "phase/phase.hpp"   // Phase class
 #include "json.hpp"          // nlohmann::json
 #include "vpmu-device.h"     // VPMU related definitions
+#include "vpmu-utils.hpp"    // vpmu::host::timestamp_us()
 
 // The global variable storing offsets of kernel struct types
 LinuxStructOffset g_linux_offset;
@@ -303,7 +304,7 @@ void et_register_callbacks_kernel_events(void)
                 prev_process->prof_counters += new_snapshot - prev_process->snapshot;
             });
             // TODO Maybe we should have target time instead of host time here?
-            prev_process->phase_history.push_back({vpmu_get_timestamp_us(), 0});
+            prev_process->phase_history.push_back({vpmu::host::timestamp_us(), 0});
             prev_process->is_running = false;
         }
 

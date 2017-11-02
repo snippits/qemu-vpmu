@@ -373,7 +373,8 @@ void VPMU_init(int argc, char **argv)
     // Initialize the path to empty string
     VPMU.output_path[0] = 0;
 
-    tic(&VPMU.program_start_time);
+    // Record the start time of the whole process
+    tic(&VPMU.start_time);
 
     // Load envs as first attempts
     vpmu::utils::load_linux_env(config_file, "VPMU_CONFIG_FILE");
