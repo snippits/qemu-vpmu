@@ -365,6 +365,10 @@ namespace target
                + memory_time_ns() + io_time_ns()              // Out-of-CPU time
                + VPMU.cpu_idle_time_ns;                       // Extra time
     }
+
+    uint64_t time_us(void) { return time_ns() / 1000; }
+    uint64_t time_ms(void) { return time_us() / 1000; }
+
 } // End of namespace vpmu::target
 
 } // End of namespace vpmu

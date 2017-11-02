@@ -178,6 +178,8 @@ namespace target
     uint64_t memory_time_ns(void);
     uint64_t io_time_ns(void);
     uint64_t time_ns(void);
+    uint64_t time_us(void);
+    uint64_t time_ms(void);
 } // End of namespace vpmu::target
 
 } // End of namespace vpmu
