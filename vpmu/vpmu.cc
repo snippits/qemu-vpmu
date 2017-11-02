@@ -183,26 +183,24 @@ void VPMU_async(std::function<void(void)> task)
     // Lock here to ensure the integrity of calling issue_sync() and enqueue_static().
     // This keeps the order of sync packets and the order of worker queue identical.
     std::lock_guard<std::mutex> lock(timing_thread_pool_mutex);
+    static uint64_t async_counter = 0;
 
+    ++async_counter;
     // Send a sync packet and wait the sync events in the thread pool
     // worker queue so that everything are serialized in order.
     for (auto s : vpmu_streams) {
-        s->issue_sync();
+        s->issue_sync(async_counter);
     }
 
-    timing_thread_pool.enqueue_static([task]() {
+    timing_thread_pool.enqueue_static([task, id = async_counter]() {
         // Wait till the sync event happened
         for (auto s : vpmu_streams) {
-            s->wait_sync();
+            s->wait_sync(id);
         }
         // Exit directly when QEMU is going to be terminated.
         if (VPMU.qemu_terminate_flag) return;
         // Do the task
         task();
-        // Clear the sync flag for the next sync event.
-        for (auto s : vpmu_streams) {
-            s->reset_sync_flags();
-        }
     });
 }
 

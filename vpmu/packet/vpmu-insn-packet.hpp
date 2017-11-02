@@ -219,8 +219,6 @@ public:
     sem_t job_semaphore;
     // Timing simulator model information that VPMU required for some functions
     Model model;
-    // cache counter information
-    Data data;
     // Synchronization Counter to identify the serial number of synchronized data
     volatile uint32_t sync_counter;
     // Synchronization flag to indicate whether it's done (true/false)

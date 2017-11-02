@@ -94,10 +94,13 @@ public:
         send(ref);
     }
 
-    inline void send_sync(void)
+    inline void send_sync(uint64_t id = 0)
     {
         Reference ref;
-        ref.type = VPMU_PACKET_SYNC_DATA;
+        CommandPacket* view = (CommandPacket*)(&ref);
+
+        view->type = VPMU_PACKET_SYNC_DATA;
+        view->id = id;
         send(ref);
     }
 
@@ -151,10 +154,12 @@ public:
     }
 
     // Get the results from a timing simulator
-    inline Data get_data(int n)
+    inline Data get_data(int n, int idx = -1)
     {
         if (pointer_safety_check(n) == false) return {};
-        return vpmu_stream->common[n].data;
+        if (idx < 0) idx = vpmu_stream->common[n].sync_counter % 32;
+        // return vpmu_stream->common[n].data;
+        return vpmu_stream->sync_data[n][idx];
     }
     // Get model configuration back from timing a simulator
     Model get_model(int n)
@@ -177,13 +182,14 @@ public:
         }
     }
 
-    bool timed_wait_sync_flag(uint64_t mili_sec)
+    // TODO The original sync_flag should be fixed for boot time checks
+    bool timed_wait_sync_flag(uint64_t mili_sec, uint64_t id = 0)
     {
         for (int i = 0; i < mili_sec * 1000; i++) {
             int flag_cnt = 0;
             // Wait all forked process to be initialized
             for (int i = 0; i < num_workers; i++) {
-                if (vpmu_stream->common[i].synced_flag) flag_cnt++;
+                if (vpmu_stream->common[i].sync_counter >= id) flag_cnt++;
             }
             if (flag_cnt == num_workers) {
                 // All synced
@@ -206,19 +212,24 @@ protected:
         int id = sim->id;
 
         for (auto& ref : refs) {
+            CommandPacket* view = (CommandPacket*)&ref;
             auto& stream_common = vpmu_stream->common[id];
             switch (ref.type) {
+            case VPMU_PACKET_BARRIER:
             case VPMU_PACKET_SYNC_DATA:
                 // Wait for the last signal to be cleared
-                while (stream_common.synced_flag)
-                    ;
-                stream_common.sync_counter++;
-                stream_common.data = mpark::get<Data>(sim->packet_processor(id, ref));
+                //while (stream_common.synced_flag)
+                //    ;
+
+                // Never exceed the packet ID
+                if (stream_common.sync_counter < view->id) stream_common.sync_counter++;
+                vpmu_stream->sync_data[id][stream_common.sync_counter % 32] =
+                  sim->packet_processor(id, ref);
+
+                // stream_common.data = mpark::get<Data>(sim->packet_processor(id, ref));
+                // stream_common.data = sim->packet_processor(id, ref);
                 // Set synced_flag to tell master it's done
-                stream_common.synced_flag = true;
-                break;
-            case VPMU_PACKET_BARRIER:
-                stream_common.data = mpark::get<Data>(sim->packet_processor(id, ref));
+                //stream_common.synced_flag = true;
                 break;
             case VPMU_PACKET_DUMP_INFO:
                 this->wait_token(id);
@@ -226,6 +237,7 @@ protected:
                 this->pass_token(id);
                 break;
             default:
+                //TODO test optional performance on all return conditions
                 if (ref.type & VPMU_PACKET_HOT)
                     sim->hot_packet_processor(id, ref);
                 else

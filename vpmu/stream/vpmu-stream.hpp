@@ -27,9 +27,9 @@ public:
     virtual bool build(void) { LOG_FATAL_NOT_IMPL_RET(false); }
     virtual void destroy(void) { LOG_FATAL_NOT_IMPL(); }
     virtual void reset(void) { LOG_FATAL_NOT_IMPL(); }
-    virtual void issue_sync(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void issue_sync(uint64_t) { LOG_FATAL_NOT_IMPL(); }
     virtual void reset_sync_flags(void) { LOG_FATAL_NOT_IMPL(); }
-    virtual void wait_sync(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void wait_sync(uint64_t) { LOG_FATAL_NOT_IMPL(); }
     virtual void sync_none_blocking(void) { LOG_FATAL_NOT_IMPL(); }
     virtual void dump(void) { LOG_FATAL_NOT_IMPL(); }
 };
@@ -130,22 +130,22 @@ public:
         impl->send_reset();
     }
 
-    void issue_sync(void) override
+    void issue_sync(uint64_t id = 0) override
     {
         // Basic safety check
         if (impl == nullptr) return;
         // lock is automatically released when lock goes out of scope
         std::lock_guard<std::mutex> lock(stream_mutex);
         clean_out_local_buff();
-        impl->send_sync();
+        impl->send_sync(id);
     }
 
-    void wait_sync(void) override
+    void wait_sync(uint64_t id = 0) override
     {
         // Basic safety check
         if (impl == nullptr) return;
         // log_debug("sync");
-        if (impl->timed_wait_sync_flag(5000) == false) {
+        if (impl->timed_wait_sync_flag(5000, id) == false) {
             LOG_FATAL("Perhaps some simulator are down!!");
         }
     }
@@ -221,7 +221,7 @@ public:
     inline Model get_model(void) { return impl->get_model(0); }
     inline Model get_model(int n) { return impl->get_model(n); }
 
-    inline Data get_data(int n) { return impl->get_data(n); }
+    inline Data get_data(int n, int idx = -1) { return impl->get_data(n, idx); }
     inline Data get_data(void) { return impl->get_data(0); }
 
 protected:
