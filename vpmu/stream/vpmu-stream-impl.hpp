@@ -217,6 +217,9 @@ protected:
                 // Set synced_flag to tell master it's done
                 stream_common.synced_flag = true;
                 break;
+            case VPMU_PACKET_BARRIER:
+                stream_common.data = mpark::get<Data>(sim->packet_processor(id, ref));
+                break;
             case VPMU_PACKET_DUMP_INFO:
                 this->wait_token(id);
                 sim->packet_processor(id, ref);
