@@ -190,7 +190,7 @@ public:
 
     /// @brief a simple helper for reading the default (the first one) reader.
     /// @return The last element
-    inline ElementType pop(void) { this->pop(0); }
+    inline ElementType pop(void) { return this->pop(0); }
 
     /// @brief insert a number of items into this ring buffer
     /// @param[in] items The pointer to the elements to be inserted
