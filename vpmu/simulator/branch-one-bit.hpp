@@ -50,7 +50,7 @@ public:
     /// __ATTENTION!__ Simulator need to tell VPMU required information
     /// by setting the input argument - model.
     /// @param[out] t The model configuration returned to VPMU.
-    void build(VPMU_Branch::Model& model) override
+    VPMU_Branch::Model build(void) override
     {
         log_debug("Initializing");
 
@@ -59,8 +59,8 @@ public:
         strncpy(branch_model.name, model_name.c_str(), sizeof(branch_model.name));
         branch_model.latency = vpmu::utils::get_json<int>(json_config, "miss latency");
 
-        model = branch_model;
         log_debug("Initialized");
+        return branch_model;
     }
 
     /// @brief The main function of each timing simulator for processing traces.
@@ -85,9 +85,7 @@ public:
     /// @param[in] ref The input packet, it could be either control/data packet.
     /// The state bits of ref are and should be zeros.
     /// @param[out] data The variable for synchronizing data back to VPMU.
-    void packet_processor(int                           id,
-                          const VPMU_Branch::Reference& ref,
-                          VPMU_Branch::Data&            data) override
+    RetStatus packet_processor(int id, const VPMU_Branch::Reference& ref) override
     {
 #ifdef CONFIG_VPMU_DEBUG_MSG
         debug_packet_num_cnt++;
@@ -102,7 +100,7 @@ public:
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
         case VPMU_PACKET_SYNC_DATA:
-            data = branch_data;
+            return branch_data;
             break;
         case VPMU_PACKET_DUMP_INFO:
             CONSOLE_LOG("  [%d] type : One Bit Predictor\n", id);
@@ -118,6 +116,8 @@ public:
         default:
             LOG_FATAL("Unexpected packet");
         }
+
+        return true;
     }
 
 private:

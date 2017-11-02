@@ -646,7 +646,7 @@ int CPU_CortexA9::Translation::_analyze_vfp_ticks(uint32_t insn, uint64_t vfp_ve
             }
             if ((insn & 0x01200000) == 0x01000000) {
                 /* Single load/store */
-                offset                              = (insn & 0xff) << 2;
+                offset = (insn & 0xff) << 2;
                 if ((insn & (1 << 23)) == 0) offset = -offset;
                 if (insn & (1 << 20)) {
                     // vfp_count[ARM_VFP_INSTRUCTION_FLDD + (1-dp)]+= 1;//tianman
@@ -2450,7 +2450,7 @@ int CPU_CortexA9::Translation::_interlock_use(int reg) // lockå’Œinterlock_baseç
     int delay = 0;
 
     if (reg >= 0) {
-        delay                = interlocks[reg] - interlock_base;
+        delay = interlocks[reg] - interlock_base;
         if (delay < 0) delay = 0;
     }
     return delay;
@@ -2890,7 +2890,7 @@ int CPU_CortexA9::Translation::_get_insn_ticks_thumb(uint32_t insn)
         return 0;
 }
 
-void CPU_CortexA9::build(VPMU_Insn::Model& model)
+VPMU_Insn::Model CPU_CortexA9::build()
 {
     log_debug("Initializing");
 
@@ -2901,14 +2901,13 @@ void CPU_CortexA9::build(VPMU_Insn::Model& model)
     insn_model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
     insn_model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
 
-    model = insn_model;
     translator.build(json_config);
     log_debug("Initialized");
+    return insn_model;
 }
 
-void CPU_CortexA9::packet_processor(int                         id,
-                                    const VPMU_Insn::Reference& ref,
-                                    VPMU_Insn::Data&            data)
+CPU_CortexA9::RetStatus CPU_CortexA9::packet_processor(int                         id,
+                                                       const VPMU_Insn::Reference& ref)
 {
 #ifdef CONFIG_VPMU_DEBUG_MSG
     debug_packet_num_cnt++;
@@ -2923,7 +2922,7 @@ void CPU_CortexA9::packet_processor(int                         id,
     switch (ref.type) {
     case VPMU_PACKET_BARRIER:
     case VPMU_PACKET_SYNC_DATA:
-        data = insn_data;
+        return insn_data;
         break;
     case VPMU_PACKET_DUMP_INFO:
         CONSOLE_LOG("  [%d] type : Cortex A9\n", id);
@@ -2940,6 +2939,8 @@ void CPU_CortexA9::packet_processor(int                         id,
     default:
         LOG_FATAL("Unexpected packet");
     }
+
+    return true;
 }
 
 void CPU_CortexA9::accumulate(const VPMU_Insn::Reference& ref)

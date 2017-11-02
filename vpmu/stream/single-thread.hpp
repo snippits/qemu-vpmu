@@ -64,7 +64,7 @@ public:
             works[id]->pid = vpmu::utils::getpid();
             works[id]->tid = std::this_thread::get_id();
             works[id]->set_platform_info(vpmu_stream->platform_info);
-            works[id]->build(vpmu_stream->common[id].model);
+            vpmu_stream->common[id].model = works[id]->build();
         }
         // Register only one listener
         vpmu_stream->trace.register_reader();

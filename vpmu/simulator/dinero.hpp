@@ -469,7 +469,7 @@ public:
         }
     }
 
-    void build(VPMU_Cache::Model &model) override
+    VPMU_Cache::Model build(void) override
     {
         log_debug("Initializing");
 
@@ -503,14 +503,12 @@ public:
             ERR_MSG("Something wrong with dinero cache\n");
             exit(1);
         }
-        model = cache_model;
 
         log_debug("Initialized");
+        return cache_model;
     }
 
-    inline void packet_processor(int                          id,
-                                 const VPMU_Cache::Reference &ref,
-                                 VPMU_Cache::Data &           data) override
+    RetStatus packet_processor(int id, const VPMU_Cache::Reference &ref) override
     {
 #ifdef EXPERIMENTAL_PER_CORE_CYCLES
         static int last_core_id = -1; // Remember the core id of last packet
@@ -556,7 +554,7 @@ public:
             // the time packet processor receive the sync packet.
             // Slave can stealthily do simulations as long as it does not have a pending
             // sync job.
-            sync_cache_data(data, cache_model);
+            sync_cache_data(cache_data, cache_model);
 #ifdef EXPERIMENTAL_PER_CORE_CYCLES
             // TODO After solving the sync in data packets, this should be
             // merged into sync_cache_data function.
@@ -574,18 +572,19 @@ public:
                 cycles[PROCESSOR_CPU][core] +=
                   memory_access_counter[core] * cache_model.latency[VPMU_Cache::MEMORY];
             }
-            memcpy(data.cycles, cycles, sizeof(cycles));
+            memcpy(cache_data.cycles, cycles, sizeof(cycles));
 #endif
+            return cache_data;
             break;
         case VPMU_PACKET_DUMP_INFO:
             CONSOLE_LOG("  [%d] type : dinero\n", id);
-            vpmu::output::Cache_counters(cache_model, data);
+            vpmu::output::Cache_counters(cache_model, cache_data);
 
             break;
         case VPMU_PACKET_RESET:
-            memset(&data, 0, sizeof(VPMU_Cache::Data));
-            memset(&cache_data_snapshot, 0, sizeof(VPMU_Cache::Data));
+            memset(&cache_data, 0, sizeof(VPMU_Cache::Data));
 #ifdef EXPERIMENTAL_PER_CORE_CYCLES
+            memset(&cache_data_snapshot, 0, sizeof(VPMU_Cache::Data));
             memset(&cycles, 0, sizeof(cycles));
             memset(&icache_miss_counter, 0, sizeof(icache_miss_counter));
             memset(&dcache_miss_counter, 0, sizeof(dcache_miss_counter));
@@ -603,7 +602,7 @@ public:
         case CACHE_PACKET_INSN:
             // DBG("index=%d, %x\n", index, d4_cache_leaf[index]);
             // Ignore all packets if this configuration does not support (GPU/DSP/etc.)
-            if (unlikely(num_cores[ref.processor] == 0)) return;
+            if (unlikely(num_cores[ref.processor] == 0)) return false;
 #ifdef EXPERIMENTAL_PER_CORE_CYCLES
             // Initialize the first core id and proc id if it's not set
             if (unlikely(last_proc == -1 || last_core_id == -1)) {
@@ -616,11 +615,11 @@ public:
                 // Only accumulate when the processor or core id changes
                 // TODO This sync here will make the async callback having a wrong value
                 // (It's future feature)
-                sync_cache_data(data, cache_model);
+                sync_cache_data(cache_data, cache_model);
                 // Summarize the last transaction
-                update_snapshot(data, last_proc, last_core_id);
+                update_snapshot(cache_data, last_proc, last_core_id);
                 // Take a snapshot to record the baseline of this transaction
-                take_snapshot(data, ref.processor, ref.core);
+                take_snapshot(cache_data, ref.processor, ref.core);
             }
             last_core_id = ref.core;
             last_proc    = ref.processor;
@@ -631,11 +630,11 @@ public:
         default:
             ERR_MSG("Unexpected packet in cache simulators\n");
         }
+
+        return true;
     }
 
-    inline void hot_packet_processor(int                          id,
-                                     const VPMU_Cache::Reference &ref,
-                                     VPMU_Cache::Data &           data) override
+    RetStatus hot_packet_processor(int id, const VPMU_Cache::Reference &ref) override
     {
         int      index = 0;
         uint16_t type  = ref.type & 0xF0FF; // Remove states
@@ -650,7 +649,7 @@ public:
                     0 +                             // the offset of d-cache
                     ref.core;                       // the offset of core
 
-        if (unlikely(num_cores[ref.processor] == 0)) return;
+        if (unlikely(num_cores[ref.processor] == 0)) return false;
 
         int e_block = ((ref.addr + ref.size) - 1)
                       >> cache_model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
@@ -680,11 +679,11 @@ public:
         default:
             goto fallback;
         }
-        return;
+        return true;
 
     fallback:
         // Pass it to the default packet_processor and remove states.
-        packet_processor(id, packet_bypass(ref), data);
+        return packet_processor(id, packet_bypass(ref));
     }
 
     bool data_possibly_hit(uint64_t addr, uint32_t rw, VPMU_Cache::Model &model)
@@ -718,7 +717,12 @@ private:
     // The CPU configurations for timing model
     using VPMUSimulator::platform_info;
     VPMU_Cache::Model cache_model;
-    VPMU_Cache::Data  cache_data_snapshot = {};
+    /// The tempory data storing the data needs by this branch predictor.
+    /// In this case, the data equals to the branch data format in Snippits.
+    VPMU_Cache::Data cache_data = {};
+#ifdef EXPERIMENTAL_PER_CORE_CYCLES
+    VPMU_Cache::Data cache_data_snapshot = {};
+#endif
 
 #ifdef EXPERIMENTAL_PER_CORE_CYCLES
     // The core-dependent cycles (from private to shared caches)

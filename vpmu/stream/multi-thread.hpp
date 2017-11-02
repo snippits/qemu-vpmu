@@ -78,7 +78,7 @@ public:
                   sim->tid = std::this_thread::get_id();
                   // Initialize (build) the target simulation with its configuration
                   sim->set_platform_info(vpmu_stream->platform_info);
-                  sim->build(vpmu_stream->common[id].model);
+                  vpmu_stream->common[id].model = sim->build();
                   // Set synced_flag to tell master it's done
                   vpmu_stream->common[id].synced_flag = true;
                   log_debug("worker thread %d start", id);

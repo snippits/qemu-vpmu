@@ -2,14 +2,17 @@
 #define __VPMU_STREAM_IMPL_HPP_
 #pragma once
 
+#include <signal.h>    // Signaling header
+#include <semaphore.h> // Semaphore related header
+
 extern "C" {
 #include "vpmu-qemu.h" // VPMUPlatformInfo
 }
-#include "vpmu-sim.hpp"   // VPMUSimulator
-#include "vpmu-log.hpp"   // VPMULog
-#include "vpmu-utils.hpp" // miscellaneous functions
-#include <signal.h>       // Signaling header
-#include <semaphore.h>    // Semaphore related header
+#include "vpmu-sim.hpp"      // VPMUSimulator
+#include "vpmu-log.hpp"      // VPMULog
+#include "vpmu-utils.hpp"    // miscellaneous functions
+#include "variant.hpp"       // mpark::variant
+#include "variant-match.hpp" // mpark::match
 
 template <typename T>
 class VPMUStream_Impl : public VPMULog
@@ -20,6 +23,7 @@ public:
     using Reference = typename T::Reference;
     using Data      = typename T::Data;
     using Sim_ptr   = std::unique_ptr<VPMUSimulator<T>>;
+    using RetStatus = typename VPMUSimulator<T>::RetStatus;
     // Define ring buffer with lightening
     VPMUStream_Impl() : VPMULog("StreamImpl") {}
     VPMUStream_Impl(std::string name) : VPMULog(name) {}
@@ -202,27 +206,27 @@ protected:
         int id = sim->id;
 
         for (auto& ref : refs) {
+            auto& stream_common = vpmu_stream->common[id];
             switch (ref.type) {
             case VPMU_PACKET_SYNC_DATA:
                 // Wait for the last signal to be cleared
-                while (vpmu_stream->common[id].synced_flag)
+                while (stream_common.synced_flag)
                     ;
-                vpmu_stream->common[id].sync_counter++;
-                sim->packet_processor(id, ref, vpmu_stream->common[id].data);
+                stream_common.sync_counter++;
+                stream_common.data = mpark::get<Data>(sim->packet_processor(id, ref));
                 // Set synced_flag to tell master it's done
-                vpmu_stream->common[id].synced_flag = true;
+                stream_common.synced_flag = true;
                 break;
             case VPMU_PACKET_DUMP_INFO:
                 this->wait_token(id);
-                sim->packet_processor(id, ref, vpmu_stream->common[id].data);
+                sim->packet_processor(id, ref);
                 this->pass_token(id);
                 break;
             default:
-                if (ref.type & VPMU_PACKET_HOT) {
-                    sim->hot_packet_processor(id, ref, vpmu_stream->common[id].data);
-                } else {
-                    sim->packet_processor(id, ref, vpmu_stream->common[id].data);
-                }
+                if (ref.type & VPMU_PACKET_HOT)
+                    sim->hot_packet_processor(id, ref);
+                else
+                    sim->packet_processor(id, ref);
             }
         }
     }

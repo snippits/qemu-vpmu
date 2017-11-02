@@ -2,11 +2,15 @@
 #define __VPMU_SIM_HPP_
 #pragma once
 
+// NOTE: No boost library allowed here because this is an interface class
+
 #include <vector>             // std::vector
 #include <string>             // std::string
 #include <thread>             // std::thread
 #include <vector>             // std::forward
 #include "json.hpp"           // nlohmann::json
+#include "variant.hpp"        // mpark::variant
+#include "variant-match.hpp"  // mpark::match
 #include "vpmu-log.hpp"       // VPMULog
 #include "vpmu-packet.hpp"    // Packet types
 #include "vpmu-translate.hpp" // VPMUARMTranslate, etc.
@@ -15,6 +19,8 @@
 /// @details This class defines the interface between VPMU and each timing simulator.
 /// For instruction simulator, get_translator_handle() must be override in child class.
 /// Template T might be one of the following: VPMU_Branch, VPMU_Cache, VPMU_Insn
+/// To maintain the portability, No boost library is used, all headers are available
+/// from default compiler installation and VPMU.
 /// @see vpmu-packet.hpp
 ///
 /// The flow of initialization of each timing simulator is:
@@ -44,6 +50,9 @@ template <typename T>
 class VPMUSimulator : public VPMULog
 {
 public:
+    using RetStatus = mpark::variant<bool, int, typename T::Data>;
+
+public:
     VPMUSimulator() {}
     VPMUSimulator(const char *module_name) { set_name(module_name); }
     VPMUSimulator(std::string module_name) { set_name(module_name); }
@@ -70,13 +79,13 @@ public:
     ///
     /// __ATTENTION!__ Simulator need to tell VPMU required information
     /// by setting the input argument - model.
-    /// @param[out] t The model configuration returned to VPMU.
-    virtual void build(typename T::Model &model) {}
+    /// @return The model configuration returned to VPMU.
+    virtual typename T::Model build(void) { LOG_FATAL_NOT_IMPL_RET({}); }
 
     /// @brief This is where to release/free/deallocate resources holded by simulator.
     /// @details It's designed for making programer being aware of releasing resource.
     /// One can also rely on destructor to release resources when it's safe.
-    virtual void destroy() { LOG_FATAL("destroy function is not implemented!!"); }
+    virtual void destroy() { LOG_FATAL_NOT_IMPL(); }
 
     /// @brief The main function of each timing simulator for processing traces.
     /// @details This function would be called packet by packet.
@@ -100,11 +109,12 @@ public:
     /// @param[in] ref The input packet, it could be either control/data packet.
     /// The state bits of ref are and should be zeros.
     /// @param[out] data The variable for synchronizing data back to VPMU.
+    /// @return Return true when nothing to declare.
+    /// The return type is mpark::variant<bool, int, typename T::Data>
     /// @see Branch_One_Bit::packet_processor()
-    virtual inline void
-    packet_processor(int id, const typename T::Reference &ref, typename T::Data &data)
+    virtual RetStatus packet_processor(int id, const typename T::Reference &ref)
     {
-        LOG_FATAL("packet_processor function is not implemented!!");
+        LOG_FATAL_NOT_IMPL_RET(false);
     }
 
     /// @brief The main function of each timing simulator for processing hot traces.
@@ -119,12 +129,12 @@ public:
     /// @param[in] id The identity number to this simulator. Started from 0.
     /// @param[in] ref The input hot packet, it could be either control/data packet.
     /// The state bits of ref are set and should be checked.
-    /// @param[out] data The variable for synchronizing data back to VPMU.
+    /// @return Return true when nothing to declare.
+    /// The return type is mpark::variant<bool, int, typename T::Data>
     /// @see Cache_Dinero::hot_packet_processor()
-    virtual inline void
-    hot_packet_processor(int id, const typename T::Reference &ref, typename T::Data &data)
+    virtual RetStatus hot_packet_processor(int id, const typename T::Reference &ref)
     {
-        this->packet_processor(id, packet_bypass(ref), data);
+        return this->packet_processor(id, packet_bypass(ref));
     }
 
     /// @brief Clone the packet and remove the state bits of the packet.
@@ -151,13 +161,11 @@ public:
     /// @return VPMUArchTranslate The translator class used in QEMU binary translation.
     virtual VPMUArchTranslate &get_translator_handle(void)
     {
-        LOG_FATAL("get_translator function is not implemented!!");
-        return dummy_null_translator;
+        LOG_FATAL_NOT_IMPL_RET(dummy_null_translator);
     }
 
 protected:
-    nlohmann::json json_config; ///< The json configuration to this simulator.
-    // Use zero initializer for initial value.
+    nlohmann::json   json_config   = {}; ///< The json configuration to this simulator.
     VPMUPlatformInfo platform_info = {}; ///< The emulated platform info.
 
 public:

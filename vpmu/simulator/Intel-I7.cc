@@ -24,7 +24,7 @@ uint32_t CPU_IntelI7::Translation::_get_x86_64_ticks(uint64_t insn)
     return 1;
 }
 
-void CPU_IntelI7::build(VPMU_Insn::Model& model)
+VPMU_Insn::Model CPU_IntelI7::build(void)
 {
     log_debug("Initializing");
 
@@ -35,14 +35,13 @@ void CPU_IntelI7::build(VPMU_Insn::Model& model)
     insn_model.frequency  = vpmu::utils::get_json<int>(json_config, "frequency");
     insn_model.dual_issue = vpmu::utils::get_json<bool>(json_config, "dual_issue");
 
-    model = insn_model;
     translator.build(json_config);
     log_debug("Initialized");
+    return insn_model;
 }
 
-void CPU_IntelI7::packet_processor(int                         id,
-                                   const VPMU_Insn::Reference& ref,
-                                   VPMU_Insn::Data&            data)
+CPU_IntelI7::RetStatus CPU_IntelI7::packet_processor(int                         id,
+                                                     const VPMU_Insn::Reference& ref)
 {
 #ifdef CONFIG_VPMU_DEBUG_MSG
     debug_packet_num_cnt++;
@@ -57,7 +56,7 @@ void CPU_IntelI7::packet_processor(int                         id,
     switch (ref.type) {
     case VPMU_PACKET_BARRIER:
     case VPMU_PACKET_SYNC_DATA:
-        data = insn_data;
+        return insn_data;
         break;
     case VPMU_PACKET_DUMP_INFO:
         CONSOLE_LOG("  [%d] type : Intel I7\n", id);
@@ -73,6 +72,7 @@ void CPU_IntelI7::packet_processor(int                         id,
     default:
         LOG_FATAL("Unexpected packet");
     }
+    return true;
 }
 
 void CPU_IntelI7::accumulate(const VPMU_Insn::Reference& ref)

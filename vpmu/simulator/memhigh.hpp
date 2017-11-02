@@ -19,7 +19,7 @@ public:
 
     void destroy() override {}
 
-    void build(VPMU_Cache::Model &model) override
+    VPMU_Cache::Model build(void) override
     {
         log_debug("Initializing");
 
@@ -37,14 +37,11 @@ public:
         cache_model.d_write_alloc[VPMU_Cache::Data_Level::L1_CACHE]         = false;
         cache_model.d_write_back[VPMU_Cache::Data_Level::L1_CACHE]          = false;
 
-        model = cache_model;
-
         log_debug("Initialized");
+        return cache_model;
     }
 
-    inline void packet_processor(int                          id,
-                                 const VPMU_Cache::Reference &ref,
-                                 VPMU_Cache::Data &           data) override
+    RetStatus packet_processor(int id, const VPMU_Cache::Reference &ref) override
     {
 
 #ifdef CONFIG_VPMU_DEBUG_MSG
@@ -57,10 +54,10 @@ public:
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
         case VPMU_PACKET_SYNC_DATA:
+            return {};
             break;
         case VPMU_PACKET_DUMP_INFO:
             CONSOLE_LOG("  [%d] type : MemHigh\n", id);
-            vpmu::output::Cache_counters(cache_model, data);
 
             break;
         case VPMU_PACKET_RESET:
@@ -78,6 +75,8 @@ public:
         default:
             ERR_MSG("Unexpected packet in cache simulators\n");
         }
+
+        return true;
     }
 
 private:

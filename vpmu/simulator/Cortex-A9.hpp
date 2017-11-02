@@ -77,13 +77,11 @@ public: // VPMUSimulator
     VPMUARMTranslate& get_translator_handle(void) override { return translator; }
 
     /// @brief This is where to release/free/deallocate resources holded by simulator.
-    void destroy() override { ; }
+    void destroy(void) override { ; }
     /// @brief Initiate and allocate resource required by this timing simulator.
-    void build(VPMU_Insn::Model& model) override;
+    VPMU_Insn::Model build(void) override;
     /// @brief The main function of each timing simulator for processing traces.
-    void packet_processor(int                         id,
-                          const VPMU_Insn::Reference& ref,
-                          VPMU_Insn::Data&            data) override;
+    RetStatus packet_processor(int id, const VPMU_Insn::Reference& ref) override;
 
 private:
 #ifdef CONFIG_VPMU_DEBUG_MSG

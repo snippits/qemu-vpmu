@@ -44,10 +44,10 @@ public: // VPMUSimulator
     VPMUi386Translate& get_translator_handle(void) override { return translator; }
 
     void destroy() override { ; } // Nothing to do
-    void build(VPMU_Insn::Model& model) override;
-    void packet_processor(int                         id,
-                          const VPMU_Insn::Reference& ref,
-                          VPMU_Insn::Data&            data) override;
+
+    VPMU_Insn::Model build(void) override;
+
+    RetStatus packet_processor(int id, const VPMU_Insn::Reference& ref) override;
 
 private:
 #ifdef CONFIG_VPMU_DEBUG_MSG

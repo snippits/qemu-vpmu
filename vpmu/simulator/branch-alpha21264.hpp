@@ -14,7 +14,7 @@ public:
 
     void destroy() override { ; } // Nothing to do
 
-    void build(VPMU_Branch::Model& model) override
+    VPMU_Branch::Model build(void) override
     {
         log_debug("Initializing");
 
@@ -33,13 +33,11 @@ public:
             p_history[i].resize(p_entry_size);
         }
 
-        model = branch_model;
         log_debug("Initialized");
+        return branch_model;
     }
 
-    void packet_processor(int                           id,
-                          const VPMU_Branch::Reference& ref,
-                          VPMU_Branch::Data&            data) override
+    RetStatus packet_processor(int id, const VPMU_Branch::Reference& ref) override
     {
 #ifdef CONFIG_VPMU_DEBUG_MSG
         debug_packet_num_cnt++;
@@ -54,7 +52,7 @@ public:
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
         case VPMU_PACKET_SYNC_DATA:
-            data = branch_data;
+            return branch_data;
             break;
         case VPMU_PACKET_DUMP_INFO:
             CONSOLE_LOG("  [%d] type : Alpha 21264 Predictor (%d-GEntry, %d-PEntry)\n",
@@ -73,6 +71,8 @@ public:
         default:
             LOG_FATAL("Unexpected packet");
         }
+
+        return true;
     }
 
 private:
