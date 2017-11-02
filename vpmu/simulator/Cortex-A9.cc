@@ -2940,7 +2940,7 @@ CPU_CortexA9::RetStatus CPU_CortexA9::packet_processor(int                      
         LOG_FATAL("Unexpected packet");
     }
 
-    return true;
+    return insn_data;
 }
 
 void CPU_CortexA9::accumulate(const VPMU_Insn::Reference& ref)

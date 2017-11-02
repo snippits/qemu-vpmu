@@ -602,7 +602,7 @@ public:
         case CACHE_PACKET_INSN:
             // DBG("index=%d, %x\n", index, d4_cache_leaf[index]);
             // Ignore all packets if this configuration does not support (GPU/DSP/etc.)
-            if (unlikely(num_cores[ref.processor] == 0)) return false;
+            if (unlikely(num_cores[ref.processor] == 0)) return cache_data;
 #ifdef EXPERIMENTAL_PER_CORE_CYCLES
             // Initialize the first core id and proc id if it's not set
             if (unlikely(last_proc == -1 || last_core_id == -1)) {
@@ -631,7 +631,7 @@ public:
             ERR_MSG("Unexpected packet in cache simulators\n");
         }
 
-        return true;
+        return cache_data;
     }
 
     RetStatus hot_packet_processor(int id, const VPMU_Cache::Reference &ref) override
@@ -649,7 +649,7 @@ public:
                     0 +                             // the offset of d-cache
                     ref.core;                       // the offset of core
 
-        if (unlikely(num_cores[ref.processor] == 0)) return false;
+        if (unlikely(num_cores[ref.processor] == 0)) return cache_data;
 
         int e_block = ((ref.addr + ref.size) - 1)
                       >> cache_model.i_log2_blocksize[VPMU_Cache::L1_CACHE];
@@ -679,7 +679,7 @@ public:
         default:
             goto fallback;
         }
-        return true;
+        return cache_data;
 
     fallback:
         // Pass it to the default packet_processor and remove states.

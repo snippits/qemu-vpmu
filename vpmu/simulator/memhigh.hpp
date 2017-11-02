@@ -54,7 +54,7 @@ public:
         switch (ref.type) {
         case VPMU_PACKET_BARRIER:
         case VPMU_PACKET_SYNC_DATA:
-            return {};
+            return cache_data;
             break;
         case VPMU_PACKET_DUMP_INFO:
             CONSOLE_LOG("  [%d] type : MemHigh\n", id);
@@ -76,11 +76,12 @@ public:
             ERR_MSG("Unexpected packet in cache simulators\n");
         }
 
-        return true;
+        return cache_data;
     }
 
 private:
     VPMU_Cache::Model cache_model = {};
+    VPMU_Cache::Data  cache_data  = {};
 #ifdef CONFIG_VPMU_DEBUG_MSG
     // The total number of packets counter for debugging
     uint64_t debug_packet_num_cnt = 0;

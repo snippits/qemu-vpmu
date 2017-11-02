@@ -59,7 +59,7 @@ public:
             LOG_FATAL("Unexpected packet");
         }
 
-        return true;
+        return branch_data;
     }
 
 private:

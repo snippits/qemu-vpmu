@@ -9,8 +9,6 @@
 #include <thread>             // std::thread
 #include <vector>             // std::forward
 #include "json.hpp"           // nlohmann::json
-#include "variant.hpp"        // mpark::variant
-#include "variant-match.hpp"  // mpark::match
 #include "vpmu-log.hpp"       // VPMULog
 #include "vpmu-packet.hpp"    // Packet types
 #include "vpmu-translate.hpp" // VPMUARMTranslate, etc.
@@ -50,7 +48,7 @@ template <typename T>
 class VPMUSimulator : public VPMULog
 {
 public:
-    using RetStatus = mpark::variant<bool, int, typename T::Data>;
+    using RetStatus = const typename T::Data &;
 
 public:
     VPMUSimulator() {}
@@ -109,12 +107,12 @@ public:
     /// @param[in] ref The input packet, it could be either control/data packet.
     /// The state bits of ref are and should be zeros.
     /// @param[out] data The variable for synchronizing data back to VPMU.
-    /// @return Return true when nothing to declare.
-    /// The return type is mpark::variant<bool, int, typename T::Data>
+    /// @return Return any data reference if the packet is not sync nor barrier.
+    /// The return type is const typename T::Data &
     /// @see Branch_One_Bit::packet_processor()
     virtual RetStatus packet_processor(int id, const typename T::Reference &ref)
     {
-        LOG_FATAL_NOT_IMPL_RET(false);
+        LOG_FATAL_NOT_IMPL_RET(dummy_null_data);
     }
 
     /// @brief The main function of each timing simulator for processing hot traces.
@@ -129,8 +127,8 @@ public:
     /// @param[in] id The identity number to this simulator. Started from 0.
     /// @param[in] ref The input hot packet, it could be either control/data packet.
     /// The state bits of ref are set and should be checked.
-    /// @return Return true when nothing to declare.
-    /// The return type is mpark::variant<bool, int, typename T::Data>
+    /// @return Return any data reference if the packet is not sync nor barrier.
+    /// The return type is const typename T::Data &
     /// @see Cache_Dinero::hot_packet_processor()
     virtual RetStatus hot_packet_processor(int id, const typename T::Reference &ref)
     {
@@ -178,6 +176,7 @@ private:
     /// A dummy that does not have any setting
     /// Used when get_translator_handle() is not overrided
     VPMUArchTranslate dummy_null_translator;
+    typename T::Data  dummy_null_data;
 };
 
 #endif

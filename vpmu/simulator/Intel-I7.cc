@@ -72,7 +72,7 @@ CPU_IntelI7::RetStatus CPU_IntelI7::packet_processor(int                        
     default:
         LOG_FATAL("Unexpected packet");
     }
-    return true;
+    return insn_data;
 }
 
 void CPU_IntelI7::accumulate(const VPMU_Insn::Reference& ref)
