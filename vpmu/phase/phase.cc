@@ -46,16 +46,18 @@ static void update_phase(std::shared_ptr<ET_Process>& process, const Window& win
 
     phase.update(window);
     uint64_t core_id = vpmu::get_core_id();
-    VPMU_async([core_id, &phase, process]() {
+    // TODO This window is still unsafe to read its timestamps
+    VPMU_async([core_id, &phase, process, window]() {
         VPMUSnapshot new_snapshot(true, core_id);
         // Update the counter values of this phase
         phase.update(new_snapshot - process->snapshot_phase);
         // Update the last checkpoint of this process (for phase detection only)
         process->snapshot_phase = new_snapshot;
+        // Update process phase history
+        process->phase_history.push_back({{window.timestamp,        // Construct an array
+                                           window.target_timestamp, // with {{ ... }}
+                                           phase.id}});
     });
-    // TODO Maybe we should have target time instead of host time here?
-    // Update process phase history
-    process->phase_history.push_back({window.timestamp, phase.id});
 
     if (res == Phase::not_found) {
         DBG(STR_PHASE "pid: %" PRIu64 ", name: %s\n" STR_PHASE

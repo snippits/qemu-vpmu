@@ -24,6 +24,7 @@ public:
         // which means this is a new window.
         if (flag_reset) {
             this->timestamp = vpmu::host::timestamp_us();
+            VPMU_async([this]() { this->target_timestamp = vpmu::target::time_us(); });
         }
         flag_reset = false;
         update_bbv(pc);
@@ -78,6 +79,8 @@ public:
     bool flag_reset = true;
     /// The timestamp of begining of this window
     uint64_t timestamp = 0;
+    /// The timestamp of begining of this window
+    uint64_t target_timestamp = 0;
     /// The basic block vector. (Perhapse using Eigen::VectorXd?)
     std::valarray<double> branch_vector = {};
     /// Instruction count

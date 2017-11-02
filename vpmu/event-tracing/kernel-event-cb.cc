@@ -298,13 +298,14 @@ void et_register_callbacks_kernel_events(void)
         // Accumulate the profiling counters when a process is scheduled out
         auto prev_process = event_tracer.find_process(prev_pid);
         if (prev_pid != pid && prev_process && prev_process->is_running) {
-            uint64_t core_id = vpmu::get_core_id();
-            VPMU_async([prev_process, core_id]() {
+            uint64_t core_id   = vpmu::get_core_id();
+            uint64_t timestamp = vpmu::host::timestamp_us();
+            VPMU_async([prev_process, core_id, timestamp]() {
                 VPMUSnapshot new_snapshot(true, core_id);
                 prev_process->prof_counters += new_snapshot - prev_process->snapshot;
+                uint64_t target_timestamp = vpmu::target::time_us();
+                prev_process->phase_history.push_back({{timestamp, target_timestamp, 0}});
             });
-            // TODO Maybe we should have target time instead of host time here?
-            prev_process->phase_history.push_back({vpmu::host::timestamp_us(), 0});
             prev_process->is_running = false;
         }
 

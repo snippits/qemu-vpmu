@@ -178,22 +178,24 @@ void ET_Process::dump_timeline(std::string path)
 
     // Sort the history timeline because async insertions are ordered incorrectly
     std::sort(phase_history.begin(), phase_history.end(), [](auto& a, auto& b) {
-        return a.first < b.first; // Order w.r.t. time
+        return a[0] < b[0]; // Order w.r.t. time
     });
     std::sort(event_history.begin(), event_history.end(), [](auto& a, auto& b) {
-        return a.first < b.first; // Order w.r.t. time
+        return a[0] < b[0]; // Order w.r.t. time
     });
     j["apiVersion"] = SNIPPIT_JSON_API_VERSION;
     for (auto& phase : phase_history) {
-        j["phases"]["time"].push_back(phase.first);
-        if (phase.second == 0) // Push null if the phase ID is zero (the ID for no phase)
+        j["phases"]["hostTime"].push_back(phase[0]);
+        j["phases"]["targetTime"].push_back(phase[1]);
+        if (phase[2] == 0) // Push null if the phase ID is zero (the ID for no phase)
             j["phases"]["phaseID"].push_back(nullptr);
         else
-            j["phases"]["phaseID"].push_back(phase.second);
+            j["phases"]["phaseID"].push_back(phase[2]);
     }
     for (auto& event : event_history) {
-        j["events"]["time"].push_back(event.first);
-        j["events"]["eventID"].push_back(event.second);
+        j["events"]["hostTime"].push_back(event[0]);
+        j["events"]["targetTime"].push_back(event[1]);
+        j["events"]["eventID"].push_back(event[2]);
     }
 
     FILE* fp = fopen(path.c_str(), "wt");
