@@ -22,38 +22,28 @@ public:
     VPMUStream(const VPMUStream&) = delete;
     VPMUStream& operator=(const VPMUStream&) = delete;
 
-    virtual void set_default_stream_impl(void)
-    {
-        LOG_FATAL("set_default_stream_impl is not implemented");
-    }
-    virtual void bind(nlohmann::json) { LOG_FATAL("bind is not implemented"); }
-    virtual bool build(void)
-    {
-        LOG_FATAL("build is not implemented");
-        return false;
-    }
-    virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
-    virtual void reset(void) { LOG_FATAL("reset is not implemented"); }
-    virtual void issue_sync(void) { LOG_FATAL("issue_sync is not implemented"); }
-    virtual void reset_sync_flags(void) { LOG_FATAL("reset_sync_flags is not implemented"); }
-    virtual void wait_sync(void) { LOG_FATAL("wait_sync is not implemented"); }
-    virtual void sync_none_blocking(void)
-    {
-        LOG_FATAL("sync_none_blocking is not implemented");
-    }
-    virtual void dump(void) { LOG_FATAL("dump is not implemented"); }
+    virtual void set_default_stream_impl(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void bind(nlohmann::json) { LOG_FATAL_NOT_IMPL(); }
+    virtual bool build(void) { LOG_FATAL_NOT_IMPL_RET(false); }
+    virtual void destroy(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void reset(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void issue_sync(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void reset_sync_flags(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void wait_sync(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void sync_none_blocking(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void dump(void) { LOG_FATAL_NOT_IMPL(); }
 };
 
 template <typename T>
 class VPMUStream_T : public VPMUStream
 {
 public:
-    // Aliasing the real implementation this stream is using
-    using Sim_ptr     = std::unique_ptr<VPMUSimulator<T>>;
-    using Impl_ptr    = std::unique_ptr<VPMUStream_Impl<T>>;
-    using Reference   = typename T::Reference;
-    using Model       = typename T::Model;
-    using Data        = typename T::Data;
+    // Aliasing the typed name for consistency
+    using Sim_ptr   = std::unique_ptr<VPMUSimulator<T>>;
+    using Impl_ptr  = std::unique_ptr<VPMUStream_Impl<T>>;
+    using Reference = typename T::Reference;
+    using Model     = typename T::Model;
+    using Data      = typename T::Data;
 
     VPMUStream_T() {}
     VPMUStream_T(const char* module_name) : VPMUStream(module_name) {}
@@ -224,22 +214,15 @@ public:
 
     void set_stream_impl(Impl_ptr&& s) { impl = std::move(s); }
 
-    void set_default_stream_impl(void) override
-    {
-        LOG_FATAL("set_stream_impl is not implemented");
-    }
+    void set_default_stream_impl(void) override { LOG_FATAL_NOT_IMPL(); }
 
-    // Getter functions for C side to use.
-    // Must use the inline hint to ensure the performance.
-    inline Model        get_model(void) { return impl->get_model(0); }
-    inline Data         get_data(void) { return impl->get_data(0); }
-    inline sem_t*       get_semaphore(void) { return impl->get_semaphore(0); }
-    inline uint32_t     get_num_workers(void) { return impl->get_num_workers(); }
+    inline uint32_t get_num_workers(void) { return impl->get_num_workers(); }
 
-    // Overloading of get model function
+    inline Model get_model(void) { return impl->get_model(0); }
     inline Model get_model(int n) { return impl->get_model(n); }
-    // Overloading of get data function
+
     inline Data get_data(int n) { return impl->get_data(n); }
+    inline Data get_data(void) { return impl->get_data(0); }
 
 protected:
     // Force to clean out local buffer whenever the packet is a control packet
@@ -270,11 +253,8 @@ private:
     // This mutex protects: creation of simulators
     std::mutex stream_simulator_mutex;
 
-    virtual Sim_ptr create_sim(std::string sim_name)
-    {
-        LOG_FATAL("create_sim is not defined");
-        return nullptr;
-    };
+    // This is supposed to be implemented by each component simulator stream interface
+    virtual Sim_ptr create_sim(std::string sim_name) { LOG_FATAL_NOT_IMPL_RET(nullptr); };
 };
 
 #endif

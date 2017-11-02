@@ -31,12 +31,12 @@ public:
     //
 
     // This is for initializing common resources for workers
-    virtual void build(void) { LOG_FATAL("build is not implemented"); }
-    virtual void destroy(void) { LOG_FATAL("destroy is not implemented"); }
+    virtual void build(void) { LOG_FATAL_NOT_IMPL(); }
+    virtual void destroy(void) { LOG_FATAL_NOT_IMPL(); }
     // Initialize resources for individual workers and execute them in parallel.
-    virtual void run(std::vector<Sim_ptr>& jobs) { LOG_FATAL("run is not implemented"); }
+    virtual void run(std::vector<Sim_ptr>& jobs) { LOG_FATAL_NOT_IMPL(); }
 
-    inline void send(Reference* local_buffer, uint32_t num_refs, uint32_t total_size)
+    inline void send(Reference* refs, uint32_t num_refs, uint32_t total_size)
     {
         // Basic safety check
         if (vpmu_stream == nullptr) return;
@@ -57,7 +57,7 @@ public:
         }
 
         while (vpmu_stream->trace.remained_space() <= total_size) usleep(1);
-        vpmu_stream->trace.push(local_buffer, num_refs);
+        vpmu_stream->trace.push(refs, num_refs);
         this->post_semaphore(); // up semaphores
     }
 
@@ -149,24 +149,18 @@ public:
     // Get the results from a timing simulator
     inline Data get_data(int n)
     {
-        if (pointer_safety_check(n) == false) return {}; // Zero initializer
+        if (pointer_safety_check(n) == false) return {};
         return vpmu_stream->common[n].data;
     }
     // Get model configuration back from timing a simulator
     Model get_model(int n)
     {
-        if (pointer_safety_check(n) == false) return {}; // Zero initializer
+        if (pointer_safety_check(n) == false) return {};
         return vpmu_stream->common[n].model;
     }
 
     // Get number of workers
     uint32_t get_num_workers(void) { return num_workers; }
-    // Get semaphore
-    sem_t* get_semaphore(int n)
-    {
-        if (pointer_safety_check(n) == false) return nullptr;
-        return &vpmu_stream->common[n].job_semaphore;
-    }
 
     bool initialized(void) { return this->vpmu_stream != nullptr; }
 
