@@ -41,6 +41,7 @@ public:
 
         binary_list.push_back(program);
         timing_model = program->timing_model;
+        VPMU_async([this]() { this->guest_launchtime = vpmu::target::time_us(); });
     }
     ET_Process(std::string new_name, uint64_t new_pid)
     {
@@ -49,6 +50,7 @@ public:
         is_top_process = true;
 
         binary_list.push_back(std::make_shared<ET_Program>(new_name));
+        VPMU_async([this]() { this->guest_launchtime = vpmu::target::time_us(); });
     }
     ET_Process(ET_Process& target_process, uint64_t new_pid)
     {
@@ -58,6 +60,7 @@ public:
         pid          = new_pid;
         binary_list  = target_process.binary_list;
         timing_model = target_process.timing_model;
+        VPMU_async([this]() { this->guest_launchtime = vpmu::target::time_us(); });
     }
     ~ET_Process() { vpmu_qemu_free_cpu_arch_state(cpu_state); }
 
@@ -128,6 +131,10 @@ public:
     bool     binary_loaded  = false; ///< Flag to indicate whether main program is set
     uint64_t core_id        = 0;     ///< Identify the core it runs on
     uint64_t pc_called_mmap = 0;     ///< Remember the PC of calling mmap
+    /// Phases of this process
+    uint64_t host_launchtime  = vpmu::host::timestamp_us();
+    uint64_t guest_launchtime = 0;
+
     /// \brief Snapshot of timing counters
     //
     /// When a process object is created, a snapshot will be taken in order to
@@ -150,9 +157,9 @@ public:
     std::vector<Phase> phase_list = {};
     /// The current window of this process
     Window current_window = {};
-    /// History records of phase ID with a timestamp. pair<host time, target time, phase ID>
+    /// History records of phase ID with a timestamp. pair<hosttime, guesttime, phase ID>
     std::vector<std::array<uint64_t, 3>> phase_history = {};
-    /// History records of events with a timestamp. pair<host time, target time, event ID>
+    /// History records of events with a timestamp. pair<hosttime, guesttime, event ID>
     std::vector<std::array<uint64_t, 3>> event_history = {};
     // The monitored functions of this process
     FunctionMap<uint64_t, void*, ET_Process*> functions;

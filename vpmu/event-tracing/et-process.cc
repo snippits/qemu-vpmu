@@ -76,13 +76,15 @@ void ET_Process::dump_process_info(std::string path)
     using vpmu::str::addr_to_str;
 
     nlohmann::json j;
-    j["apiVersion"]   = SNIPPIT_JSON_API_VERSION;
-    j["name"]         = name;
-    j["fileName"]     = filename;
-    j["filePath"]     = path;
-    j["pid"]          = pid;
-    j["log"]          = debug_log;
-    j["isTopProcess"] = is_top_process;
+    j["apiVersion"]      = SNIPPIT_JSON_API_VERSION;
+    j["name"]            = name;
+    j["fileName"]        = filename;
+    j["filePath"]        = path;
+    j["pid"]             = pid;
+    j["log"]             = debug_log;
+    j["isTopProcess"]    = is_top_process;
+    j["hostLaunchTime"]  = host_launchtime;
+    j["guestLaunchTime"] = guest_launchtime;
     for (auto& child : child_list) {
         j["childrens"].push_back({{"name", child->name}, {"pid", child->pid}});
     }
@@ -185,16 +187,16 @@ void ET_Process::dump_timeline(std::string path)
     });
     j["apiVersion"] = SNIPPIT_JSON_API_VERSION;
     for (auto& phase : phase_history) {
-        j["phases"]["hostTime"].push_back(phase[0]);
-        j["phases"]["targetTime"].push_back(phase[1]);
+        j["phases"]["hostTime"].push_back(phase[0] - this->host_launchtime);
+        j["phases"]["guestTime"].push_back(phase[1] - this->guest_launchtime);
         if (phase[2] == 0) // Push null if the phase ID is zero (the ID for no phase)
             j["phases"]["phaseID"].push_back(nullptr);
         else
             j["phases"]["phaseID"].push_back(phase[2]);
     }
     for (auto& event : event_history) {
-        j["events"]["hostTime"].push_back(event[0]);
-        j["events"]["targetTime"].push_back(event[1]);
+        j["events"]["hostTime"].push_back(event[0] - this->host_launchtime);
+        j["events"]["guestTime"].push_back(event[1] - this->guest_launchtime);
         j["events"]["eventID"].push_back(event[2]);
     }
 
