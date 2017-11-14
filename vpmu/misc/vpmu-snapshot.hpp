@@ -17,26 +17,30 @@ extern "C" {
 class VPMUSnapshot
 {
 public:
-    /// Do nothing for default constructor
-    VPMUSnapshot() {}
-
+    // TODO better interface for the input arguments
     /// Take a new snapshot at initialization following RAII form
-    VPMUSnapshot(bool take_a_shot_flag)
+    VPMUSnapshot(bool take_a_shot = false, int64_t core = -1)
     {
-        if (take_a_shot_flag) take_snapshot();
+        if (take_a_shot) take_snapshot(core);
     }
 
-    VPMUSnapshot(bool take_a_shot_flag, uint64_t core)
+    void take_snapshot(int64_t core = -1)
     {
-        if (take_a_shot_flag) take_snapshot(core);
-    }
-
-    void take_snapshot(void)
-    {
+        // TODO support per core data getter
         insn_data   = vpmu_insn_stream.get_data();
         branch_data = vpmu_branch_stream.get_data();
         cache_data  = vpmu_cache_stream.get_data();
 
+        if (core > 0) {
+            insn_data.mask_out_except(core);
+            branch_data.mask_out_except(core);
+            cache_data.mask_out_except(core);
+            // TODO Should design two different snapshot classes
+            // One with per-core info, the other without.
+            sum_cores();
+        }
+
+        // TODO support per core time getter
         time_ns[0] = vpmu::target::cpu_time_ns();
         time_ns[1] = vpmu::target::branch_time_ns();
         time_ns[2] = vpmu::target::cache_time_ns();
@@ -44,14 +48,6 @@ public:
         time_ns[4] = vpmu::target::io_time_ns();
         time_ns[5] = vpmu::target::time_ns();
         time_ns[6] = vpmu::host::timestamp_ns();
-    }
-
-    void take_snapshot(uint64_t core)
-    {
-        take_snapshot();
-        insn_data.mask_out_except(core);
-        branch_data.mask_out_except(core);
-        cache_data.mask_out_except(core);
     }
 
     void sum_cores(void)

@@ -41,7 +41,6 @@ public:
 
         binary_list.push_back(program);
         timing_model = program->timing_model;
-        VPMU_async([this]() { this->guest_launchtime = vpmu::target::time_us(); });
     }
     ET_Process(std::string new_name, uint64_t new_pid)
     {
@@ -50,7 +49,6 @@ public:
         is_top_process = true;
 
         binary_list.push_back(std::make_shared<ET_Program>(new_name));
-        VPMU_async([this]() { this->guest_launchtime = vpmu::target::time_us(); });
     }
     ET_Process(ET_Process& target_process, uint64_t new_pid)
     {
@@ -60,7 +58,6 @@ public:
         pid          = new_pid;
         binary_list  = target_process.binary_list;
         timing_model = target_process.timing_model;
-        VPMU_async([this]() { this->guest_launchtime = vpmu::target::time_us(); });
     }
     ~ET_Process() { vpmu_qemu_free_cpu_arch_state(cpu_state); }
 
@@ -139,9 +136,9 @@ public:
     //
     /// When a process object is created, a snapshot will be taken in order to
     /// snapshot the start time of this process.
-    VPMUSnapshot snapshot = VPMUSnapshot(true);
+    VPMUSnapshot snapshot = {};
     /// Snapshot of timing counters for phase detection
-    VPMUSnapshot snapshot_phase = VPMUSnapshot(true);
+    VPMUSnapshot snapshot_phase = {};
     /// Remember the profiling counters of this process
     VPMUSnapshot prof_counters = {};
     /// Process memory map

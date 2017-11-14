@@ -276,7 +276,9 @@ void et_register_callbacks_kernel_events(void)
             uint64_t core_id = vpmu::get_core_id();
             VPMU_async([process, core_id]() {
                 VPMUSnapshot new_snapshot(true, core_id);
-                process->snapshot = new_snapshot;
+                process->snapshot         = new_snapshot;
+                process->snapshot_phase   = new_snapshot;
+                process->guest_launchtime = vpmu::target::time_us();
             });
             process->is_running = true;
         }
@@ -346,6 +348,7 @@ void et_register_callbacks_kernel_events(void)
             VPMU_async([process, core_id]() {
                 VPMUSnapshot new_snapshot(true, core_id);
                 process->prof_counters += new_snapshot - process->snapshot;
+                process->snapshot = new_snapshot;
             });
             process->is_running = false;
         }
