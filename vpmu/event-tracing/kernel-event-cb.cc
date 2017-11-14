@@ -305,6 +305,7 @@ void et_register_callbacks_kernel_events(void)
             VPMU_async([prev_process, core_id, timestamp]() {
                 VPMUSnapshot new_snapshot(true, core_id);
                 prev_process->prof_counters += new_snapshot - prev_process->snapshot;
+                prev_process->snapshot_phase = new_snapshot - prev_process->snapshot_phase;
                 uint64_t target_timestamp = vpmu::target::time_us();
                 prev_process->phase_history.push_back({{timestamp, target_timestamp, 0}});
             });
@@ -320,6 +321,8 @@ void et_register_callbacks_kernel_events(void)
             VPMU_async([process, core_id]() {
                 VPMUSnapshot new_snapshot(true, core_id);
                 process->snapshot = new_snapshot;
+                // Apply previous records before context switching
+                process->snapshot_phase += new_snapshot;
             });
             process->is_running = true;
         }
