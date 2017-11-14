@@ -122,8 +122,9 @@ static void special_write(void *opaque, hwaddr addr, uint64_t value, unsigned si
         VPMU_dump_result();
         break;
     case VPMU_MMAP_RESET:
-        VPMU_reset();
-        tic(&(VPMU.enabled_time_t));
+        // TODO Temporarily disable reset for phase tracing. This should be done in controller.
+        // VPMU_reset();
+        // tic(&(VPMU.enabled_time_t));
         break;
 #ifdef CONFIG_VPMU_SET
     case VPMU_MMAP_ADD_PROC_NAME:
