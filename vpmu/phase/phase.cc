@@ -46,7 +46,6 @@ static void update_phase(std::shared_ptr<ET_Process>& process, const Window& win
 
     phase.update(window);
     uint64_t core_id = vpmu::get_core_id();
-    // TODO This window is still unsafe to read its timestamps
     VPMU_async([core_id, &phase, process, window]() {
         VPMUSnapshot new_snapshot(true, core_id);
         // Update the counter values of this phase
