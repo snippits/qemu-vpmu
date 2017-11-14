@@ -2,7 +2,7 @@
 #define __VPMU_CONF_H_
 // clang-format off
 
-#define VPMU_MAX_CPU_CORES 64
+#define VPMU_MAX_CPU_CORES 10
 #define VPMU_MAX_GPU_CORES 4
 #define VPMU_MAX_NUM_WORKERS 16
 

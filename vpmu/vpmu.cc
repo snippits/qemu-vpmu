@@ -39,7 +39,7 @@ extern int   qemu_loglevel;
 // Pointer to argv[0] for modifying process name in htop
 char *global_argv_0 = NULL;
 // Thread pool for asynchronizing the performance counters
-ThreadPool timing_thread_pool("vpmu_async", 1);
+ThreadPool timing_thread_pool("vpmu_async", 2);
 // Guard for accessing timing_thread_pool following VPMU stream interface.
 std::mutex timing_thread_pool_mutex;
 // Thread pool for general tasks
