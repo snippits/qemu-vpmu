@@ -146,7 +146,7 @@ void ET_Process::dump_phases(std::string path)
           "Phase ID 0 is reserved to be referenced as no phase on timeline."
           "Also, many other databases use 1st instead of 0th as the starting index."
           "Please take care of ID 0 on all of your algorithms.";
-        j["phase"][0] = p;
+        j["phases"][0] = p;
     }
 
     for (auto& phase : phase_list) {
@@ -164,7 +164,7 @@ void ET_Process::dump_phases(std::string path)
             p["codes"].push_back(e);
         }
 
-        j["phase"][phase.id] = p;
+        j["phases"][phase.id] = p;
     }
 
     FILE* fp = fopen(path.c_str(), "wt");
