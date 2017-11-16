@@ -74,7 +74,7 @@ static void init_simulators(const char *vpmu_config_file)
     } catch (std::invalid_argument e) {
         ERR_MSG("%s\n", e.what());
         exit(EXIT_FAILURE);
-    } catch (std::domain_error e) {
+    } catch (nlohmann::detail::type_error e) {
         ERR_MSG("%s\n", e.what());
         exit(EXIT_FAILURE);
     }

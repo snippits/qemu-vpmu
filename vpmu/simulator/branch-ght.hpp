@@ -22,13 +22,7 @@ public:
         auto model_name = vpmu::utils::get_json<std::string>(json_config, "name");
         strncpy(branch_model.name, model_name.c_str(), sizeof(branch_model.name));
         branch_model.latency = vpmu::utils::get_json<int>(json_config, "miss latency");
-        try {
-            entry_size = json_config["entry size"].get<int>();
-        } catch (std::domain_error e) {
-            entry_size = 256;
-            log("Entry size for GHT branch predictor is not set, use default: %d",
-                entry_size);
-        }
+        entry_size = json_config.value("entry size", 256);
 
         for (int i = 0; i < VPMU_MAX_CPU_CORES; i++) {
             predictor[i].resize(entry_size);

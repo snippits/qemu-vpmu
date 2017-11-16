@@ -101,7 +101,7 @@ namespace utils
 
         try {
             return j[key].get<T>();
-        } catch (std::domain_error e) {
+        } catch (nlohmann::detail::type_error e) {
             ERR_MSG("In field: \"%s\", %s\n", key, e.what());
         }
         // Should only reach here when there is something wrong.
@@ -117,7 +117,7 @@ namespace utils
 
         try {
             return j[key].get<T>();
-        } catch (std::domain_error e) {
+        } catch (nlohmann::detail::type_error e) {
             ERR_MSG("In field: \"%s\", %s\n", key, e.what());
         }
         // Should only reach here when there is something wrong.
