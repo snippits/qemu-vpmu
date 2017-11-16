@@ -453,6 +453,7 @@ void VPMU_init(int argc, char **argv)
     // Register callbacks for user processes
     ft_register_callbacks();
 
+    VPMU_reset();
     // Done
     CONSOLE_LOG(STR_VPMU "Initialized\n");
 }
