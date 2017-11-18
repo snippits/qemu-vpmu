@@ -168,8 +168,8 @@ static void parse_dentry_path(CPUArchState *env,
         d_flags = vpmu_read_uint32_from_guest(env, dentry_addr, 0);
         // All the dirs are mounted. Only the fake root is not mounted.
         if (dentry_addr == parent_dentry_addr && !(d_flags & DCACHE_MOUNTED)) {
-            CONSOLE_LOG(STR_KERNEL "Warning: Tracing mount point is not implemented yet. "
-                                   "Use ':' as its root.\n");
+            //CONSOLE_LOG(STR_KERNEL "Warning: Tracing mount point is not implemented yet. "
+            //                       "Use ':' as its root.\n");
             __append_str(buff, position, size_buff, ":");
         }
     }

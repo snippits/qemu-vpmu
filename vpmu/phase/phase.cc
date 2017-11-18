@@ -30,6 +30,7 @@ nlohmann::json Phase::json_fingerprint(void)
                    (double)counters.load / counters.insn,
                    (double)counters.store / counters.insn,
                    (double)counters.branch / counters.insn};
+    j["bbv"]    = branch_vector;
 
     return j;
 }

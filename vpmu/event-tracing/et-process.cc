@@ -154,7 +154,7 @@ void ET_Process::dump_phases(std::string path)
         p["id"]          = phase.id;
         p["fingerprint"] = phase.json_fingerprint();
         p["counters"]    = vpmu::dump_json::snapshot(phase.snapshot);
-        p["numWidows"]   = phase.get_num_windows();
+        p["numWindows"]  = phase.get_num_windows();
         p["codes"]       = nlohmann::json::array();
         auto mapping     = get_code_mapping(phase); // Note: This is sorted by std::map
         for (auto& elem : mapping) {
