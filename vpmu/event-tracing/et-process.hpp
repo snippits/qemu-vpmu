@@ -58,6 +58,9 @@ public:
         pid          = new_pid;
         binary_list  = target_process.binary_list;
         timing_model = target_process.timing_model;
+
+        vm_maps     = target_process.vm_maps;
+        max_vm_maps = target_process.max_vm_maps;
     }
     ~ET_Process() { vpmu_qemu_free_cpu_arch_state(cpu_state); }
 
@@ -96,6 +99,12 @@ public:
     inline void clear_last_mapped_info(void)
     {
         last_mapped_addr[vpmu::get_core_id()] = {};
+    }
+
+    void clear_vmmaps(void)
+    {
+        vm_maps     = {};
+        max_vm_maps = {};
     }
 
     inline uint64_t next_phase_id(void) { return unique_phase_id++; }

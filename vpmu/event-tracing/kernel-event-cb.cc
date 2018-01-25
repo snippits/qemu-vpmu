@@ -281,6 +281,10 @@ void et_register_callbacks_kernel_events(void)
                 process->guest_launchtime = vpmu::target::time_us();
             });
             process->is_running = true;
+            // Since we choose to copy vm_maps on every process/thread creation,
+            // there is a need to clear that in a fork-execv condition, i.e. exec a new
+            // process instead of pthread multi-threading.
+            process->clear_vmmaps();
         }
     });
 
